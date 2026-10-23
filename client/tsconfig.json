@@ -1,0 +1,10 @@
+// Proyecto: Canarias Conecta
+// Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+// Funcion: Configuracion base de TypeScript del cliente.
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}

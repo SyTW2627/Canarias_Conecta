@@ -1,0 +1,12 @@
+# Proyecto: Canarias Conecta
+# Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+# Funcion: Define los ficheros que Git debe ignorar en el repositorio.
+node_modules/
+.env
+dist/
+build/
+coverage/
+server/uploads/*
+!server/uploads/.gitkeep
+.DS_Store
+*.log

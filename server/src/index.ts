@@ -9,6 +9,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { connectDB, dbStatus } from './config/db.js'
+import userRoutes from './routes/userRoutes.js'
 
 dotenv.config()
 
@@ -25,6 +26,8 @@ app.get('/api/health', (_req, res) => {
     database: dbStatus()
   })
 })
+
+app.use('/api/users', userRoutes)
 
 // El servidor solo arranca si la conexion con la base de datos es correcta
 connectDB()

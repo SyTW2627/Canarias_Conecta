@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import './App.css'
 import Login, { type Usuario } from './pages/Login.tsx'
+import Register from './pages/Register.tsx'
 
 const PASOS = [
   {
@@ -48,12 +49,13 @@ function usuarioGuardado(): Usuario | null {
 function App() {
   const [apiStatus, setApiStatus] = useState<string | null>(null)
   const [imagenActual, setImagenActual] = useState(0)
-  const [mostrarLogin, setMostrarLogin] = useState(false)
+  const [pantalla, setPantalla] = useState<'home' | 'login' | 'registro'>('home')
   const [usuario, setUsuario] = useState<Usuario | null>(usuarioGuardado)
 
+  // Se usa tanto al iniciar sesion como al registrarse
   function handleLogin(nuevoUsuario: Usuario) {
     setUsuario(nuevoUsuario)
-    setMostrarLogin(false)
+    setPantalla('home')
   }
 
   function cerrarSesion() {
@@ -82,8 +84,24 @@ function App() {
     }
   }
 
-  if (mostrarLogin) {
-    return <Login onLogin={handleLogin} onVolver={() => setMostrarLogin(false)} />
+  if (pantalla === 'login') {
+    return (
+      <Login
+        onLogin={handleLogin}
+        onVolver={() => setPantalla('home')}
+        onRegistro={() => setPantalla('registro')}
+      />
+    )
+  }
+
+  if (pantalla === 'registro') {
+    return (
+      <Register
+        onRegistro={handleLogin}
+        onVolver={() => setPantalla('home')}
+        onIrALogin={() => setPantalla('login')}
+      />
+    )
   }
 
   return (
@@ -104,12 +122,12 @@ function App() {
               href="#"
               onClick={(e) => {
                 e.preventDefault()
-                setMostrarLogin(true)
+                setPantalla('login')
               }}
             >
               Iniciar sesión
             </a>
-            <button type="button" className="btn">
+            <button type="button" className="btn" onClick={() => setPantalla('registro')}>
               Registrarse
             </button>
           </>

@@ -1,0 +1,157 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la pantalla de inicio de sesion.
+ */
+.login {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+}
+
+/* Imagen de fondo discreta detras de todo el contenido */
+.login::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url('/carrusel/image_1.jpg') center / cover no-repeat;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.logo-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.login-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px 28px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.login-card h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: normal;
+  color: var(--texto);
+}
+
+.login-subtitulo {
+  margin-top: -8px;
+  font-size: 15px;
+  color: var(--texto-suave);
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--texto);
+}
+
+.campo input {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--texto);
+  font: 15px 'DM Sans', sans-serif;
+}
+
+.campo input:focus {
+  outline: none;
+  border-color: var(--verde);
+  box-shadow: 0 0 0 3px var(--verde-claro);
+}
+
+.login-error {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fdecec;
+  color: #a12a2a;
+  font-size: 14px;
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.login-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.campo-password {
+  position: relative;
+  display: flex;
+}
+
+.campo-password input {
+  flex: 1;
+  padding-right: 84px;
+}
+
+.ver-password {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--verde);
+  font: 500 13px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.ver-password:hover {
+  background: var(--verde-claro);
+}
+
+.login-enlaces {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.login-enlace {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--verde);
+  font: 500 14px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.login-enlace:hover {
+  text-decoration: underline;
+}

@@ -5,6 +5,7 @@
  */
 import { useState } from 'react'
 import './App.css'
+import Login, { type Usuario } from './pages/Login.tsx'
 
 const PASOS = [
   {
@@ -28,15 +29,38 @@ const PASOS = [
 // una entrada por imagen, por ejemplo:
 // { src: '/carrusel/foto1.jpg', alt: 'Voluntarios en la playa' },
 const IMAGENES: { src: string; alt: string }[] = [
-   { src: '/carrusel/image_1.jpg', alt: '1' },
+   { src: '/carrusel/image_4.jpg', alt: '1' },
    { src: '/carrusel/image_2.jpg', alt: '2' },
    { src: '/carrusel/image_3.jpg', alt: '3' }
    
 ]
 
+// Recupera la sesion guardada al iniciar sesion, si existe
+function usuarioGuardado(): Usuario | null {
+  try {
+    const guardado = localStorage.getItem('usuario')
+    return guardado ? (JSON.parse(guardado) as Usuario) : null
+  } catch {
+    return null
+  }
+}
+
 function App() {
   const [apiStatus, setApiStatus] = useState<string | null>(null)
   const [imagenActual, setImagenActual] = useState(0)
+  const [mostrarLogin, setMostrarLogin] = useState(false)
+  const [usuario, setUsuario] = useState<Usuario | null>(usuarioGuardado)
+
+  function handleLogin(nuevoUsuario: Usuario) {
+    setUsuario(nuevoUsuario)
+    setMostrarLogin(false)
+  }
+
+  function cerrarSesion() {
+    localStorage.removeItem('token')
+    localStorage.removeItem('usuario')
+    setUsuario(null)
+  }
 
   function anteriorImagen() {
     setImagenActual((i) => (i - 1 + IMAGENES.length) % IMAGENES.length)
@@ -58,15 +82,38 @@ function App() {
     }
   }
 
+  if (mostrarLogin) {
+    return <Login onLogin={handleLogin} onVolver={() => setMostrarLogin(false)} />
+  }
+
   return (
     <div className="home">
       <header className="nav">
         <span className="logo">Canarias Conecta</span>
-        
-        <a href="#">Iniciar sesión</a>
-        <button type="button" className="btn">
-          Registrarse
-        </button>
+
+        {usuario ? (
+          <>
+            <span>Hola, {usuario.nombre}</span>
+            <button type="button" className="btn btn-outline" onClick={cerrarSesion}>
+              Cerrar sesión
+            </button>
+          </>
+        ) : (
+          <>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                setMostrarLogin(true)
+              }}
+            >
+              Iniciar sesión
+            </a>
+            <button type="button" className="btn">
+              Registrarse
+            </button>
+          </>
+        )}
       </header>
 
       <main>

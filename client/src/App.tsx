@@ -26,15 +26,7 @@ const PASOS = [
   },
 ]
 
-// Imagenes del carrusel. Coloca los archivos en public/carrusel/ y añade aqui
-// una entrada por imagen, por ejemplo:
-// { src: '/carrusel/foto1.jpg', alt: 'Voluntarios en la playa' },
-const IMAGENES: { src: string; alt: string }[] = [
-   { src: '/carrusel/image_4.jpg', alt: '1' },
-   { src: '/carrusel/image_2.jpg', alt: '2' },
-   { src: '/carrusel/image_3.jpg', alt: '3' }
-   
-]
+
 
 // Recupera la sesion guardada al iniciar sesion, si existe
 function usuarioGuardado(): Usuario | null {
@@ -48,7 +40,6 @@ function usuarioGuardado(): Usuario | null {
 
 function App() {
   const [apiStatus, setApiStatus] = useState<string | null>(null)
-  const [imagenActual, setImagenActual] = useState(0)
   const [pantalla, setPantalla] = useState<'home' | 'login' | 'registro'>('home')
   const [usuario, setUsuario] = useState<Usuario | null>(usuarioGuardado)
 
@@ -64,13 +55,6 @@ function App() {
     setUsuario(null)
   }
 
-  function anteriorImagen() {
-    setImagenActual((i) => (i - 1 + IMAGENES.length) % IMAGENES.length)
-  }
-
-  function siguienteImagen() {
-    setImagenActual((i) => (i + 1) % IMAGENES.length)
-  }
 
   async function checkApi() {
     setApiStatus('Comprobando...')
@@ -161,57 +145,48 @@ function App() {
           </div>
         </section>
 
-        <section className="about">
-          <h2>Quiénes somos</h2>
-          <div className="about-box">
-            <p>Somos un grupo de estudiantes con la intención de mejorar 
-              la calidad de los servicios de voluntariado.</p>
-          </div>
+        <section className="info-sections">
+          <article className="info-section">
+            <img src="/carrusel/imagen_manos.jpg" alt="Personas colaborando" />
+            <div>
+              <h2>Quiénes somos</h2>
+            <p>
+              Somos Canarias Conecta, una plataforma que nace para unir personas, compartir ideas y crear oportunidades
+              en nuestras islas. Creemos en el poder de la colaboración y en la importancia de construir una comunidad
+              en la que todos podamos aportar algo. Queremos conectar a quienes tienen ganas de participar, proponer
+              iniciativas y contribuir a construir una Canarias mejor, más unida y participativa.
+            </p>
+            </div>
+          </article>
+
+          <article className="info-section info-section-reverse">
+            <img src="/carrusel/imagen_necesitamos.jpg" alt="Voluntariado colaborando" />
+            <div>
+              <h2>¿Por qué te necesitamos?</h2>
+              <p>
+                Creemos que el cambio empieza cuando las personas se implican. Tu voz, tus ideas y tus
+                experiencias pueden marcar la diferencia y ayudar a mejorar nuestro entorno. Canarias se
+                construye entre todos, y queremos que tengas un espacio donde expresarte, compartir tus 
+                propuestas y formar parte de las decisiones e iniciativas que contribuyen al bienestar de nuestra comunidad.
+              </p>
+            </div>
+          </article>
+
+          <article className="info-section">
+            <img src="/carrusel/image_3.jpg" alt="Pequeñas acciones, grandes cambios" />
+            <div>
+              <h2>Conecta y transforma</h2>
+              <p>
+                En Canarias Conecta puedes pasar de tener una idea a formar parte del cambio. 
+                Descubre iniciativas, comparte propuestas, conecta con otras personas y colabora
+                en proyectos que generen un impacto positivo en nuestras islas. Participa, aporta
+                tu granito de arena y comprueba cómo, cuando sumamos esfuerzos, podemos transformar
+                pequeñas ideas en grandes oportunidades para todos.
+              </p>
+            </div>
+          </article>
         </section>
 
-        <section className="gallery">
-          <h2>Galería</h2>
-          {IMAGENES.length === 0 ? (
-            <div className="carousel carousel-empty">
-              <p>Aún no hay imágenes en el carrusel.</p>
-            </div>
-          ) : (
-            <div className="carousel">
-              <img
-                className="carousel-img"
-                src={IMAGENES[imagenActual].src}
-                alt={IMAGENES[imagenActual].alt}
-              />
-              <button
-                type="button"
-                className="carousel-btn carousel-prev"
-                onClick={anteriorImagen}
-                aria-label="Imagen anterior"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                className="carousel-btn carousel-next"
-                onClick={siguienteImagen}
-                aria-label="Imagen siguiente"
-              >
-                ›
-              </button>
-              <div className="carousel-dots">
-                {IMAGENES.map((imagen, i) => (
-                  <button
-                    key={imagen.src}
-                    type="button"
-                    className={i === imagenActual ? 'dot dot-active' : 'dot'}
-                    onClick={() => setImagenActual(i)}
-                    aria-label={`Ir a la imagen ${i + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
       </main>
 
       <aside className="api-check">

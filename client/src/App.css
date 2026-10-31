@@ -299,3 +299,21 @@ p {
     height: 220px;
   }
 }
+
+/* Estilos de la sección del logo en el banner superior */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+}
+
+.brand img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.brand .logo {
+  margin-right: 0;
+}

@@ -91,7 +91,13 @@ function App() {
   return (
     <div className="home">
       <header className="nav">
-        <span className="logo">Canarias Conecta</span>
+        <div className="brand">
+          <img
+            src="/fotos/Logo_Canarias_Conecta_Sinfondo.png"
+            alt="Logo de Canarias Conecta"
+          />
+          <span className="logo">Canarias Conecta</span>
+        </div>
 
         {usuario ? (
           <>

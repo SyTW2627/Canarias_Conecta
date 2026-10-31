@@ -1,0 +1,276 @@
+' Proyecto: Canarias Conecta
+' Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+' Funcion: Modelo logico en MongoDB (colecciones, subdocumentos embebidos, referencias e indices).
+
+@startuml modelo-mongodb
+title Canarias Conecta - Modelo lógico MongoDB (base de datos canarias_conecta)
+
+hide methods
+hide circle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor<<coleccion>> #FFFFFF
+  BackgroundColor<<embebido>> #EAF2FB
+  BackgroundColor<<enum>> #FFF6E0
+}
+
+' ================= Colecciones =================
+
+class users <<coleccion>> {
+  _id : ObjectId
+  email : String {unique, lowercase}
+  password : String {bcrypt, select:false}
+  rol : String {voluntario | ofertante | admin}
+  estado : EstadoUsuario
+  emailVerificado : Boolean
+  avatarUrl : String?
+  telefono : String?
+  isla : Isla?
+  municipio : String?
+  consentimientos : Consentimiento[]
+  ultimoAcceso : Date?
+  createdAt, updatedAt : Date
+  --
+  <i>solo rol = voluntario</i>
+  voluntario : PerfilVoluntario?
+  --
+  <i>solo rol = ofertante</i>
+  ofertante : PerfilOfertante?
+  ..
+  idx: {email:1} unique
+  idx: {rol:1, estado:1}
+}
+
+class categorias <<coleccion>> {
+  _id : ObjectId
+  nombre : String {unique}
+  slug : String {unique}
+  icono : String?
+  activa : Boolean
+}
+
+class ofertas <<coleccion>> {
+  _id : ObjectId
+  ofertanteId : ObjectId -> users
+  titulo : String
+  descripcion : String
+  categoriaIds : ObjectId[] -> categorias
+  modalidad : String {presencial | online | mixta}
+  tipoDuracion : String {jornada | periodo_corto}
+  ubicacion : Ubicacion
+  requisitos : String?
+  edadMinima : Number?
+  imagenes : String[]
+  turnos : Turno[]
+  estado : EstadoOferta
+  fechaPublicacion : Date?
+  createdAt, updatedAt : Date
+  ..
+  idx: {estado:1, "ubicacion.isla":1, categoriaIds:1}
+  idx: {"turnos.fecha":1}
+  idx: {ofertanteId:1, estado:1}
+  idx: {"ubicacion.geo":"2dsphere"}
+  idx: {titulo:"text", descripcion:"text"}
+}
+
+class inscripciones <<coleccion>> {
+  _id : ObjectId
+  voluntarioId : ObjectId -> users
+  ofertaId : ObjectId -> ofertas
+  ofertanteId : ObjectId -> users <i>(copiado de la oferta)</i>
+  turnoIds : ObjectId[] -> ofertas.turnos._id
+  estado : EstadoInscripcion
+  mensaje : String?
+  motivoRechazo : String?
+  fechaResolucion : Date?
+  horasRealizadas : Number?
+  valoracionAlVoluntario : Valoracion?
+  valoracionALaOferta : Valoracion?
+  createdAt, updatedAt : Date
+  ..
+  idx: {voluntarioId:1, ofertaId:1} unique
+  idx: {ofertaId:1, estado:1}
+  idx: {ofertanteId:1, estado:1}
+  idx: {voluntarioId:1, estado:1}
+}
+
+class solicitudes_ayuda <<coleccion>> {
+  _id : ObjectId
+  usuarioId : ObjectId? -> users
+  nombreContacto : String
+  emailContacto : String
+  telefonoContacto : String?
+  isla : Isla
+  municipio : String?
+  categoriaId : ObjectId? -> categorias
+  descripcion : String
+  urgencia : String {baja | media | alta}
+  estado : String {nueva | en_revision | convertida | descartada}
+  ofertaId : ObjectId? -> ofertas
+  createdAt, updatedAt : Date
+  ..
+  idx: {estado:1, createdAt:-1}
+}
+
+class notificaciones <<coleccion>> {
+  _id : ObjectId
+  usuarioId : ObjectId -> users
+  tipo : String
+  titulo : String
+  mensaje : String
+  enlace : String?
+  leida : Boolean
+  createdAt : Date
+  ..
+  idx: {usuarioId:1, leida:1, createdAt:-1}
+  idx TTL: {createdAt:1} expireAfter 90 días
+}
+
+class tokens <<coleccion>> {
+  _id : ObjectId
+  usuarioId : ObjectId -> users
+  tipo : String {verificar_email | recuperar_password}
+  tokenHash : String {unique}
+  usado : Boolean
+  expiraEn : Date
+  ..
+  idx TTL: {expiraEn:1} expireAfterSeconds 0
+}
+
+' ================= Subdocumentos embebidos =================
+
+class PerfilVoluntario <<embebido>> {
+  nombre : String
+  apellidos : String
+  fechaNacimiento : Date?
+  biografia : String?
+  interesIds : ObjectId[] -> categorias
+  habilidades : String[]
+  idiomas : String[]
+  islasPreferidas : Isla[]
+  disponibilidad : FranjaDisponibilidad[]
+  favoritas : ObjectId[] -> ofertas
+  estadisticas : {horasTotales, colaboraciones, valoracionMedia, numValoraciones}
+}
+
+class PerfilOfertante <<embebido>> {
+  nombreEntidad : String
+  tipoEntidad : TipoEntidad
+  cif : String? {unique sparse}
+  descripcion : String?
+  web : String?
+  personaContacto : String?
+  direccion : String?
+  verificada : Boolean
+  estadisticas : {ofertasPublicadas, valoracionMedia, numValoraciones}
+}
+
+class FranjaDisponibilidad <<embebido>> {
+  diaSemana : Number {0..6}
+  horaInicio : String "HH:mm"
+  horaFin : String "HH:mm"
+}
+
+class Consentimiento <<embebido>> {
+  tipo : String {terminos | privacidad | comunicaciones}
+  version : String
+  aceptado : Boolean
+  fecha : Date
+}
+
+class Ubicacion <<embebido>> {
+  isla : Isla
+  municipio : String
+  direccion : String?
+  geo : GeoJSON Point?
+}
+
+class Turno <<embebido>> {
+  _id : ObjectId
+  fecha : Date
+  horaInicio : String "HH:mm"
+  horaFin : String "HH:mm"
+  plazas : Number
+  plazasOcupadas : Number
+}
+
+class Valoracion <<embebido>> {
+  autorId : ObjectId -> users
+  puntuacion : Number {1..5}
+  comentario : String?
+  fecha : Date
+}
+
+' ================= Enumerados =================
+
+enum EstadoUsuario <<enum>> {
+  pendiente_verificacion
+  activo
+  suspendido
+  eliminado
+}
+
+enum EstadoOferta <<enum>> {
+  borrador
+  publicada
+  completa
+  cerrada
+  finalizada
+  cancelada
+}
+
+enum EstadoInscripcion <<enum>> {
+  pendiente
+  aceptada
+  rechazada
+  cancelada
+  completada
+  no_presentado
+}
+
+enum TipoEntidad <<enum>> {
+  ong
+  asociacion
+  fundacion
+  administracion_publica
+  empresa
+  particular
+}
+
+enum Isla <<enum>> {
+  tenerife
+  gran_canaria
+  lanzarote
+  fuerteventura
+  la_palma
+  la_gomera
+  el_hierro
+  la_graciosa
+}
+
+' ================= Relaciones =================
+
+users *-- "0..1" PerfilVoluntario
+users *-- "0..1" PerfilOfertante
+users *-- "1..*" Consentimiento
+PerfilVoluntario *-- "0..*" FranjaDisponibilidad
+ofertas *-- "1" Ubicacion
+ofertas *-- "1..*" Turno
+inscripciones *-- "0..2" Valoracion
+
+users "1" <.. "0..*" ofertas : ofertanteId
+categorias "1..*" <.. "0..*" ofertas : categoriaIds
+users "1" <.. "0..*" inscripciones : voluntarioId
+ofertas "1" <.. "0..*" inscripciones : ofertaId
+users "0..1" <.. "0..*" solicitudes_ayuda : usuarioId
+ofertas "0..1" <.. "0..1" solicitudes_ayuda : ofertaId
+users "1" <.. "0..*" notificaciones : usuarioId
+users "1" <.. "0..*" tokens : usuarioId
+
+legend bottom left
+  Blanco = colección   |   Azul = subdocumento embebido   |   Amarillo = enumerado
+  Rombo relleno = embebido dentro del documento   |   Flecha discontinua = referencia por ObjectId
+endlegend
+
+@enduml

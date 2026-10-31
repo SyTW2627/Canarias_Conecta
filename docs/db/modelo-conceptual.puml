@@ -1,0 +1,197 @@
+' Proyecto: Canarias Conecta
+' Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+' Funcion: Modelo conceptual de datos (entidades, atributos y relaciones), independiente del SGBD.
+
+@startuml modelo-conceptual
+title Canarias Conecta - Modelo conceptual de datos
+
+hide methods
+hide circle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam class {
+  BackgroundColor<<catalogo>> #EEF6EE
+  BackgroundColor<<soporte>> #F2F2F2
+}
+
+' ---------- Usuarios ----------
+
+abstract class Usuario {
+  email {único}
+  password (hash)
+  rol
+  estado
+  emailVerificado
+  avatar
+  telefono
+  isla
+  municipio
+  ultimoAcceso
+  fechaAlta
+}
+
+class Voluntario {
+  nombre
+  apellidos
+  fechaNacimiento
+  biografia
+  habilidades [0..*]
+  idiomas [0..*]
+  islasPreferidas [0..*]
+  /horasTotales
+  /numColaboraciones
+  /valoracionMedia
+}
+
+class Ofertante {
+  nombreEntidad
+  tipoEntidad
+  cif
+  descripcion
+  web
+  personaContacto
+  direccion
+  verificada
+  /numOfertasPublicadas
+  /valoracionMedia
+}
+
+class Administrador
+
+class FranjaDisponibilidad {
+  diaSemana
+  horaInicio
+  horaFin
+}
+
+class Consentimiento {
+  tipo
+  version
+  aceptado
+  fecha
+}
+
+Usuario <|-- Voluntario
+Usuario <|-- Ofertante
+Usuario <|-- Administrador
+
+Voluntario *-- "0..*" FranjaDisponibilidad : declara >
+Usuario *-- "1..*" Consentimiento : otorga >
+
+' ---------- Catalogo ----------
+
+class Categoria <<catalogo>> {
+  nombre {único}
+  slug
+  icono
+  activa
+}
+
+Voluntario "0..*" -- "0..*" Categoria : le interesa >
+
+' ---------- Ofertas ----------
+
+class Oferta {
+  titulo
+  descripcion
+  modalidad
+  tipoDuracion
+  isla
+  municipio
+  direccion
+  coordenadas
+  requisitos
+  edadMinima
+  imagenes [0..*]
+  estado
+  fechaPublicacion
+}
+
+class Turno {
+  fecha
+  horaInicio
+  horaFin
+  plazas
+  /plazasOcupadas
+}
+
+Ofertante "1" -- "0..*" Oferta : publica >
+Oferta "0..*" -- "1..*" Categoria : se clasifica en >
+Oferta *-- "1..*" Turno : se organiza en >
+Voluntario "0..*" -- "0..*" Oferta : guarda como favorita >
+
+' ---------- Participacion ----------
+
+class Inscripcion {
+  estado
+  mensaje
+  fechaSolicitud
+  fechaResolucion
+  motivoRechazo
+  horasRealizadas
+}
+
+class Valoracion {
+  sentido
+  puntuacion [1..5]
+  comentario
+  fecha
+}
+
+Voluntario "1" -- "0..*" Inscripcion : solicita >
+Inscripcion "0..*" -- "1" Oferta : en >
+Inscripcion "0..*" -- "1..*" Turno : cubre >
+Inscripcion *-- "0..2" Valoracion : recibe >
+
+note right of Valoracion
+  Como máximo una por sentido:
+  - del ofertante al voluntario
+  - del voluntario a la oferta/ofertante
+  Solo si la inscripción está COMPLETADA.
+end note
+
+' ---------- "Necesito ayuda" ----------
+
+class SolicitudAyuda {
+  nombreContacto
+  emailContacto
+  telefonoContacto
+  isla
+  municipio
+  descripcion
+  urgencia
+  estado
+  fecha
+}
+
+SolicitudAyuda "0..*" -- "0..1" Usuario : la envía >
+SolicitudAyuda "0..*" -- "0..1" Categoria : de tipo >
+SolicitudAyuda "0..1" -- "0..1" Oferta : se convierte en >
+
+' ---------- Soporte ----------
+
+class Notificacion <<soporte>> {
+  tipo
+  titulo
+  mensaje
+  enlace
+  leida
+  fecha
+}
+
+class TokenVerificacion <<soporte>> {
+  tipo
+  tokenHash
+  expiraEn
+  usado
+}
+
+Usuario "1" -- "0..*" Notificacion : recibe >
+Usuario "1" -- "0..*" TokenVerificacion : tiene >
+
+legend bottom left
+  /atributo = derivado (se calcula a partir de otras entidades)
+  Composición (rombo relleno) = la parte no existe sin el todo
+endlegend
+
+@enduml

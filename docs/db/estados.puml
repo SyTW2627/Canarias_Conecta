@@ -1,0 +1,44 @@
+' Proyecto: Canarias Conecta
+' Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+' Funcion: Ciclo de vida (estados y transiciones) de las ofertas y de las inscripciones.
+
+@startuml estados-oferta
+title Ciclo de vida de una Oferta
+
+[*] --> borrador : ofertante la crea
+borrador --> publicada : publicar
+publicada --> completa : todas las plazas ocupadas
+completa --> publicada : se libera una plaza
+publicada --> cerrada : ofertante cierra inscripciones
+completa --> cerrada
+cerrada --> publicada : reabrir
+publicada --> finalizada : pasa el último turno
+completa --> finalizada
+cerrada --> finalizada
+borrador --> cancelada
+publicada --> cancelada : ofertante cancela\n(se notifica a inscritos)
+completa --> cancelada
+cerrada --> cancelada
+finalizada --> [*]
+cancelada --> [*]
+@enduml
+
+@startuml estados-inscripcion
+title Ciclo de vida de una Inscripción
+
+[*] --> pendiente : voluntario se inscribe
+pendiente --> aceptada : ofertante acepta\n(plazasOcupadas++)
+pendiente --> rechazada : ofertante rechaza
+pendiente --> cancelada : voluntario retira la solicitud
+aceptada --> cancelada : voluntario u ofertante cancela\n(plazasOcupadas--)
+aceptada --> completada : ofertante confirma asistencia\n(registra horasRealizadas)
+aceptada --> no_presentado : ofertante marca ausencia
+
+completada : se pueden registrar\nlas 2 valoraciones
+completada : suma a la trayectoria\ndel voluntario
+
+rechazada --> [*]
+cancelada --> [*]
+completada --> [*]
+no_presentado --> [*]
+@enduml

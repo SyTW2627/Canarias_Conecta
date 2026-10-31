@@ -39,7 +39,6 @@ function usuarioGuardado(): Usuario | null {
 }
 
 function App() {
-  const [apiStatus, setApiStatus] = useState<string | null>(null)
   const [pantalla, setPantalla] = useState<'home' | 'login' | 'registro'>('home')
   const [usuario, setUsuario] = useState<Usuario | null>(usuarioGuardado)
 
@@ -56,17 +55,6 @@ function App() {
   }
 
 
-  async function checkApi() {
-    setApiStatus('Comprobando...')
-    try {
-      const res = await fetch('/api/health')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data: { status: string; message: string } = await res.json()
-      setApiStatus(`${data.status}: ${data.message}`)
-    } catch (err) {
-      setApiStatus(`Error: ${err instanceof Error ? err.message : String(err)}`)
-    }
-  }
 
   if (pantalla === 'login') {
     return (
@@ -195,12 +183,37 @@ function App() {
 
       </main>
 
-      <aside className="api-check">
-        <button type="button" className="btn btn-outline" onClick={checkApi}>
-          Test de API
-        </button>
-        {apiStatus && <p role="status">{apiStatus}</p>}
-      </aside>
+      <footer className="footer">
+        <div className="footer-brand">
+          <img
+            src="/fotos/Logo_Canarias_Conecta_Sinfondo.png"
+            alt="Logo de Canarias Conecta"
+          />
+          <p>Conectando personas con oportunidades para ayudar.</p>
+        </div>
+
+        <div className="footer-links">
+          <div>
+            <h3>Información</h3>
+              <a href="/politica-privacidad">Política de privacidad</a>
+              <a href="/terminos-condiciones">Términos y condiciones</a>
+              <a href="/contacto">Contacto</a>
+          </div>
+
+          <div>
+            <h3>Síguenos</h3>
+              <a href="https://www.instagram.com/" target="_blank" rel="noreferrer">
+                Instagram
+              </a>
+              <a href="https://www.facebook.com/" target="_blank" rel="noreferrer">
+                Facebook
+              </a>
+              <a href="https://www.linkedin.com/" target="_blank" rel="noreferrer">
+                LinkedIn
+              </a>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

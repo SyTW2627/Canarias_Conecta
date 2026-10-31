@@ -214,33 +214,6 @@ p {
   opacity: 1;
 }
 
-/* Botón de comprobación de la API (esquina inferior derecha) */
-.api-check {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: 320px;
-}
-
-.api-check .btn {
-  min-height: 36px;
-  padding: 6px 12px;
-  font-size: 13px;
-}
-
-.api-check p {
-  margin: 0;
-  padding: 6px 10px;
-  background: #fff;
-  border: 1px solid var(--borde);
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--texto-suave);
-}
 
 /* Estilos de quienes somos y fotos */
 .info-sections {
@@ -316,4 +289,71 @@ p {
 
 .brand .logo {
   margin-right: 0;
+}
+
+/* Estilos para el footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 48px;
+  padding: 48px max(24px, calc((100% - 1100px) / 2));
+  margin-top: auto;
+  background: var(--verde-oscuro);
+  color: #fff;
+}
+
+.footer-brand {
+  max-width: 320px;
+}
+
+.footer-brand img {
+  width: 240px;
+  max-height: 160px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 16px;
+}
+
+.footer-brand p {
+  line-height: 1.5;
+  color: var(--verde-claro);
+}
+
+.footer-links {
+  display: flex;
+  gap: 80px;
+}
+
+.footer-links div {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer h3 {
+  margin-bottom: 6px;
+  font-size: 17px;
+}
+
+.footer a {
+  color: var(--verde-claro);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+  .footer {
+    flex-direction: column;
+    padding: 36px 24px;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    gap: 28px;
+  }
 }

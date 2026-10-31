@@ -147,7 +147,7 @@ function App() {
 
         <section className="info-sections">
           <article className="info-section">
-            <img src="/carrusel/imagen_manos.jpg" alt="Personas colaborando" />
+            <img src="/fotos/imagen_manos.jpg" alt="Personas colaborando" />
             <div>
               <h2>Quiénes somos</h2>
             <p>
@@ -160,7 +160,7 @@ function App() {
           </article>
 
           <article className="info-section info-section-reverse">
-            <img src="/carrusel/imagen_necesitamos.jpg" alt="Voluntariado colaborando" />
+            <img src="/fotos/imagen_necesitamos.jpg" alt="Voluntariado colaborando" />
             <div>
               <h2>¿Por qué te necesitamos?</h2>
               <p>
@@ -173,7 +173,7 @@ function App() {
           </article>
 
           <article className="info-section">
-            <img src="/carrusel/image_3.jpg" alt="Pequeñas acciones, grandes cambios" />
+            <img src="/fotos/imagen_personamayor.jpg" alt="Pequeñas acciones, grandes cambios" />
             <div>
               <h2>Conecta y transforma</h2>
               <p>

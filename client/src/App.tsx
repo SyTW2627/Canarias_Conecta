@@ -26,6 +26,21 @@ const PASOS = [
   },
 ]
 
+const EXPERIENCIAS = [
+  {
+    imagen: '/fotos/voluntariado-1.png',
+    texto: 'Ayuda en tu comunidad',
+  },
+  {
+    imagen: '/fotos/voluntariado-2.png',
+    texto: 'Comparte tu tiempo',
+  },
+  {
+    imagen: '/fotos/voluntariado-3.png',
+    texto: 'Cada acción cuenta',
+  },
+]
+
 
 
 // Recupera la sesion guardada al iniciar sesion, si existe
@@ -41,6 +56,7 @@ function usuarioGuardado(): Usuario | null {
 function App() {
   const [pantalla, setPantalla] = useState<'home' | 'login' | 'registro'>('home')
   const [usuario, setUsuario] = useState<Usuario | null>(usuarioGuardado)
+  const [experienciaActual, setExperienciaActual] = useState(0)
 
   // Se usa tanto al iniciar sesion como al registrarse
   function handleLogin(nuevoUsuario: Usuario) {
@@ -54,6 +70,17 @@ function App() {
     setUsuario(null)
   }
 
+  function experienciaAnterior() {
+    setExperienciaActual(
+    (indice) => (indice - 1 + EXPERIENCIAS.length) % EXPERIENCIAS.length,
+    )
+  }
+
+  function experienciaSiguiente() {
+    setExperienciaActual(
+      (indice) => (indice + 1) % EXPERIENCIAS.length,
+    )
+  }
 
 
   if (pantalla === 'login') {
@@ -127,7 +154,7 @@ function App() {
         </section>
 
         <section className="steps">
-          <h2>Cómo funciona</h2>
+          <h2 className="section-title">Cómo funciona</h2>
           <div className="steps-grid">
             {PASOS.map((paso) => (
               <article key={paso.numero} className="card">
@@ -181,7 +208,93 @@ function App() {
           </article>
         </section>
 
+        <section className="experiencias">
+          <h2 className="section-title">Experiencias de voluntariado</h2>
+
+          <div className="experiencias-carrusel">
+            <img
+              src={EXPERIENCIAS[experienciaActual].imagen}
+              alt={EXPERIENCIAS[experienciaActual].texto}
+            />
+
+          <div className="experiencias-texto">
+            <p>{EXPERIENCIAS[experienciaActual].texto}</p>
+          </div>
+
+          <button
+            type="button"
+            className="experiencias-btn experiencias-prev"
+            onClick={experienciaAnterior}
+            aria-label="Experiencia anterior"
+          >
+            ‹
+          </button>
+
+          <button
+            type="button"
+            className="experiencias-btn experiencias-next"
+            onClick={experienciaSiguiente}
+            aria-label="Experiencia siguiente"
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="experiencias-puntos">
+          {EXPERIENCIAS.map((experiencia, indice) => (
+            <button
+              key={experiencia.imagen}
+              type="button"
+              className={indice === experienciaActual ? 'punto activo' : 'punto'}
+              onClick={() => setExperienciaActual(indice)}
+              aria-label={`Ver experiencia ${indice + 1}`}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="estadisticas">
+        <h2 className="section-title">Juntos hacemos la diferencia</h2>
+
+        <article>
+          <strong>250+</strong>
+          <span>Voluntarios</span>
+        </article>
+
+        <article>
+          <strong>40+</strong>
+          <span>Organizaciones</span>
+        </article>
+
+        <article>
+          <strong>120+</strong>
+          <span>Oportunidades</span>
+        </article>
+      </section>
+
       </main>
+
+      <section className="testimonios">
+        <h2 className="section-title">Opiniones de nuestros voluntarios</h2>
+
+        <div className="testimonios-grid">
+          <article>
+            <p>
+              “Encontré una forma sencilla de colaborar sin tener que comprometer
+              todo mi tiempo.”
+            </p>
+            <strong>— Laura, voluntaria</strong>
+          </article>
+
+          <article>
+            <p>
+              “Canarias Conecta nos ayudó a encontrar personas con ganas de
+              participar en nuestros proyectos.”
+            </p>
+            <strong>— Asociación Horizonte</strong>
+          </article>
+        </div>
+      </section>
 
       <footer className="footer">
         <div className="footer-brand">

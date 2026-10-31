@@ -7,6 +7,7 @@ import { useState } from 'react'
 import './App.css'
 import Login, { type Usuario } from './pages/Login.tsx'
 import Register from './pages/Register.tsx'
+import HomePage from './pages/HomePage.tsx'
 
 const PASOS = [
   {
@@ -54,20 +55,23 @@ function usuarioGuardado(): Usuario | null {
 }
 
 function App() {
-  const [pantalla, setPantalla] = useState<'home' | 'login' | 'registro'>('home')
   const [usuario, setUsuario] = useState<Usuario | null>(usuarioGuardado)
+  const [pantalla, setPantalla] = useState<'publica' | 'login' | 'registro' | 'autenticada'>(
+    usuario ? 'autenticada' : 'publica',
+  )
   const [experienciaActual, setExperienciaActual] = useState(0)
 
   // Se usa tanto al iniciar sesion como al registrarse
   function handleLogin(nuevoUsuario: Usuario) {
     setUsuario(nuevoUsuario)
-    setPantalla('home')
+    setPantalla('autenticada')
   }
 
   function cerrarSesion() {
     localStorage.removeItem('token')
     localStorage.removeItem('usuario')
     setUsuario(null)
+    setPantalla('publica')
   }
 
   function experienciaAnterior() {
@@ -87,7 +91,7 @@ function App() {
     return (
       <Login
         onLogin={handleLogin}
-        onVolver={() => setPantalla('home')}
+        onVolver={() => setPantalla('publica')}
         onRegistro={() => setPantalla('registro')}
       />
     )
@@ -97,10 +101,14 @@ function App() {
     return (
       <Register
         onRegistro={handleLogin}
-        onVolver={() => setPantalla('home')}
+        onVolver={() => setPantalla('publica')}
         onIrALogin={() => setPantalla('login')}
       />
     )
+  }
+
+  if (pantalla === 'autenticada' && usuario) {
+    return <HomePage usuario={usuario} onCerrarSesion={cerrarSesion} />
   }
 
   return (

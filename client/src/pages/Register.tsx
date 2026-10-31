@@ -74,8 +74,12 @@ function Register({ onRegistro, onVolver, onIrALogin }: RegisterProps) {
   return (
     <div className="login">
       <header className="nav">
-        <button type="button" className="logo logo-btn" onClick={onVolver}>
-          Canarias Conecta
+        <button type="button" className="brand brand-btn" onClick={onVolver}>
+          <img
+            src="/fotos/Logo_Canarias_Conecta_Sinfondo.png"
+            alt="Logo de Canarias Conecta"
+          />
+          <span className="logo">Canarias Conecta</span>
         </button>
       </header>
 

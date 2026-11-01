@@ -1,0 +1,54 @@
+' Proyecto: Canarias Conecta
+' Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+' Funcion: Diagrama de arquitectura del cliente, el servidor y la base de datos.
+
+@startuml arquitectura
+title Canarias Conecta - Arquitectura
+
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+actor "Usuario\n(voluntario / ofertante)" as usuario
+
+package "Cliente (client/) - React + Vite" {
+  component "App.tsx\n(pantalla pública y\ncambio de pantalla)" as app
+  component "pages/Login" as login
+  component "pages/Register" as register
+  component "pages/HomePage\n(tras iniciar sesión)" as home
+  database "localStorage\n(token, usuario)" as ls
+}
+
+package "Servidor (server/) - Express" {
+  component "index.ts\n(cors, express.json,\n/api/health)" as index
+  component "routes/\nauthRoutes\nuserRoutes" as routes
+  component "controllers/\nauthController\nuserController" as controllers
+  component "models/\nUser" as models
+  component "config/db.ts" as config
+}
+
+database "MongoDB\ncanarias_conecta" as mongo
+
+usuario --> app
+app --> login
+app --> register
+app --> home
+login --> ls : guarda sesión
+register --> ls : guarda sesión
+app --> ls : recupera sesión
+
+login --> index : POST /api/auth/login
+register --> index : POST /api/auth/register
+
+index --> routes
+routes --> controllers
+controllers --> models
+models --> mongo : Mongoose
+config --> mongo : connectDB()
+
+note right of controllers
+  Validan los datos, aplican las reglas
+  de negocio, hashean con bcrypt
+  y firman el JWT
+end note
+
+@enduml

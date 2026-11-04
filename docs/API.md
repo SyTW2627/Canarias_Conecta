@@ -114,8 +114,9 @@ conexión con la base de datos (SCRUM-57).
 ]
 ```
 
-> ⚠️ Es pública y expone los emails de todos los usuarios. Antes de desplegar en producción hay que
-> protegerla (solo `admin`) o eliminarla.
+> ⚠️ Es pública, devuelve el documento completo y expone los emails de todos los usuarios. Hay que
+> protegerla (solo `admin`) o eliminarla antes de añadir datos de perfil a `users`, como el teléfono o
+> la fecha de nacimiento.
 
 ## Pendiente
 

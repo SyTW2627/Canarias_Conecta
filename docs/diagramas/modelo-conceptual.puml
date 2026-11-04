@@ -17,6 +17,7 @@ skinparam class {
 ' ---------- Usuarios ----------
 
 abstract class Usuario {
+  nombre
   email {único}
   password (hash)
   rol
@@ -31,8 +32,6 @@ abstract class Usuario {
 }
 
 class Voluntario {
-  nombre
-  apellidos
   fechaNacimiento
   biografia
   habilidades [0..*]
@@ -44,7 +43,6 @@ class Voluntario {
 }
 
 class Ofertante {
-  nombreEntidad
   tipoEntidad
   cif
   descripcion
@@ -76,7 +74,7 @@ Usuario <|-- Ofertante
 Usuario <|-- Administrador
 
 Voluntario *-- "0..*" FranjaDisponibilidad : declara >
-Usuario *-- "1..*" Consentimiento : otorga >
+Usuario *-- "0..*" Consentimiento : otorga >
 
 ' ---------- Catalogo ----------
 
@@ -112,12 +110,12 @@ class Turno {
   horaInicio
   horaFin
   plazas
-  /plazasOcupadas
+  /plazasLibres
 }
 
 Ofertante "1" -- "0..*" Oferta : publica >
 Oferta "0..*" -- "1..*" Categoria : se clasifica en >
-Oferta *-- "1..*" Turno : se organiza en >
+Oferta *-- "0..*" Turno : se organiza en >
 Voluntario "0..*" -- "0..*" Oferta : guarda como favorita >
 
 ' ---------- Participacion ----------

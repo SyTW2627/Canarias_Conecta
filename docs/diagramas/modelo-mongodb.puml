@@ -19,10 +19,12 @@ skinparam class {
 
 class users <<coleccion>> {
   _id : ObjectId
+  nombre : String <i>(persona o entidad)</i>
   email : String {unique, lowercase}
   password : String {bcrypt, select:false}
   rol : String {voluntario | ofertante | admin}
-  estado : EstadoUsuario
+  <i>admin no se puede elegir en el registro</i>
+  estado : EstadoUsuario {default: activo}
   emailVerificado : Boolean
   avatarUrl : String?
   telefono : String?
@@ -58,11 +60,12 @@ class ofertas <<coleccion>> {
   categoriaIds : ObjectId[] -> categorias
   modalidad : String {presencial | online | mixta}
   tipoDuracion : String {jornada | periodo_corto}
-  ubicacion : Ubicacion
+  ubicacion : Ubicacion? <i>(obligatoria salvo online)</i>
   requisitos : String?
   edadMinima : Number?
   imagenes : String[]
-  turnos : Turno[]
+  turnos : Turno[] <i>(al menos uno para publicar)</i>
+  textoBusqueda : String <i>(sin tildes, en minúsculas)</i>
   estado : EstadoOferta
   fechaPublicacion : Date?
   createdAt, updatedAt : Date
@@ -71,7 +74,6 @@ class ofertas <<coleccion>> {
   idx: {"turnos.fecha":1}
   idx: {ofertanteId:1, estado:1}
   idx: {"ubicacion.geo":"2dsphere"}
-  idx: {titulo:"text", descripcion:"text"}
 }
 
 class inscripciones <<coleccion>> {
@@ -89,7 +91,8 @@ class inscripciones <<coleccion>> {
   valoracionALaOferta : Valoracion?
   createdAt, updatedAt : Date
   ..
-  idx: {voluntarioId:1, ofertaId:1} unique
+  idx: {voluntarioId:1, ofertaId:1} unique parcial
+  <i>solo estados pendiente, aceptada, completada, no_presentado</i>
   idx: {ofertaId:1, estado:1}
   idx: {ofertanteId:1, estado:1}
   idx: {voluntarioId:1, estado:1}
@@ -141,8 +144,6 @@ class tokens <<coleccion>> {
 ' ================= Subdocumentos embebidos =================
 
 class PerfilVoluntario <<embebido>> {
-  nombre : String
-  apellidos : String
   fechaNacimiento : Date?
   biografia : String?
   interesIds : ObjectId[] -> categorias
@@ -155,7 +156,6 @@ class PerfilVoluntario <<embebido>> {
 }
 
 class PerfilOfertante <<embebido>> {
-  nombreEntidad : String
   tipoEntidad : TipoEntidad
   cif : String? {unique sparse}
   descripcion : String?
@@ -192,7 +192,7 @@ class Turno <<embebido>> {
   horaInicio : String "HH:mm"
   horaFin : String "HH:mm"
   plazas : Number
-  plazasOcupadas : Number
+  plazasLibres : Number
 }
 
 class Valoracion <<embebido>> {
@@ -214,9 +214,7 @@ enum EstadoUsuario <<enum>> {
 enum EstadoOferta <<enum>> {
   borrador
   publicada
-  completa
   cerrada
-  finalizada
   cancelada
 }
 
@@ -253,10 +251,10 @@ enum Isla <<enum>> {
 
 users *-- "0..1" PerfilVoluntario
 users *-- "0..1" PerfilOfertante
-users *-- "1..*" Consentimiento
+users *-- "0..*" Consentimiento
 PerfilVoluntario *-- "0..*" FranjaDisponibilidad
-ofertas *-- "1" Ubicacion
-ofertas *-- "1..*" Turno
+ofertas *-- "0..1" Ubicacion
+ofertas *-- "0..*" Turno
 inscripciones *-- "0..2" Valoracion
 
 users "1" <.. "0..*" ofertas : ofertanteId

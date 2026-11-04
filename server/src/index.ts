@@ -5,7 +5,7 @@
  */
 // Servidor de prueba
 
-import express from 'express'
+import express, { type NextFunction, type Request, type Response } from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { connectDB, dbStatus } from './config/db.js'
@@ -33,6 +33,20 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/categorias', categoriaRoutes)
 app.use('/api/ofertas', ofertaRoutes)
+
+// Errores que no gestiona ningun controlador, como un JSON mal formado.
+// Express necesita los cuatro parametros para reconocerlo como manejador de errores
+app.use((error: { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
+  const status = error.status ?? 500
+
+  if (status >= 500) {
+    console.error('Error no controlado:', error)
+    res.status(500).json({ message: 'Error del servidor' })
+    return
+  }
+
+  res.status(status).json({ message: 'La petición no es válida' })
+})
 
 // El servidor solo arranca si la conexion con la base de datos es correcta
 connectDB()

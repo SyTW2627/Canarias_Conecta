@@ -7,13 +7,13 @@
 import type { Request, Response } from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { User, ROLES } from '../models/User.js'
+import { User, ROLES_REGISTRO } from '../models/User.js'
 
 const PASSWORD_MIN = 8
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function esRolValido(rol: string): rol is (typeof ROLES)[number] {
-  return (ROLES as readonly string[]).includes(rol)
+function esRolValido(rol: string): rol is (typeof ROLES_REGISTRO)[number] {
+  return (ROLES_REGISTRO as readonly string[]).includes(rol)
 }
 
 // POST /api/auth/register -> crea el usuario y devuelve { token, user } para entrar directamente

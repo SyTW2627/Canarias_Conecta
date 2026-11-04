@@ -23,6 +23,7 @@ server/src/
 ├── config/        conexión con MongoDB y preparación de colecciones y categorías
 ├── routes/        URL → función del controlador
 ├── controllers/   validan la petición, aplican las reglas y responden
+├── middleware/    comprueban el token y el rol en las rutas protegidas
 ├── models/        esquemas de Mongoose
 └── scripts/       seed con datos de ejemplo
 ```
@@ -45,8 +46,15 @@ clics en esos enlaces para cambiar la URL sin recargar. Para enlazar una oferta 
 
 Al registrarse o iniciar sesión, el servidor comprueba la contraseña con bcrypt y devuelve un token
 JWT con `{ id, rol }`, válido 1 día. El cliente guarda el token y el usuario en `localStorage`.
-Todavía no hay rutas protegidas. Cuando las haya, recibirán el token en la cabecera
-`Authorization: Bearer <token>`.
+Las rutas protegidas reciben el token en la cabecera `Authorization: Bearer <token>`. Para proteger una
+ruta se añaden `requireAuth` y, si hace falta, `requireRol` (`server/src/middleware/auth.ts`):
+
+```ts
+router.post('/', requireAuth, requireRol('ofertante'), crearOferta)
+```
+
+`requireAuth` consulta el usuario en cada petición, porque el token sigue siendo válido aunque la cuenta
+se suspenda o se borre, y lo deja en `req.usuario` con `id`, `nombre` y `rol`.
 
 ## Ramas
 

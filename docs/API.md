@@ -18,14 +18,16 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 - Peticiones y respuestas en JSON (`Content-Type: application/json`).
 - Los errores devuelven siempre `{ "message": "<texto para mostrar al usuario>" }`.
 - **Autenticación:** el login y el registro devuelven un token JWT válido durante **1 día**, que
-  contiene `{ id, rol }`. Las rutas protegidas lo recibirán en la cabecera
+  contiene `{ id, rol }`. Las rutas protegidas lo reciben en la cabecera
   `Authorization: Bearer <token>`. El cliente lo guarda en `localStorage` (`token` y `usuario`).
 
 | Código | Significado |
 |---|---|
 | `200` / `201` | Correcto / recurso creado |
 | `400` | Faltan datos o no son válidos |
-| `401` | Credenciales incorrectas o token no válido |
+| `401` | Credenciales incorrectas, falta el token o no es válido |
+| `403` | Sesión correcta, pero sin permiso para esa acción |
+| `404` | El recurso no existe |
 | `409` | Conflicto (p. ej. email ya registrado) |
 | `500` | Error del servidor (también si falta `JWT_SECRET` en el `.env`) |
 
@@ -37,6 +39,7 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 | `POST` | `/api/auth/register` | No | Crea una cuenta e inicia sesión |
 | `POST` | `/api/auth/login` | No | Inicia sesión |
 | `GET` | `/api/ofertas` | No | Busca ofertas publicadas con filtros |
+| `POST` | `/api/ofertas` | Ofertante | Crea una oferta |
 | `GET` | `/api/ofertas/:id` | No | Devuelve una oferta publicada |
 | `GET` | `/api/categorias` | No | Lista las categorías activas |
 
@@ -141,7 +144,7 @@ GET /api/ofertas?isla=gran_canaria&q=costa
 
 - `turnos` incluye todos los de la oferta, también los pasados.
 - `fecha` hay que mostrarla con `timeZone: 'UTC'`.
-- `ubicacion` puede faltar en las ofertas `online`.
+- `ubicacion` puede faltar en las ofertas `online`, y nunca incluye `direccion`, que puede ser un domicilio.
 - `requisitos` y `edadMinima` solo aparecen si la oferta los tiene.
 - La lista no está paginada todavía (SCRUM-34).
 
@@ -149,6 +152,54 @@ GET /api/ofertas?isla=gran_canaria&q=costa
 |---|---|
 | `400` | `La búsqueda no puede superar los 100 caracteres` · `La isla no es válida` · `Las fechas deben tener el formato AAAA-MM-DD` · `La fecha de fin no puede ser anterior a la de inicio` |
 | `500` | `Error al buscar las ofertas` |
+
+### `POST /api/ofertas`
+
+Crea una oferta del ofertante que ha iniciado sesión. Necesita la cabecera
+`Authorization: Bearer <token>` y una cuenta activa con rol `ofertante`.
+
+```json
+{
+  "titulo": "Limpieza y cuidado de la costa",
+  "descripcion": "Recogida de residuos junto a vecinos de la zona.",
+  "categoriaIds": ["6aeb..."],
+  "modalidad": "presencial",
+  "tipoDuracion": "jornada",
+  "ubicacion": { "isla": "gran_canaria", "municipio": "Telde", "direccion": "Calle Real, 12" },
+  "requisitos": "Ropa cómoda",
+  "edadMinima": 18,
+  "turnos": [{ "fecha": "2026-12-05", "horaInicio": "10:00", "horaFin": "12:00", "plazas": 7 }],
+  "estado": "publicada"
+}
+```
+
+| Campo | Reglas |
+|---|---|
+| `titulo` | Obligatorio, máximo 120 caracteres |
+| `descripcion` | Obligatoria, máximo 5000 caracteres |
+| `categoriaIds` | Ids de `GET /api/categorias`. Al menos uno para publicar |
+| `modalidad` | `presencial`, `online` o `mixta` |
+| `tipoDuracion` | `jornada` o `periodo_corto` |
+| `ubicacion` | `isla` y `municipio`, y `direccion` opcional. Obligatoria para publicar, salvo `online` |
+| `requisitos` | Opcional, máximo 2000 caracteres |
+| `edadMinima` | Opcional |
+| `turnos` | Máximo 50, al menos uno para publicar. `fecha` en formato `AAAA-MM-DD` y no pasada, horas en `HH:mm` y `plazas` entero mayor que 0 |
+| `estado` | `publicada` (por defecto) o `borrador` |
+
+El servidor ignora cualquier otro campo. El ofertante sale del token, y las plazas libres, la fecha de
+publicación y el texto de búsqueda se calculan. Las imágenes todavía no se pueden enviar.
+
+```json
+201 Created
+{ "id": "6aeb...", "estado": "publicada" }
+```
+
+| Error | Mensaje |
+|---|---|
+| `400` | `El título y la descripción son obligatorios` · `El estado no es válido` · `Las categorías no son válidas` · `Los turnos no son válidos` · `Los turnos no pueden tener una fecha pasada` · `La hora de fin debe ser posterior a la de inicio` · `La oferta necesita una ubicación` · `La oferta necesita al menos una categoría` · `La oferta necesita al menos un turno` · `Los datos de la oferta no son válidos` |
+| `401` | `Debes iniciar sesión` · `La sesión no es válida o ha caducado` |
+| `403` | `No tienes permiso para realizar esta acción` · `Tu cuenta no puede realizar esta acción` |
+| `500` | `Error al crear la oferta` · `Error al comprobar la sesión` |
 
 ### `GET /api/ofertas/:id`
 
@@ -174,6 +225,5 @@ Devuelve las categorías activas ordenadas por nombre.
 
 ## Pendiente
 
-- Middleware que valide el JWT y el rol para las rutas protegidas (aún no existe ninguna).
 - Resto de endpoints de ofertas, inscripciones, valoraciones, etc., según el [diseño de la base de datos](base-de-datos.md).
   Al añadir uno, documentarlo aquí con el mismo formato.

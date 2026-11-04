@@ -87,6 +87,9 @@ su **valoración**.
 - **Fechas de turno.** `fecha` guarda el día a las 00:00 UTC, y la hora va en `horaInicio` y `horaFin`.
   El cliente debe mostrarla con `timeZone: 'UTC'`: en otra zona horaria podría salir otro día.
 - **Imágenes.** `imagenes` guarda rutas o URLs, no los ficheros, que hoy están en `client/public/fotos/`.
+  La API todavía no permite subirlas.
+- **Dirección de una oferta.** Se guarda, pero la API pública no la devuelve ni busca en ella, porque puede
+  ser un domicilio. Se mostrará a los voluntarios aceptados cuando existan las inscripciones.
 - **Edición de turnos.** Hay que conservar el `_id` de cada turno, porque `turnoIds` lo referencia.
 - **`geo`.** No se implementa de momento. Cuando se haga, `coordinates` no puede quedar como array
   vacío (es el valor por defecto de Mongoose) porque el índice `2dsphere` rechaza el documento.

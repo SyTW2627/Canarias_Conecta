@@ -52,6 +52,11 @@ su **valoración**.
 - **Sin transacciones.** Un MongoDB sin replica set no las admite, y la plaza y la inscripción están
   en colecciones distintas. Primero se reserva la plaza, después se cambia la inscripción y, si esto
   falla, se devuelve la plaza.
+- **La plaza se ocupa al aceptar.** Una inscripción `pendiente` no reserva plaza, así las solicitudes
+  sin resolver no bloquean la oferta. Puede haber más solicitudes que plazas.
+- **El historial sale de `inscripciones`.** Es la lista de inscripciones del voluntario en estado
+  `completada`, con los datos de su oferta. No hay tabla ni atributo aparte: así incluye fecha, horas
+  y valoración, y no hay dos copias que mantener.
 - **Estados calculados.** Una oferta llena o con todos sus turnos pasados no cambia de estado: se
   calcula a partir de los turnos, porque ningún proceso actualizaría ese estado.
 
@@ -61,6 +66,9 @@ su **valoración**.
 - Un voluntario solo puede tener una inscripción activa en cada oferta, y solo si quedan plazas. Si
   su inscripción se canceló o se rechazó, puede volver a inscribirse.
 - Un ofertante solo gestiona sus propias ofertas.
+- No se puede aceptar una inscripción si no quedan plazas. Cancelar una inscripción aceptada devuelve
+  la plaza.
+- Las ofertas no se borran, se marcan como `cancelada`, para que el historial conserve sus datos.
 - Al registrarse solo se puede elegir `voluntario` u `ofertante`, nunca `admin`.
 - Una oferta necesita al menos un turno para publicarse, y una ubicación salvo que sea `online`. Un
   borrador puede no tener ninguna de las dos cosas.
@@ -83,7 +91,6 @@ su **valoración**.
 
 ## Pendiente de decidir
 
-- ¿Cuándo se ocupa la plaza: al inscribirse o cuando el ofertante acepta?
 - ¿Quién puede usar *Necesito ayuda*: cualquiera o solo usuarios registrados?
 - ¿Hace falta un rol `admin` para verificar entidades?
 - ¿Se admiten menores de edad?

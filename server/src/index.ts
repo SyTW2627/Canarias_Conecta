@@ -11,6 +11,8 @@ import dotenv from 'dotenv'
 import { connectDB, dbStatus } from './config/db.js'
 import { prepararBaseDeDatos } from './config/catalogo.js'
 import authRoutes from './routes/authRoutes.js'
+import categoriaRoutes from './routes/categoriaRoutes.js'
+import ofertaRoutes from './routes/ofertaRoutes.js'
 
 dotenv.config()
 
@@ -29,6 +31,8 @@ app.get('/api/health', (_req, res) => {
 })
 
 app.use('/api/auth', authRoutes)
+app.use('/api/categorias', categoriaRoutes)
+app.use('/api/ofertas', ofertaRoutes)
 
 // El servidor solo arranca si la conexion con la base de datos es correcta
 connectDB()

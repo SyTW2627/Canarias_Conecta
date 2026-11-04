@@ -81,6 +81,18 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
   const [busqueda, setBusqueda] = useState('')
   const [ubicacion, setUbicacion] = useState('Todas')
   const [indiceOportunidades, setIndiceOportunidades] = useState(0)
+  const [idsPorTitulo, setIdsPorTitulo] = useState<Record<string, string>>({})
+
+  // Temporal hasta SCRUM-63: las tarjetas son fijas, asi que el id se busca por titulo.
+  // Al pintar las ofertas de la API bastara con usar oferta.id en el enlace
+  useEffect(() => {
+    fetch('/api/ofertas')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((ofertas: { id: string; titulo: string }[]) => {
+        setIdsPorTitulo(Object.fromEntries(ofertas.map(({ id, titulo }) => [titulo, id])))
+      })
+      .catch(() => setIdsPorTitulo({}))
+  }, [])
 
   const oportunidadesFiltradas = useMemo(() => {
     const termino = busqueda.trim().toLowerCase()
@@ -207,7 +219,16 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
                     </dl>
                     <div className="opportunity-footer">
                       <span>{oportunidad.plazas} plazas disponibles</span>
-                      <a className="btn" href="#oportunidades">Ver detalles</a>
+                      <a
+                        className="btn"
+                        href={
+                          idsPorTitulo[oportunidad.titulo]
+                            ? `/ofertas/${idsPorTitulo[oportunidad.titulo]}`
+                            : '#oportunidades'
+                        }
+                      >
+                        Ver detalles
+                      </a>
                     </div>
                   </div>
                 </article>

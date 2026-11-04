@@ -3,11 +3,12 @@
  * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
  * Funcion: Define el componente raiz de la aplicacion React (pagina Home).
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import Login, { type Usuario } from './pages/Login.tsx'
 import Register from './pages/Register.tsx'
 import HomePage from './pages/HomePage.tsx'
+import OfertaDetalle from './pages/OfertaDetalle.tsx'
 
 const PASOS = [
   {
@@ -54,12 +55,56 @@ function usuarioGuardado(): Usuario | null {
   }
 }
 
+// Una oferta se abre con un enlace a /ofertas/<id>. Asi funcionan recargar y el boton atras
+function ofertaEnLaUrl(): string | null {
+  return window.location.pathname.match(/^\/ofertas\/([^/]+)\/?$/)?.[1] ?? null
+}
+
 function App() {
   const [usuario, setUsuario] = useState<Usuario | null>(usuarioGuardado)
   const [pantalla, setPantalla] = useState<'publica' | 'login' | 'registro' | 'autenticada'>(
     usuario ? 'autenticada' : 'publica',
   )
   const [experienciaActual, setExperienciaActual] = useState(0)
+  const [ofertaId, setOfertaId] = useState(ofertaEnLaUrl)
+
+  useEffect(() => {
+    const actualizarOferta = () => setOfertaId(ofertaEnLaUrl())
+
+    // Los enlaces a una oferta, y los que vuelven de ella, cambian la URL sin recargar la pagina
+    function navegarSinRecargar(evento: MouseEvent) {
+      const conModificador =
+        evento.ctrlKey || evento.metaKey || evento.shiftKey || evento.altKey
+      if (evento.defaultPrevented || evento.button !== 0 || conModificador) return
+
+      const enlace = (evento.target as Element).closest('a')
+      if (!enlace || enlace.target || enlace.origin !== window.location.origin) return
+
+      const abreOferta = enlace.pathname.startsWith('/ofertas/')
+      const vuelveDeOferta = ofertaEnLaUrl() !== null && enlace.pathname === '/'
+      if (!abreOferta && !vuelveDeOferta) return
+
+      evento.preventDefault()
+      window.history.pushState(null, '', enlace.href)
+      actualizarOferta()
+    }
+
+    window.addEventListener('popstate', actualizarOferta)
+    document.addEventListener('click', navegarSinRecargar)
+    return () => {
+      window.removeEventListener('popstate', actualizarOferta)
+      document.removeEventListener('click', navegarSinRecargar)
+    }
+  }, [])
+
+  // Al cambiar de pantalla la seccion del enlace aun no existia: hay que desplazarse aqui
+  useEffect(() => {
+    if (ofertaId) {
+      window.scrollTo(0, 0)
+    } else if (window.location.hash) {
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView()
+    }
+  }, [ofertaId])
 
   // Se usa tanto al iniciar sesion como al registrarse
   function handleLogin(nuevoUsuario: Usuario) {
@@ -108,6 +153,17 @@ function App() {
   }
 
   if (pantalla === 'autenticada' && usuario) {
+    if (ofertaId) {
+      return (
+        <OfertaDetalle
+          key={ofertaId}
+          ofertaId={ofertaId}
+          usuario={usuario}
+          onCerrarSesion={cerrarSesion}
+        />
+      )
+    }
+
     return <HomePage usuario={usuario} onCerrarSesion={cerrarSesion} />
   }
 

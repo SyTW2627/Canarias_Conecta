@@ -8,7 +8,15 @@
 db = db.getSiblingDB('canarias_conecta')
 
 // MongoDB solo crea la base de datos cuando contiene al menos una coleccion
-const colecciones = ['users']
+const colecciones = [
+  'users',
+  'categorias',
+  'ofertas',
+  'inscripciones',
+  'solicitudes_ayuda',
+  'notificaciones',
+  'tokens'
+]
 
 for (const nombre of colecciones) {
   if (!db.getCollectionNames().includes(nombre)) {

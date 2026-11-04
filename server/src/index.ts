@@ -9,7 +9,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { connectDB, dbStatus } from './config/db.js'
-import userRoutes from './routes/userRoutes.js'
+import { prepararBaseDeDatos } from './config/catalogo.js'
 import authRoutes from './routes/authRoutes.js'
 
 dotenv.config()
@@ -28,11 +28,11 @@ app.get('/api/health', (_req, res) => {
   })
 })
 
-app.use('/api/users', userRoutes)
 app.use('/api/auth', authRoutes)
 
 // El servidor solo arranca si la conexion con la base de datos es correcta
 connectDB()
+  .then(prepararBaseDeDatos)
   .then(() => {
     app.listen(PORT, () => {
       console.log(`Servidor ejecutándose en http://localhost:${PORT}`)

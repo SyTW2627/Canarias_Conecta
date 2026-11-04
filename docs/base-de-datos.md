@@ -5,8 +5,10 @@
 -->
 # Base de datos
 
-MongoDB `canarias_conecta`, usada desde el servidor con Mongoose. Hoy solo existe la colección
-`users` (`server/src/models/User.ts`). Este documento es el diseño completo que se irá implementando.
+MongoDB `canarias_conecta`, usada desde el servidor con Mongoose. Todas las colecciones están
+implementadas en `server/src/models/`, salvo el campo `geo` de las ofertas. Al arrancar, el servidor
+crea las colecciones, sus índices y las categorías, así que la aplicación no depende de
+`npm run seed`, que solo añade datos de ejemplo.
 
 | Diagrama | Contenido |
 |---|---|

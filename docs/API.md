@@ -36,7 +36,6 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 | `GET` | `/api/health` | No | Estado del servidor y de la base de datos |
 | `POST` | `/api/auth/register` | No | Crea una cuenta e inicia sesión |
 | `POST` | `/api/auth/login` | No | Inicia sesión |
-| `GET` | `/api/users` | No ⚠️ | Lista de usuarios (ruta de prueba) |
 
 ### `GET /api/health`
 
@@ -93,30 +92,6 @@ Respuesta `200 OK` con el mismo formato que el registro (`token` + `user`).
 | `400` | `El email y la contraseña son obligatorios` |
 | `401` | `Email o contraseña incorrectos` (el mismo para email inexistente y contraseña errónea, para no revelar qué emails están registrados) |
 | `500` | `Error al iniciar sesión` |
-
-### `GET /api/users`
-
-Devuelve todos los usuarios ordenados por fecha de alta, sin la contraseña. Se creó para probar la
-conexión con la base de datos (SCRUM-57).
-
-```json
-200 OK
-[
-  {
-    "_id": "665f...",
-    "nombre": "Laura Perez",
-    "email": "laura@ejemplo.com",
-    "rol": "voluntario",
-    "createdAt": "2026-10-28T10:00:00.000Z",
-    "updatedAt": "2026-10-28T10:00:00.000Z",
-    "__v": 0
-  }
-]
-```
-
-> ⚠️ Es pública, devuelve el documento completo y expone los emails de todos los usuarios. Hay que
-> protegerla (solo `admin`) o eliminarla antes de añadir datos de perfil a `users`, como el teléfono o
-> la fecha de nacimiento.
 
 ## Pendiente
 

@@ -20,10 +20,10 @@ En desarrollo, Vite sirve el cliente en el puerto 5173 y redirige `/api` al serv
 ```
 server/src/
 ├── index.ts       arranca Express y registra las rutas, solo si conecta con MongoDB
-├── config/db.ts   conexión con MongoDB
+├── config/        conexión con MongoDB y preparación de colecciones y categorías
 ├── routes/        URL → función del controlador
 ├── controllers/   validan la petición, aplican las reglas y responden
-├── models/        esquemas de Mongoose (hoy solo User)
+├── models/        esquemas de Mongoose
 └── scripts/       seed con datos de ejemplo
 ```
 

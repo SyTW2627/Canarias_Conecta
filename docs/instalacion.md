@@ -42,7 +42,7 @@ mongosh "mongodb://127.0.0.1:27017" server/db/init.js   # crea la base de datos
 cd server
 npm install
 cp .env.example .env
-npm run seed        # usuarios de ejemplo, opcional
+npm run seed        # usuarios y ofertas de ejemplo, opcional
 npm run dev         # API en http://localhost:3000
 
 # en otra terminal

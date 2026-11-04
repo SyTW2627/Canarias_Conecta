@@ -70,8 +70,8 @@ su **valoración**.
   la plaza.
 - Las ofertas no se borran, se marcan como `cancelada`, para que el historial conserve sus datos.
 - Al registrarse solo se puede elegir `voluntario` u `ofertante`, nunca `admin`.
-- Una oferta necesita al menos un turno para publicarse, y una ubicación salvo que sea `online`. Un
-  borrador puede no tener ninguna de las dos cosas.
+- Una oferta necesita al menos un turno y una categoría para publicarse, y una ubicación salvo que
+  sea `online`. Un borrador puede no tener nada de esto.
 - Los usuarios empiezan como `activo`. `pendiente_verificacion` se usará cuando se envíen emails.
 - Se guarda qué versión de los términos y la política de privacidad aceptó cada usuario (RGPD).
 
@@ -82,6 +82,8 @@ su **valoración**.
   "reforestacion" en "Reforestación" y no cubre la organización, que está en `users`.
 - **Filtro por fecha.** Hay que usar `$elemMatch` sobre `turnos`. Sin él, una oferta con turnos el 10 y
   el 30 aparece al buscar entre el 15 y el 20.
+- **Fechas de turno.** `fecha` guarda el día a las 00:00 UTC, y la hora va en `horaInicio` y `horaFin`.
+  El cliente debe mostrarla con `timeZone: 'UTC'`: en otra zona horaria podría salir otro día.
 - **Edición de turnos.** Hay que conservar el `_id` de cada turno, porque `turnoIds` lo referencia.
 - **`geo`.** No se implementa de momento. Cuando se haga, `coordinates` no puede quedar como array
   vacío (es el valor por defecto de Mongoose) porque el índice `2dsphere` rechaza el documento.

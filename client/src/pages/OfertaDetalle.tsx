@@ -25,7 +25,7 @@ type Oferta = {
   categorias: { id: string; nombre: string; slug: string }[]
   modalidad: string
   tipoDuracion: string
-  ubicacion?: { isla: string; municipio: string; direccion?: string }
+  ubicacion?: { isla: string; municipio: string }
   requisitos?: string
   edadMinima?: number
   imagenes: string[]
@@ -173,9 +173,6 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
                         {oferta.ubicacion.municipio}, {ISLAS[oferta.ubicacion.isla]}
                       </dd>
                     </div>
-                  )}
-                  {oferta.ubicacion?.direccion && (
-                    <div><dt>Dirección</dt><dd>{oferta.ubicacion.direccion}</dd></div>
                   )}
                   <div><dt>Modalidad</dt><dd>{MODALIDADES[oferta.modalidad]}</dd></div>
                   <div><dt>Duración</dt><dd>{DURACIONES[oferta.tipoDuracion]}</dd></div>

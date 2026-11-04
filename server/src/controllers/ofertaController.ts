@@ -5,14 +5,22 @@
  */
 
 import type { Request, Response } from 'express'
-import { isObjectIdOrHexString, type QueryFilter } from 'mongoose'
+import mongoose, { isObjectIdOrHexString, type QueryFilter } from 'mongoose'
 import { Categoria } from '../models/Categoria.js'
-import { ISLAS } from '../models/constantes.js'
-import { Oferta, normalizarTexto, type OfertaDoc } from '../models/Oferta.js'
+import { HORA_REGEX, ISLAS } from '../models/constantes.js'
+import {
+  Oferta,
+  construirTextoBusqueda,
+  normalizarTexto,
+  type OfertaDoc
+} from '../models/Oferta.js'
 
 const FECHA_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const BUSQUEDA_MAX = 100
 const CONSULTA_MAX_MS = 5000
+const TURNOS_MAX = 50
+// Un ofertante solo puede crear ofertas en estos estados
+const ESTADOS_AL_CREAR = ['borrador', 'publicada']
 
 // Los parametros repetidos (?isla=a&isla=b) llegan como array y se ignoran
 function leerParametro(valor: unknown): string | undefined {
@@ -67,7 +75,11 @@ function serializarOferta(oferta: Awaited<ReturnType<typeof consultarOfertas>>[n
     categorias: oferta.categoriaIds.map(({ id, nombre, slug }) => ({ id, nombre, slug })),
     modalidad: oferta.modalidad,
     tipoDuracion: oferta.tipoDuracion,
-    ubicacion: oferta.ubicacion,
+    // La direccion no se publica: puede ser un domicilio y esta API no exige sesion
+    ubicacion: oferta.ubicacion && {
+      isla: oferta.ubicacion.isla,
+      municipio: oferta.ubicacion.municipio
+    },
     requisitos: oferta.requisitos,
     edadMinima: oferta.edadMinima,
     imagenes: oferta.imagenes,
@@ -148,6 +160,140 @@ export async function buscarOfertas(req: Request, res: Response): Promise<void> 
   } catch (error) {
     console.error('Error al buscar ofertas:', error)
     res.status(500).json({ message: 'Error al buscar las ofertas' })
+  }
+}
+
+// Devuelve los turnos listos para guardar, o null si alguno no es valido
+function leerTurnos(valor: unknown) {
+  if (!Array.isArray(valor) || valor.length > TURNOS_MAX) return null
+
+  const turnos = []
+
+  for (const turno of valor) {
+    const { fecha: textoFecha, horaInicio, horaFin, plazas } = turno ?? {}
+    const fecha = typeof textoFecha === 'string' ? leerFecha(textoFecha) : null
+
+    if (
+      !fecha ||
+      typeof horaInicio !== 'string' ||
+      typeof horaFin !== 'string' ||
+      !HORA_REGEX.test(horaInicio) ||
+      !HORA_REGEX.test(horaFin) ||
+      !Number.isInteger(plazas) ||
+      plazas < 1
+    ) {
+      return null
+    }
+
+    turnos.push({ fecha, horaInicio, horaFin, plazas, plazasLibres: plazas })
+  }
+
+  return turnos
+}
+
+// POST /api/ofertas -> crea una oferta del ofertante que ha iniciado sesion
+export async function crearOferta(req: Request, res: Response): Promise<void> {
+  const {
+    titulo,
+    descripcion,
+    categoriaIds = [],
+    modalidad,
+    tipoDuracion,
+    ubicacion,
+    requisitos,
+    edadMinima,
+    turnos: turnosRecibidos = [],
+    estado = 'publicada'
+  } = req.body ?? {}
+
+  if (
+    typeof titulo !== 'string' || !titulo.trim() ||
+    typeof descripcion !== 'string' || !descripcion.trim()
+  ) {
+    res.status(400).json({ message: 'El título y la descripción son obligatorios' })
+    return
+  }
+
+  if (!ESTADOS_AL_CREAR.includes(estado)) {
+    res.status(400).json({ message: 'El estado no es válido' })
+    return
+  }
+
+  if (
+    !Array.isArray(categoriaIds) ||
+    !categoriaIds.every((id) => typeof id === 'string' && isObjectIdOrHexString(id))
+  ) {
+    res.status(400).json({ message: 'Las categorías no son válidas' })
+    return
+  }
+
+  const turnos = leerTurnos(turnosRecibidos)
+  if (!turnos) {
+    res.status(400).json({ message: 'Los turnos no son válidos' })
+    return
+  }
+
+  const hoy = hoyEnUtc()
+  if (turnos.some((turno) => turno.fecha < hoy)) {
+    res.status(400).json({ message: 'Los turnos no pueden tener una fecha pasada' })
+    return
+  }
+
+  // Solo se copian estos campos: el resto del body nunca llega a la base de datos
+  const ubicacionRecibida =
+    ubicacion && typeof ubicacion === 'object'
+      ? { isla: ubicacion.isla, municipio: ubicacion.municipio, direccion: ubicacion.direccion }
+      : undefined
+
+  if (estado === 'publicada' && modalidad !== 'online' && !ubicacionRecibida) {
+    res.status(400).json({ message: 'La oferta necesita una ubicación' })
+    return
+  }
+
+  try {
+    const idsUnicos = [...new Set<string>(categoriaIds)]
+    const existentes = await Categoria.countDocuments({ _id: { $in: idsUnicos }, activa: true })
+
+    if (existentes !== idsUnicos.length) {
+      res.status(400).json({ message: 'Las categorías no son válidas' })
+      return
+    }
+
+    const usuario = req.usuario!
+    const oferta = await Oferta.create({
+      ofertanteId: usuario.id,
+      titulo,
+      descripcion,
+      categoriaIds: idsUnicos,
+      modalidad,
+      tipoDuracion,
+      ubicacion: ubicacionRecibida,
+      requisitos,
+      edadMinima,
+      turnos,
+      textoBusqueda: construirTextoBusqueda([
+        titulo,
+        descripcion,
+        usuario.nombre,
+        ubicacionRecibida?.municipio
+      ]),
+      estado,
+      fechaPublicacion: estado === 'publicada' ? new Date() : undefined
+    })
+
+    res.status(201).json({ id: oferta.id, estado: oferta.estado })
+  } catch (error) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      // Los validadores propios tienen mensaje en español; los de Mongoose no
+      const propio = Object.values(error.errors).find(
+        (detalle) => 'kind' in detalle && detalle.kind === 'user defined'
+      )
+      res.status(400).json({ message: propio?.message ?? 'Los datos de la oferta no son válidos' })
+      return
+    }
+
+    console.error('Error al crear la oferta:', error)
+    res.status(500).json({ message: 'Error al crear la oferta' })
   }
 }
 

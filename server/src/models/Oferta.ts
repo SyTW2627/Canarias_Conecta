@@ -58,13 +58,13 @@ function noVacioSiCompleta(this: { estado: string }, lista: unknown[]): boolean 
 const ofertaSchema = new Schema(
   {
     ofertanteId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    titulo: { type: String, required: true, trim: true },
-    descripcion: { type: String, required: true, trim: true },
+    titulo: { type: String, required: true, trim: true, maxlength: 120 },
+    descripcion: { type: String, required: true, trim: true, maxlength: 5000 },
     categoriaIds: {
       type: [{ type: Schema.Types.ObjectId, ref: 'Categoria' }],
       validate: {
         validator: noVacioSiCompleta,
-        message: 'La oferta necesita al menos una categoria'
+        message: 'La oferta necesita al menos una categoría'
       }
     },
     modalidad: { type: String, enum: MODALIDADES, required: true },
@@ -75,7 +75,7 @@ const ofertaSchema = new Schema(
         return this.estado !== 'borrador' && this.modalidad !== 'online'
       }
     },
-    requisitos: { type: String, trim: true },
+    requisitos: { type: String, trim: true, maxlength: 2000 },
     edadMinima: { type: Number, min: 0 },
     imagenes: { type: [String], default: [] },
     turnos: {

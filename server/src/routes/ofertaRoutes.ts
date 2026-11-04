@@ -5,11 +5,13 @@
  */
 
 import { Router } from 'express'
-import { buscarOfertas, getOferta } from '../controllers/ofertaController.js'
+import { buscarOfertas, crearOferta, getOferta } from '../controllers/ofertaController.js'
+import { requireAuth, requireRol } from '../middleware/auth.js'
 
 const router = Router()
 
 router.get('/', buscarOfertas)
+router.post('/', requireAuth, requireRol('ofertante'), crearOferta)
 router.get('/:id', getOferta)
 
 export default router

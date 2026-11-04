@@ -86,6 +86,7 @@ su **valoración**.
   el 30 aparece al buscar entre el 15 y el 20.
 - **Fechas de turno.** `fecha` guarda el día a las 00:00 UTC, y la hora va en `horaInicio` y `horaFin`.
   El cliente debe mostrarla con `timeZone: 'UTC'`: en otra zona horaria podría salir otro día.
+- **Imágenes.** `imagenes` guarda rutas o URLs, no los ficheros, que hoy están en `client/public/fotos/`.
 - **Edición de turnos.** Hay que conservar el `_id` de cada turno, porque `turnoIds` lo referencia.
 - **`geo`.** No se implementa de momento. Cuando se haga, `coordinates` no puede quedar como array
   vacío (es el valor por defecto de Mongoose) porque el índice `2dsphere` rechaza el documento.

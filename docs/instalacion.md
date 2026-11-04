@@ -99,5 +99,4 @@ HTTPS con `sudo certbot --nginx -d <dominio>`. Solo se despliega la rama `main`.
 
 **Pendiente antes de desplegar**
 
-- Proteger o eliminar `GET /api/users`, que es pública y devuelve los emails de todos los usuarios.
 - Limitar CORS al dominio propio, porque ahora `cors()` acepta cualquier origen.

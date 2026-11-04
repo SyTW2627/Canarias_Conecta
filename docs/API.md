@@ -37,6 +37,7 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 | `POST` | `/api/auth/register` | No | Crea una cuenta e inicia sesión |
 | `POST` | `/api/auth/login` | No | Inicia sesión |
 | `GET` | `/api/ofertas` | No | Busca ofertas publicadas con filtros |
+| `GET` | `/api/ofertas/:id` | No | Devuelve una oferta publicada |
 | `GET` | `/api/categorias` | No | Lista las categorías activas |
 
 ### `GET /api/health`
@@ -102,7 +103,7 @@ los parámetros son opcionales y se combinan entre sí.
 
 | Parámetro | Reglas |
 |---|---|
-| `q` | Busca en título, descripción, organización y municipio. No distingue tildes ni mayúsculas, y cada palabra debe aparecer, en cualquier orden |
+| `q` | Busca en título, descripción, organización y municipio. No distingue tildes ni mayúsculas, y cada palabra debe aparecer, en cualquier orden. Máximo 100 caracteres |
 | `categoria` | Slug de la categoría (`medio-ambiente`). Si no existe, la lista sale vacía |
 | `isla` | `tenerife`, `gran_canaria`, `lanzarote`, `fuerteventura`, `la_palma`, `la_gomera`, `el_hierro` o `la_graciosa` |
 | `municipio` | Texto exacto (`La Laguna`) |
@@ -141,12 +142,22 @@ GET /api/ofertas?isla=gran_canaria&q=costa
 - `turnos` incluye todos los de la oferta, también los pasados.
 - `fecha` hay que mostrarla con `timeZone: 'UTC'`.
 - `ubicacion` puede faltar en las ofertas `online`.
+- `requisitos` y `edadMinima` solo aparecen si la oferta los tiene.
 - La lista no está paginada todavía (SCRUM-34).
 
 | Error | Mensaje |
 |---|---|
-| `400` | `La isla no es válida` · `Las fechas deben tener el formato AAAA-MM-DD` · `La fecha de fin no puede ser anterior a la de inicio` |
+| `400` | `La búsqueda no puede superar los 100 caracteres` · `La isla no es válida` · `Las fechas deben tener el formato AAAA-MM-DD` · `La fecha de fin no puede ser anterior a la de inicio` |
 | `500` | `Error al buscar las ofertas` |
+
+### `GET /api/ofertas/:id`
+
+Devuelve una oferta en estado `publicada`, con el mismo formato que cada elemento de `GET /api/ofertas`.
+
+| Error | Mensaje |
+|---|---|
+| `404` | `La oferta no existe o ya no está disponible` (también si el id no es válido o la oferta no está publicada) |
+| `500` | `Error al obtener la oferta` |
 
 ### `GET /api/categorias`
 

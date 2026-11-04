@@ -34,7 +34,12 @@ en `index.ts` y se documenta en [`API.md`](API.md).
 
 `App.tsx` muestra la pantalla pública y decide con un estado qué pantalla se ve: `publica`,
 `login`, `registro` o `autenticada`. Cada pantalla tiene su `.tsx` y su `.css` en `pages/`
-(`Login`, `Register` y `HomePage`). Las imágenes están en `public/fotos/`.
+(`Login`, `Register`, `HomePage` y `OfertaDetalle`). Las imágenes están en `public/fotos/`.
+
+El detalle de una oferta tiene URL propia, `/ofertas/<id>`. `App.tsx` la lee de la ruta y captura los
+clics en esos enlaces para cambiar la URL sin recargar. Para enlazar una oferta basta con
+`<a href={`/ofertas/${oferta.id}`}>`. Las demás secciones todavía son anclas de `HomePage`
+(`/#perfil`, `/#inscripciones`) y tendrán su ruta cuando existan sus pantallas.
 
 ## Autenticación
 

@@ -5,10 +5,11 @@
  */
 
 import { Router } from 'express'
-import { buscarOfertas } from '../controllers/ofertaController.js'
+import { buscarOfertas, getOferta } from '../controllers/ofertaController.js'
 
 const router = Router()
 
 router.get('/', buscarOfertas)
+router.get('/:id', getOferta)
 
 export default router

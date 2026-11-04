@@ -1,0 +1,143 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la pantalla de detalle de una oferta.
+ */
+.oferta-detalle {
+  text-align: left;
+}
+
+.oferta-volver {
+  display: inline-block;
+  margin-bottom: 20px;
+}
+
+/* Cabecera: imagen y datos principales */
+.oferta-cabecera {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  margin-bottom: 20px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+}
+
+.oferta-cabecera.sin-imagen {
+  grid-template-columns: 1fr;
+}
+
+.oferta-cabecera > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  object-fit: cover;
+}
+
+.oferta-cabecera .opportunity-content {
+  padding: 28px;
+}
+
+.oferta-cabecera h1 {
+  margin: 0;
+  color: var(--texto);
+  font-size: clamp(28px, 4vw, 38px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.oferta-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cuerpo: descripcion y turnos */
+.oferta-cuerpo {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  align-items: start;
+  gap: 20px;
+}
+
+.oferta-bloque {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+}
+
+.oferta-bloque h2 {
+  margin-bottom: 10px;
+  color: var(--verde-oscuro);
+  font-size: clamp(20px, 2.5vw, 24px);
+}
+
+.oferta-bloque p {
+  color: var(--texto-suave);
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.oferta-bloque p + h2 {
+  margin-top: 24px;
+}
+
+.oferta-turnos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oferta-turnos li {
+  display: grid;
+  gap: 2px;
+  padding: 14px 0;
+  border-top: 1px solid var(--borde);
+  color: var(--texto-suave);
+  font-size: 15px;
+}
+
+.oferta-turnos li:first-child {
+  padding-top: 4px;
+  border-top: none;
+}
+
+.oferta-turnos li:last-child {
+  padding-bottom: 0;
+}
+
+.oferta-turnos strong {
+  color: var(--texto);
+  font-size: 16px;
+}
+
+.oferta-plazas {
+  color: var(--verde);
+  font-weight: 600;
+}
+
+.oferta-sin-plazas {
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .oferta-cabecera,
+  .oferta-cuerpo {
+    grid-template-columns: 1fr;
+  }
+
+  .oferta-cabecera > img {
+    height: 220px;
+    min-height: 0;
+  }
+
+  .oferta-cabecera .opportunity-content {
+    padding: 20px;
+  }
+}

@@ -36,6 +36,8 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 | `GET` | `/api/health` | No | Estado del servidor y de la base de datos |
 | `POST` | `/api/auth/register` | No | Crea una cuenta e inicia sesión |
 | `POST` | `/api/auth/login` | No | Inicia sesión |
+| `GET` | `/api/ofertas` | No | Busca ofertas publicadas con filtros |
+| `GET` | `/api/categorias` | No | Lista las categorías activas |
 
 ### `GET /api/health`
 
@@ -93,8 +95,74 @@ Respuesta `200 OK` con el mismo formato que el registro (`token` + `user`).
 | `401` | `Email o contraseña incorrectos` (el mismo para email inexistente y contraseña errónea, para no revelar qué emails están registrados) |
 | `500` | `Error al iniciar sesión` |
 
+### `GET /api/ofertas`
+
+Devuelve las ofertas en estado `publicada` con algún turno entre `fechaDesde` y `fechaHasta`. Todos
+los parámetros son opcionales y se combinan entre sí.
+
+| Parámetro | Reglas |
+|---|---|
+| `q` | Busca en título, descripción, organización y municipio. No distingue tildes ni mayúsculas, y cada palabra debe aparecer, en cualquier orden |
+| `categoria` | Slug de la categoría (`medio-ambiente`). Si no existe, la lista sale vacía |
+| `isla` | `tenerife`, `gran_canaria`, `lanzarote`, `fuerteventura`, `la_palma`, `la_gomera`, `el_hierro` o `la_graciosa` |
+| `municipio` | Texto exacto (`La Laguna`) |
+| `fechaDesde` | Formato `AAAA-MM-DD`. Por defecto, hoy |
+| `fechaHasta` | Formato `AAAA-MM-DD`, incluida. Por defecto, sin límite |
+
+```json
+GET /api/ofertas?isla=gran_canaria&q=costa
+
+200 OK
+[
+  {
+    "id": "6aeb...",
+    "titulo": "Limpieza y cuidado de la costa",
+    "descripcion": "Recogida de residuos y cuidado del litoral junto a vecinos de la zona.",
+    "organizacion": "Mar y Comunidad",
+    "categorias": [{ "id": "6aeb...", "nombre": "Medio ambiente", "slug": "medio-ambiente" }],
+    "modalidad": "presencial",
+    "tipoDuracion": "jornada",
+    "ubicacion": { "isla": "gran_canaria", "municipio": "Las Palmas de Gran Canaria" },
+    "imagenes": ["/fotos/limpieza_costa.jpg"],
+    "turnos": [
+      {
+        "id": "6aeb...",
+        "fecha": "2026-11-15T00:00:00.000Z",
+        "horaInicio": "09:00",
+        "horaFin": "12:00",
+        "plazas": 15,
+        "plazasLibres": 15
+      }
+    ]
+  }
+]
+```
+
+- `turnos` incluye todos los de la oferta, también los pasados.
+- `fecha` hay que mostrarla con `timeZone: 'UTC'`.
+- `ubicacion` puede faltar en las ofertas `online`.
+- La lista no está paginada todavía (SCRUM-34).
+
+| Error | Mensaje |
+|---|---|
+| `400` | `La isla no es válida` · `Las fechas deben tener el formato AAAA-MM-DD` · `La fecha de fin no puede ser anterior a la de inicio` |
+| `500` | `Error al buscar las ofertas` |
+
+### `GET /api/categorias`
+
+Devuelve las categorías activas ordenadas por nombre.
+
+```json
+200 OK
+[{ "id": "6aeb...", "nombre": "Alimentación", "slug": "alimentacion" }]
+```
+
+| Error | Mensaje |
+|---|---|
+| `500` | `Error al obtener las categorías` |
+
 ## Pendiente
 
 - Middleware que valide el JWT y el rol para las rutas protegidas (aún no existe ninguna).
-- Endpoints de ofertas, inscripciones, valoraciones, etc., según el [diseño de la base de datos](base-de-datos.md).
+- Resto de endpoints de ofertas, inscripciones, valoraciones, etc., según el [diseño de la base de datos](base-de-datos.md).
   Al añadir uno, documentarlo aquí con el mismo formato.

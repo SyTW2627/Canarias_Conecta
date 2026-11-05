@@ -10,6 +10,7 @@ import Register from './pages/Register.tsx'
 import HomePage from './pages/HomePage.tsx'
 import OfertaDetalle from './pages/OfertaDetalle.tsx'
 import GestionarOfertas from './pages/GestionarOfertas.tsx'
+import VolunteerProfile from './pages/VolunteerProfile.tsx'
 import Oportunidades from './pages/Oportunidades.tsx'
 
 const PASOS = [
@@ -57,18 +58,20 @@ function usuarioGuardado(): Usuario | null {
   }
 }
 
-// Cada pantalla tiene su URL: /oportunidades, /ofertas/<id> y /gestionar-ofertas. Asi funcionan recargar y el boton atras
+// Cada pantalla tiene su URL para que funcionen recargar y el boton atras
 type Ruta =
   | { pagina: 'inicio' }
   | { pagina: 'oportunidades' }
   | { pagina: 'oferta'; id: string }
   | { pagina: 'gestion' }
+  | { pagina: 'perfil' }
 
 function rutaDe(pathname: string): Ruta {
   const id = pathname.match(/^\/ofertas\/([^/]+)\/?$/)?.[1]
   if (id) return { pagina: 'oferta', id }
   if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
   if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
+  if (/^\/perfil\/?$/.test(pathname)) return { pagina: 'perfil' }
   return { pagina: 'inicio' }
 }
 
@@ -194,6 +197,10 @@ function App() {
     // Un voluntario que llegue a /gestionar-ofertas ve el inicio
     if (ruta.pagina === 'gestion' && usuario.rol === 'ofertante') {
       return <GestionarOfertas usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    if (ruta.pagina === 'perfil' && usuario.rol === 'voluntario') {
+      return <VolunteerProfile usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
 
     return <HomePage usuario={usuario} onCerrarSesion={cerrarSesion} />

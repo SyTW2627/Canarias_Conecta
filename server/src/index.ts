@@ -13,6 +13,7 @@ import { prepararBaseDeDatos } from './config/catalogo.js'
 import authRoutes from './routes/authRoutes.js'
 import categoriaRoutes from './routes/categoriaRoutes.js'
 import ofertaRoutes from './routes/ofertaRoutes.js'
+import inscripcionRoutes from './routes/inscripcionRoutes.js'
 
 dotenv.config()
 
@@ -33,6 +34,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRoutes)
 app.use('/api/categorias', categoriaRoutes)
 app.use('/api/ofertas', ofertaRoutes)
+app.use('/api/inscripciones', inscripcionRoutes)
 
 // Errores que no gestiona ningun controlador, como un JSON mal formado.
 // Express necesita los cuatro parametros para reconocerlo como manejador de errores
@@ -60,4 +62,3 @@ connectDB()
     console.error('Error al conectar con MongoDB:', error.message)
     process.exit(1)
   })
-

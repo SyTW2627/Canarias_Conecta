@@ -5,13 +5,24 @@
  */
 
 import { Router } from 'express'
-import { buscarOfertas, crearOferta, getOferta } from '../controllers/ofertaController.js'
+import {
+  buscarOfertas,
+  cerrarOferta,
+  crearOferta,
+  eliminarOferta,
+  getMisOfertas,
+  getOferta
+} from '../controllers/ofertaController.js'
 import { requireAuth, requireRol } from '../middleware/auth.js'
 
 const router = Router()
 
 router.get('/', buscarOfertas)
 router.post('/', requireAuth, requireRol('ofertante'), crearOferta)
+// Va antes de /:id para que "mias" no se lea como el id de una oferta
+router.get('/mias', requireAuth, requireRol('ofertante'), getMisOfertas)
 router.get('/:id', getOferta)
+router.patch('/:id/cerrar', requireAuth, requireRol('ofertante'), cerrarOferta)
+router.delete('/:id', requireAuth, requireRol('ofertante'), eliminarOferta)
 
 export default router

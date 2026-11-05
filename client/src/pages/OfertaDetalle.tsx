@@ -7,30 +7,14 @@ import { useEffect, useState } from 'react'
 import './HomePage.css'
 import './OfertaDetalle.css'
 import type { Usuario } from './Login.tsx'
-
-type Turno = {
-  id: string
-  fecha: string
-  horaInicio: string
-  horaFin: string
-  plazas: number
-  plazasLibres: number
-}
-
-type Oferta = {
-  id: string
-  titulo: string
-  descripcion: string
-  organizacion: string
-  categorias: { id: string; nombre: string; slug: string }[]
-  modalidad: string
-  tipoDuracion: string
-  ubicacion?: { isla: string; municipio: string }
-  requisitos?: string
-  edadMinima?: number
-  imagenes: string[]
-  turnos: Turno[]
-}
+import {
+  DURACIONES,
+  ISLAS,
+  MODALIDADES,
+  esTurnoProximo,
+  formatearFecha,
+  type Oferta,
+} from '../ofertas.ts'
 
 type OfertaDetalleProps = {
   ofertaId: string
@@ -38,48 +22,9 @@ type OfertaDetalleProps = {
   onCerrarSesion: () => void
 }
 
-const ISLAS: Record<string, string> = {
-  tenerife: 'Tenerife',
-  gran_canaria: 'Gran Canaria',
-  lanzarote: 'Lanzarote',
-  fuerteventura: 'Fuerteventura',
-  la_palma: 'La Palma',
-  la_gomera: 'La Gomera',
-  el_hierro: 'El Hierro',
-  la_graciosa: 'La Graciosa',
-}
-
-const MODALIDADES: Record<string, string> = {
-  presencial: 'Presencial',
-  online: 'Online',
-  mixta: 'Mixta',
-}
-
-const DURACIONES: Record<string, string> = {
-  jornada: 'Una jornada',
-  periodo_corto: 'Periodo corto',
-}
-
-// La fecha llega a las 00:00 UTC: en otra zona horaria podria mostrarse el dia anterior
-const FORMATO_FECHA = new Intl.DateTimeFormat('es-ES', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-  timeZone: 'UTC',
-})
-
-function formatearFecha(fecha: string): string {
-  const texto = FORMATO_FECHA.format(new Date(fecha))
-  return texto.charAt(0).toUpperCase() + texto.slice(1)
-}
-
 function textoPlazas(plazasLibres: number): string {
   if (plazasLibres === 0) return 'Sin plazas'
   return plazasLibres === 1 ? '1 plaza disponible' : `${plazasLibres} plazas disponibles`
-}
-
-function esTurnoProximo(turno: Turno): boolean {
-  return turno.fecha.slice(0, 10) >= new Date().toISOString().slice(0, 10)
 }
 
 function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps) {
@@ -131,7 +76,7 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
           <a href="/#oportunidades">Oportunidades</a>
           <a href="/#inscripciones">Mis inscripciones</a>
           <a href="/#perfil">Mi perfil</a>
-          {usuario.rol === 'ofertante' && <a href="/#ofertas">Gestionar ofertas</a>}
+          {usuario.rol === 'ofertante' && <a href="/gestionar-ofertas">Gestionar ofertas</a>}
         </nav>
 
         <div className="authenticated-user">

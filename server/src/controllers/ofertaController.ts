@@ -7,6 +7,8 @@
 import type { Request, Response } from 'express'
 import mongoose, { isObjectIdOrHexString, type QueryFilter } from 'mongoose'
 import { Categoria } from '../models/Categoria.js'
+import { Inscripcion } from '../models/Inscripcion.js'
+import { SolicitudAyuda } from '../models/SolicitudAyuda.js'
 import { HORA_REGEX, ISLAS } from '../models/constantes.js'
 import {
   Oferta,
@@ -56,9 +58,13 @@ type DatosPoblados = {
   categoriaIds: Array<{ id: string; nombre: string; slug: string }>
 }
 
-function consultarOfertas(filtro: QueryFilter<OfertaDoc>) {
+// Por defecto, primero las que tienen el turno mas cercano
+function consultarOfertas(
+  filtro: QueryFilter<OfertaDoc>,
+  orden: Record<string, 1 | -1> = { 'turnos.fecha': 1 }
+) {
   return Oferta.find(filtro)
-    .sort({ 'turnos.fecha': 1 })
+    .sort(orden)
     .maxTimeMS(CONSULTA_MAX_MS)
     .populate<DatosPoblados>([
       { path: 'ofertanteId', select: 'nombre' },
@@ -294,6 +300,119 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
 
     console.error('Error al crear la oferta:', error)
     res.status(500).json({ message: 'Error al crear la oferta' })
+  }
+}
+
+// Una oferta ha terminado cuando ya no le queda ningun turno de hoy en adelante
+function estaTerminada(turnos: Array<{ fecha: Date }>): boolean {
+  const hoy = hoyEnUtc()
+  return turnos.every((turno) => turno.fecha < hoy)
+}
+
+const MENSAJE_NO_EXISTE = 'La oferta no existe o no es tuya'
+
+// PATCH /api/ofertas/:id/cerrar -> deja de mostrar la oferta a los voluntarios
+export async function cerrarOferta(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: MENSAJE_NO_EXISTE })
+    return
+  }
+
+  try {
+    // El filtro incluye el estado: si dos peticiones llegan a la vez, solo una la cierra
+    const oferta = await Oferta.findOneAndUpdate(
+      { _id: id, ofertanteId: req.usuario!.id, estado: { $in: ['borrador', 'publicada'] } },
+      { estado: 'cerrada' },
+      { returnDocument: 'after' }
+    )
+
+    if (!oferta) {
+      const existe = await Oferta.exists({ _id: id, ofertanteId: req.usuario!.id })
+      res
+        .status(existe ? 409 : 404)
+        .json({ message: existe ? 'La oferta ya está cerrada' : MENSAJE_NO_EXISTE })
+      return
+    }
+
+    res.json({ id: oferta.id, estado: oferta.estado })
+  } catch (error) {
+    console.error('Error al cerrar la oferta:', error)
+    res.status(500).json({ message: 'Error al cerrar la oferta' })
+  }
+}
+
+// DELETE /api/ofertas/:id -> borra una oferta propia cuyos turnos ya han pasado
+export async function eliminarOferta(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: MENSAJE_NO_EXISTE })
+    return
+  }
+
+  try {
+    const filtro = { _id: id, ofertanteId: req.usuario!.id }
+    const oferta = await Oferta.findOne(filtro)
+
+    if (!oferta) {
+      res.status(404).json({ message: MENSAJE_NO_EXISTE })
+      return
+    }
+
+    if (!estaTerminada(oferta.turnos)) {
+      res.status(409).json({ message: 'Solo se pueden eliminar las ofertas que ya han terminado' })
+      return
+    }
+
+    // Se repite la condicion de fecha por si alguien anadiera un turno entre las dos consultas
+    const { deletedCount } = await Oferta.deleteOne({
+      ...filtro,
+      turnos: { $not: { $elemMatch: { fecha: { $gte: hoyEnUtc() } } } }
+    })
+
+    if (deletedCount === 0) {
+      res.status(409).json({ message: 'Solo se pueden eliminar las ofertas que ya han terminado' })
+      return
+    }
+
+    // Sin la oferta, sus inscripciones no se pueden mostrar; las solicitudes de ayuda se conservan
+    await Promise.all([
+      Inscripcion.deleteMany({ ofertaId: id }),
+      SolicitudAyuda.updateMany({ ofertaId: id }, { $unset: { ofertaId: 1 } })
+    ])
+
+    res.status(204).end()
+  } catch (error) {
+    console.error('Error al eliminar la oferta:', error)
+    res.status(500).json({ message: 'Error al eliminar la oferta' })
+  }
+}
+
+// GET /api/ofertas/mias -> todas las ofertas del ofertante, en cualquier estado
+export async function getMisOfertas(req: Request, res: Response): Promise<void> {
+  try {
+    const ofertas = await consultarOfertas({ ofertanteId: req.usuario!.id }, { createdAt: -1 })
+
+    res.json(
+      ofertas.map((oferta) => ({
+        ...serializarOferta(oferta),
+        // Son sus propios datos: aqui si se devuelve la direccion
+        ubicacion: oferta.ubicacion && {
+          isla: oferta.ubicacion.isla,
+          municipio: oferta.ubicacion.municipio,
+          direccion: oferta.ubicacion.direccion
+        },
+        estado: oferta.estado,
+        terminada: estaTerminada(oferta.turnos),
+        fechaPublicacion: oferta.fechaPublicacion,
+        creadaEn: oferta.createdAt
+      }))
+    )
+  } catch (error) {
+    console.error('Error al obtener las ofertas del ofertante:', error)
+    res.status(500).json({ message: 'Error al obtener tus ofertas' })
   }
 }
 

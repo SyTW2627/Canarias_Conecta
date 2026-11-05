@@ -4,114 +4,69 @@
 import { useEffect, useMemo, useState } from 'react'
 import './HomePage.css'
 import type { Usuario } from './Login.tsx'
+import {
+  ISLAS,
+  MODALIDADES,
+  esTurnoProximo,
+  formatearFecha,
+  imagenDeOferta,
+  type Oferta,
+  type Turno,
+} from '../ofertas.ts'
 
 type HomePageProps = {
   usuario: Usuario
   onCerrarSesion: () => void
 }
 
-type Oportunidad = {
-  titulo: string
-  organizacion: string
-  ubicacion: string
-  fecha: string
-  horario: string
-  plazas: number
-  imagen: string
+function horarioDe(turno: Turno): string {
+  return `${turno.horaInicio} - ${turno.horaFin}`
 }
-
-const OPORTUNIDADES: Oportunidad[] = [
-  {
-    titulo: 'Acompañamiento a personas mayores',
-    organizacion: 'Asociación Horizonte',
-    ubicacion: 'Santa Cruz de Tenerife',
-    fecha: 'Sábado, 14 de noviembre',
-    horario: '10:00 - 13:00',
-    plazas: 8,
-    imagen: '/fotos/imagen_personamayor.jpg',
-  },
-  {
-    titulo: 'Limpieza y cuidado de la costa',
-    organizacion: 'Mar y Comunidad',
-    ubicacion: 'Las Palmas de Gran Canaria',
-    fecha: 'Domingo, 15 de noviembre',
-    horario: '09:00 - 12:00',
-    plazas: 15,
-    imagen: '/fotos/limpieza_costa.jpg',
-  },
-  {
-    titulo: 'Taller de apoyo comunitario',
-    organizacion: 'Red Canarias Participa',
-    ubicacion: 'La Laguna',
-    fecha: 'Miércoles, 18 de noviembre',
-    horario: '16:00 - 19:00',
-    plazas: 5,
-    imagen: '/fotos/voluntariado-2.png',
-  },
-  {
-    titulo: 'Reforestación de espacios naturales',
-    organizacion: 'Islas Verdes',
-    ubicacion: 'La Laguna',
-    fecha: 'Jueves, 19 de noviembre',
-    horario: '15:30 - 18:30',
-    plazas: 12,
-    imagen: '/fotos/reforestacion.jpg',
-  },
-  {
-    titulo: 'Apoyo escolar para jóvenes',
-    organizacion: 'Crecer Juntos',
-    ubicacion: 'Santa Cruz de Tenerife',
-    fecha: 'Viernes, 20 de noviembre',
-    horario: '17:00 - 19:00',
-    plazas: 6,
-    imagen: '/fotos/apoyo_escolar.jpeg',
-  },
-  {
-    titulo: 'Recogida de alimentos solidaria',
-    organizacion: 'Banco de Alimentos Canario',
-    ubicacion: 'Las Palmas de Gran Canaria',
-    fecha: 'Sábado, 21 de noviembre',
-    horario: '09:30 - 13:30',
-    plazas: 20,
-    imagen: '/fotos/recogida_alimentos.png',
-  },
-]
 
 function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
   const [busqueda, setBusqueda] = useState('')
-  const [ubicacion, setUbicacion] = useState('Todas')
+  const [isla, setIsla] = useState('')
   const [indiceOportunidades, setIndiceOportunidades] = useState(0)
-  const [idsPorTitulo, setIdsPorTitulo] = useState<Record<string, string>>({})
+  const [ofertas, setOfertas] = useState<Oferta[] | null>(null)
+  const [errorOfertas, setErrorOfertas] = useState<string | null>(null)
 
-  // Temporal hasta SCRUM-63: las tarjetas son fijas, asi que el id se busca por titulo.
-  // Al pintar las ofertas de la API bastara con usar oferta.id en el enlace
+  // La API solo devuelve ofertas publicadas con algun turno desde hoy
   useEffect(() => {
-    fetch('/api/ofertas')
-      .then((res) => (res.ok ? res.json() : []))
-      .then((ofertas: { id: string; titulo: string }[]) => {
-        setIdsPorTitulo(Object.fromEntries(ofertas.map(({ id, titulo }) => [titulo, id])))
+    const controlador = new AbortController()
+
+    fetch('/api/ofertas', { signal: controlador.signal })
+      .then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message ?? 'No se pudieron cargar las ofertas')
+        setOfertas(data)
       })
-      .catch(() => setIdsPorTitulo({}))
+      .catch((error: Error) => {
+        if (!controlador.signal.aborted) {
+          setErrorOfertas(
+            error instanceof SyntaxError || error instanceof TypeError
+              ? 'No se pudo conectar con el servidor'
+              : error.message,
+          )
+        }
+      })
+
+    return () => controlador.abort()
   }, [])
 
   const oportunidadesFiltradas = useMemo(() => {
     const termino = busqueda.trim().toLowerCase()
 
-    return OPORTUNIDADES.filter((oportunidad) => {
+    return (ofertas ?? []).filter((oferta) => {
       const coincideBusqueda =
         !termino ||
-        `${oportunidad.titulo} ${oportunidad.organizacion} ${oportunidad.ubicacion}`
+        `${oferta.titulo} ${oferta.organizacion} ${oferta.ubicacion?.municipio ?? ''}`
           .toLowerCase()
           .includes(termino)
-      const coincideUbicacion = ubicacion === 'Todas' || oportunidad.ubicacion === ubicacion
+      const coincideIsla = !isla || oferta.ubicacion?.isla === isla
 
-      return coincideBusqueda && coincideUbicacion
+      return coincideBusqueda && coincideIsla
     })
-  }, [busqueda, ubicacion])
-
-  useEffect(() => {
-    setIndiceOportunidades(0)
-  }, [busqueda, ubicacion])
+  }, [ofertas, busqueda, isla])
 
   const oportunidadesVisibles = oportunidadesFiltradas.slice(
     indiceOportunidades,
@@ -131,10 +86,10 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
 
         <nav className="authenticated-links" aria-label="Navegación principal">
           <a href="#inicio">Inicio</a>
-          <a href="#oportunidades">Oportunidades</a>
-          <a href="#inscripciones">Mis inscripciones</a>
+          {usuario.rol === 'voluntario' && <a href="/oportunidades">Oportunidades</a>}
+          {usuario.rol === 'voluntario' && <a href="/mis_inscripciones">Mis inscripciones</a>}
           <a href="#perfil">Mi perfil</a>
-          {usuario.rol === 'ofertante' && <a href="#ofertas">Gestionar ofertas</a>}
+          {usuario.rol === 'ofertante' && <a href="/gestionar-ofertas">Gestionar ofertas</a>}
         </nav>
 
         <div className="authenticated-user">
@@ -169,18 +124,24 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
               <input
                 type="search"
                 value={busqueda}
-                onChange={(event) => setBusqueda(event.target.value)}
+                onChange={(event) => {
+                  setBusqueda(event.target.value)
+                  setIndiceOportunidades(0)
+                }}
                 placeholder="Ej. costa, mayores..."
               />
             </label>
 
             <label>
-              <span>Ubicación</span>
-              <select value={ubicacion} onChange={(event) => setUbicacion(event.target.value)}>
-                <option>Todas</option>
-                <option>Santa Cruz de Tenerife</option>
-                <option>Las Palmas de Gran Canaria</option>
-                <option>La Laguna</option>
+              <span>Isla</span>
+              <select value={isla} onChange={(event) => {
+                  setIsla(event.target.value)
+                  setIndiceOportunidades(0)
+                }}>
+                <option value="">Todas</option>
+                {Object.entries(ISLAS).map(([valor, nombre]) => (
+                  <option key={valor} value={valor}>{nombre}</option>
+                ))}
               </select>
             </label>
           </div>
@@ -189,7 +150,7 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
         <section className="opportunities-section" id="oportunidades-destacadas">
           <div className="section-heading">
             <div>
-              <h2 className="section-title">Oportunidades destacadas de esta semana</h2>
+              <h2 className="section-title">Próximas oportunidades</h2>
             </div>
           </div>
 
@@ -206,33 +167,46 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
               </button>
 
               <div className="opportunity-grid">
-              {oportunidadesVisibles.map((oportunidad) => (
-                <article className="opportunity-card" key={oportunidad.titulo}>
-                  <img src={oportunidad.imagen} alt="" />
-                  <div className="opportunity-content">
-                    <p className="opportunity-organization">{oportunidad.organizacion}</p>
-                    <h3>{oportunidad.titulo}</h3>
-                    <dl>
-                      <div><dt>Ubicación</dt><dd>{oportunidad.ubicacion}</dd></div>
-                      <div><dt>Fecha</dt><dd>{oportunidad.fecha}</dd></div>
-                      <div><dt>Horario</dt><dd>{oportunidad.horario}</dd></div>
-                    </dl>
-                    <div className="opportunity-footer">
-                      <span>{oportunidad.plazas} plazas disponibles</span>
-                      <a
-                        className="btn"
-                        href={
-                          idsPorTitulo[oportunidad.titulo]
-                            ? `/ofertas/${idsPorTitulo[oportunidad.titulo]}`
-                            : '#oportunidades'
-                        }
-                      >
-                        Ver detalles
-                      </a>
+              {oportunidadesVisibles.map((oferta) => {
+                const turno = oferta.turnos
+                  .filter(esTurnoProximo)
+                  .sort((a, b) => a.fecha.localeCompare(b.fecha))[0]
+                const plazasLibres = oferta.turnos.reduce((total, t) => total + t.plazasLibres, 0)
+
+                return (
+                  <article className="opportunity-card" key={oferta.id}>
+                    <img src={imagenDeOferta(oferta)} alt="" />
+                    <div className="opportunity-content">
+                      <p className="opportunity-organization">{oferta.organizacion}</p>
+                      <h3>{oferta.titulo}</h3>
+                      <dl>
+                        <div>
+                          <dt>Ubicación</dt>
+                          <dd>
+                            {oferta.ubicacion
+                              ? `${oferta.ubicacion.municipio}, ${ISLAS[oferta.ubicacion.isla]}`
+                              : MODALIDADES[oferta.modalidad]}
+                          </dd>
+                        </div>
+                        {turno && (
+                          <>
+                            <div><dt>Fecha</dt><dd>{formatearFecha(turno.fecha)}</dd></div>
+                            <div><dt>Horario</dt><dd>{horarioDe(turno)}</dd></div>
+                          </>
+                        )}
+                      </dl>
+                      <div className="opportunity-footer">
+                        <span>
+                          {plazasLibres === 1 ? '1 plaza disponible' : `${plazasLibres} plazas disponibles`}
+                        </span>
+                        <a className="btn" href={`/ofertas/${oferta.id}`}>
+                          Ver detalles
+                        </a>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                )
+              })}
               </div>
 
               <button
@@ -250,7 +224,14 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
               </button>
             </div>
           ) : (
-            <p className="empty-state">No hemos encontrado oportunidades con esos filtros.</p>
+            <p className="empty-state">
+              {errorOfertas ??
+                (ofertas === null
+                  ? 'Cargando oportunidades...'
+                  : ofertas.length === 0
+                    ? 'Todavía no hay oportunidades publicadas.'
+                    : 'No hemos encontrado oportunidades con esos filtros.')}
+            </p>
           )}
         </section>
 

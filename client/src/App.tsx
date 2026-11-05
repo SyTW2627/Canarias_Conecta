@@ -9,6 +9,7 @@ import Login, { type Usuario } from './pages/Login.tsx'
 import Register from './pages/Register.tsx'
 import HomePage from './pages/HomePage.tsx'
 import OfertaDetalle from './pages/OfertaDetalle.tsx'
+import GestionarOfertas from './pages/GestionarOfertas.tsx'
 
 const PASOS = [
   {
@@ -55,9 +56,18 @@ function usuarioGuardado(): Usuario | null {
   }
 }
 
-// Una oferta se abre con un enlace a /ofertas/<id>. Asi funcionan recargar y el boton atras
-function ofertaEnLaUrl(): string | null {
-  return window.location.pathname.match(/^\/ofertas\/([^/]+)\/?$/)?.[1] ?? null
+// Cada pantalla tiene su URL: /ofertas/<id> y /gestionar-ofertas. Asi funcionan recargar y el boton atras
+type Ruta = { pagina: 'inicio' } | { pagina: 'oferta'; id: string } | { pagina: 'gestion' }
+
+function rutaDe(pathname: string): Ruta {
+  const id = pathname.match(/^\/ofertas\/([^/]+)\/?$/)?.[1]
+  if (id) return { pagina: 'oferta', id }
+  if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
+  return { pagina: 'inicio' }
+}
+
+function rutaActual(): Ruta {
+  return rutaDe(window.location.pathname)
 }
 
 function App() {
@@ -66,12 +76,12 @@ function App() {
     usuario ? 'autenticada' : 'publica',
   )
   const [experienciaActual, setExperienciaActual] = useState(0)
-  const [ofertaId, setOfertaId] = useState(ofertaEnLaUrl)
+  const [ruta, setRuta] = useState(rutaActual)
 
   useEffect(() => {
-    const actualizarOferta = () => setOfertaId(ofertaEnLaUrl())
+    const actualizarRuta = () => setRuta(rutaActual())
 
-    // Los enlaces a una oferta, y los que vuelven de ella, cambian la URL sin recargar la pagina
+    // Los enlaces entre pantallas, y los que vuelven al inicio, cambian la URL sin recargar la pagina
     function navegarSinRecargar(evento: MouseEvent) {
       const conModificador =
         evento.ctrlKey || evento.metaKey || evento.shiftKey || evento.altKey
@@ -80,31 +90,31 @@ function App() {
       const enlace = (evento.target as Element).closest('a')
       if (!enlace || enlace.target || enlace.origin !== window.location.origin) return
 
-      const abreOferta = enlace.pathname.startsWith('/ofertas/')
-      const vuelveDeOferta = ofertaEnLaUrl() !== null && enlace.pathname === '/'
-      if (!abreOferta && !vuelveDeOferta) return
+      const abrePantalla = rutaDe(enlace.pathname).pagina !== 'inicio'
+      const vuelveAlInicio = rutaActual().pagina !== 'inicio' && enlace.pathname === '/'
+      if (!abrePantalla && !vuelveAlInicio) return
 
       evento.preventDefault()
       window.history.pushState(null, '', enlace.href)
-      actualizarOferta()
+      actualizarRuta()
     }
 
-    window.addEventListener('popstate', actualizarOferta)
+    window.addEventListener('popstate', actualizarRuta)
     document.addEventListener('click', navegarSinRecargar)
     return () => {
-      window.removeEventListener('popstate', actualizarOferta)
+      window.removeEventListener('popstate', actualizarRuta)
       document.removeEventListener('click', navegarSinRecargar)
     }
   }, [])
 
   // Al cambiar de pantalla la seccion del enlace aun no existia: hay que desplazarse aqui
   useEffect(() => {
-    if (ofertaId) {
+    if (ruta.pagina !== 'inicio') {
       window.scrollTo(0, 0)
     } else if (window.location.hash) {
       document.getElementById(window.location.hash.slice(1))?.scrollIntoView()
     }
-  }, [ofertaId])
+  }, [ruta])
 
   // Se usa tanto al iniciar sesion como al registrarse
   function handleLogin(nuevoUsuario: Usuario) {
@@ -153,15 +163,20 @@ function App() {
   }
 
   if (pantalla === 'autenticada' && usuario) {
-    if (ofertaId) {
+    if (ruta.pagina === 'oferta') {
       return (
         <OfertaDetalle
-          key={ofertaId}
-          ofertaId={ofertaId}
+          key={ruta.id}
+          ofertaId={ruta.id}
           usuario={usuario}
           onCerrarSesion={cerrarSesion}
         />
       )
+    }
+
+    // Un voluntario que llegue a /gestionar-ofertas ve el inicio
+    if (ruta.pagina === 'gestion' && usuario.rol === 'ofertante') {
+      return <GestionarOfertas usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
 
     return <HomePage usuario={usuario} onCerrarSesion={cerrarSesion} />

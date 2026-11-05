@@ -88,7 +88,7 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
           <a href="#inicio">Inicio</a>
           {usuario.rol === 'voluntario' && <a href="/oportunidades">Oportunidades</a>}
           {usuario.rol === 'voluntario' && <a href="/mis_inscripciones">Mis inscripciones</a>}
-          <a href="#perfil">Mi perfil</a>
+          <a href="/perfil">Mi perfil</a>
           {usuario.rol === 'ofertante' && <a href="/gestionar-ofertas">Gestionar ofertas</a>}
         </nav>
 

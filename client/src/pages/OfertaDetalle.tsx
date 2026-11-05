@@ -73,7 +73,7 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
 
         <nav className="authenticated-links" aria-label="Navegación principal">
           <a href="/#inicio">Inicio</a>
-          <a href="/#oportunidades">Oportunidades</a>
+          <a href="/oportunidades">Oportunidades</a>
           <a href="/#inscripciones">Mis inscripciones</a>
           <a href="/#perfil">Mi perfil</a>
           {usuario.rol === 'ofertante' && <a href="/gestionar-ofertas">Gestionar ofertas</a>}
@@ -88,7 +88,7 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
       </header>
 
       <main className="authenticated-main oferta-detalle">
-        <a className="text-link oferta-volver" href="/#oportunidades">
+        <a className="text-link oferta-volver" href="/oportunidades">
           Volver a oportunidades
         </a>
 

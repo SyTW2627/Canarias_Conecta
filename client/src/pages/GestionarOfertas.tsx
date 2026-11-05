@@ -292,7 +292,7 @@ function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
 
         <nav className="authenticated-links" aria-label="Navegación principal">
           <a href="/#inicio">Inicio</a>
-          <a href="/#oportunidades">Oportunidades</a>
+          <a href="/oportunidades">Oportunidades</a>
           <a href="/#inscripciones">Mis inscripciones</a>
           <a href="/#perfil">Mi perfil</a>
           <a href="/gestionar-ofertas" aria-current="page">Gestionar ofertas</a>

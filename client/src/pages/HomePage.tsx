@@ -1,74 +1,23 @@
 /**
  * Pantalla principal para usuarios autenticados.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useState } from 'react'
 import './HomePage.css'
 import type { Usuario } from './Login.tsx'
-import {
-  ISLAS,
-  MODALIDADES,
-  esTurnoProximo,
-  formatearFecha,
-  imagenDeOferta,
-  type Oferta,
-  type Turno,
-} from '../ofertas.ts'
+import TarjetaOferta from '../components/TarjetaOferta.tsx'
+import { useOfertasPublicadas } from '../useOfertasPublicadas.ts'
 
 type HomePageProps = {
   usuario: Usuario
   onCerrarSesion: () => void
 }
 
-function horarioDe(turno: Turno): string {
-  return `${turno.horaInicio} - ${turno.horaFin}`
-}
-
 function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
-  const [busqueda, setBusqueda] = useState('')
-  const [isla, setIsla] = useState('')
   const [indiceOportunidades, setIndiceOportunidades] = useState(0)
-  const [ofertas, setOfertas] = useState<Oferta[] | null>(null)
-  const [errorOfertas, setErrorOfertas] = useState<string | null>(null)
+  const { ofertas, error: errorOfertas } = useOfertasPublicadas()
+  const oportunidades = ofertas ?? []
 
-  // La API solo devuelve ofertas publicadas con algun turno desde hoy
-  useEffect(() => {
-    const controlador = new AbortController()
-
-    fetch('/api/ofertas', { signal: controlador.signal })
-      .then(async (res) => {
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.message ?? 'No se pudieron cargar las ofertas')
-        setOfertas(data)
-      })
-      .catch((error: Error) => {
-        if (!controlador.signal.aborted) {
-          setErrorOfertas(
-            error instanceof SyntaxError || error instanceof TypeError
-              ? 'No se pudo conectar con el servidor'
-              : error.message,
-          )
-        }
-      })
-
-    return () => controlador.abort()
-  }, [])
-
-  const oportunidadesFiltradas = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase()
-
-    return (ofertas ?? []).filter((oferta) => {
-      const coincideBusqueda =
-        !termino ||
-        `${oferta.titulo} ${oferta.organizacion} ${oferta.ubicacion?.municipio ?? ''}`
-          .toLowerCase()
-          .includes(termino)
-      const coincideIsla = !isla || oferta.ubicacion?.isla === isla
-
-      return coincideBusqueda && coincideIsla
-    })
-  }, [ofertas, busqueda, isla])
-
-  const oportunidadesVisibles = oportunidadesFiltradas.slice(
+  const oportunidadesVisibles = oportunidades.slice(
     indiceOportunidades,
     indiceOportunidades + 3,
   )
@@ -107,54 +56,17 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
           <p>Descubre nuevas formas de colaborar y aportar a tu comunidad.</p>
         </section>
 
-        <section className="search-section" id="oportunidades">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Encuentra tu próxima experiencia</p>
-              <h2 className="section-title">Busca oportunidades</h2>
-            </div>
-            <a className="text-link" href="#oportunidades-destacadas">
-              Ver todas
-            </a>
-          </div>
-
-          <div className="search-controls">
-            <label>
-              <span>Buscar</span>
-              <input
-                type="search"
-                value={busqueda}
-                onChange={(event) => {
-                  setBusqueda(event.target.value)
-                  setIndiceOportunidades(0)
-                }}
-                placeholder="Ej. costa, mayores..."
-              />
-            </label>
-
-            <label>
-              <span>Isla</span>
-              <select value={isla} onChange={(event) => {
-                  setIsla(event.target.value)
-                  setIndiceOportunidades(0)
-                }}>
-                <option value="">Todas</option>
-                {Object.entries(ISLAS).map(([valor, nombre]) => (
-                  <option key={valor} value={valor}>{nombre}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </section>
-
         <section className="opportunities-section" id="oportunidades-destacadas">
           <div className="section-heading">
             <div>
               <h2 className="section-title">Próximas oportunidades</h2>
             </div>
+            <a className="text-link" href="/oportunidades">
+              Ver todas
+            </a>
           </div>
 
-          {oportunidadesFiltradas.length > 0 ? (
+          {oportunidades.length > 0 ? (
             <div className="opportunity-carousel">
               <button
                 type="button"
@@ -167,46 +79,9 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
               </button>
 
               <div className="opportunity-grid">
-              {oportunidadesVisibles.map((oferta) => {
-                const turno = oferta.turnos
-                  .filter(esTurnoProximo)
-                  .sort((a, b) => a.fecha.localeCompare(b.fecha))[0]
-                const plazasLibres = oferta.turnos.reduce((total, t) => total + t.plazasLibres, 0)
-
-                return (
-                  <article className="opportunity-card" key={oferta.id}>
-                    <img src={imagenDeOferta(oferta)} alt="" />
-                    <div className="opportunity-content">
-                      <p className="opportunity-organization">{oferta.organizacion}</p>
-                      <h3>{oferta.titulo}</h3>
-                      <dl>
-                        <div>
-                          <dt>Ubicación</dt>
-                          <dd>
-                            {oferta.ubicacion
-                              ? `${oferta.ubicacion.municipio}, ${ISLAS[oferta.ubicacion.isla]}`
-                              : MODALIDADES[oferta.modalidad]}
-                          </dd>
-                        </div>
-                        {turno && (
-                          <>
-                            <div><dt>Fecha</dt><dd>{formatearFecha(turno.fecha)}</dd></div>
-                            <div><dt>Horario</dt><dd>{horarioDe(turno)}</dd></div>
-                          </>
-                        )}
-                      </dl>
-                      <div className="opportunity-footer">
-                        <span>
-                          {plazasLibres === 1 ? '1 plaza disponible' : `${plazasLibres} plazas disponibles`}
-                        </span>
-                        <a className="btn" href={`/ofertas/${oferta.id}`}>
-                          Ver detalles
-                        </a>
-                      </div>
-                    </div>
-                  </article>
-                )
-              })}
+              {oportunidadesVisibles.map((oferta) => (
+                <TarjetaOferta key={oferta.id} oferta={oferta} />
+              ))}
               </div>
 
               <button
@@ -214,10 +89,10 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
                 className="opportunity-arrow opportunity-arrow-next"
                 onClick={() =>
                   setIndiceOportunidades((indice) =>
-                    Math.min(oportunidadesFiltradas.length - 3, indice + 1),
+                    Math.min(oportunidades.length - 3, indice + 1),
                   )
                 }
-                disabled={indiceOportunidades >= oportunidadesFiltradas.length - 3}
+                disabled={indiceOportunidades >= oportunidades.length - 3}
                 aria-label="Siguientes oportunidades"
               >
                 ›
@@ -228,9 +103,7 @@ function HomePage({ usuario, onCerrarSesion }: HomePageProps) {
               {errorOfertas ??
                 (ofertas === null
                   ? 'Cargando oportunidades...'
-                  : ofertas.length === 0
-                    ? 'Todavía no hay oportunidades publicadas.'
-                    : 'No hemos encontrado oportunidades con esos filtros.')}
+                  : 'Todavía no hay oportunidades publicadas.')}
             </p>
           )}
         </section>

@@ -11,6 +11,7 @@ import HomePage from './pages/HomePage.tsx'
 import OfertaDetalle from './pages/OfertaDetalle.tsx'
 import GestionarOfertas from './pages/GestionarOfertas.tsx'
 import VolunteerProfile from './pages/VolunteerProfile.tsx'
+import Oportunidades from './pages/Oportunidades.tsx'
 
 const PASOS = [
   {
@@ -57,9 +58,10 @@ function usuarioGuardado(): Usuario | null {
   }
 }
 
-// Cada pantalla tiene su URL: /ofertas/<id> y /gestionar-ofertas. Asi funcionan recargar y el boton atras
+// Cada pantalla tiene su URL para que funcionen recargar y el boton atras
 type Ruta =
   | { pagina: 'inicio' }
+  | { pagina: 'oportunidades' }
   | { pagina: 'oferta'; id: string }
   | { pagina: 'gestion' }
   | { pagina: 'perfil' }
@@ -68,6 +70,7 @@ function rutaDe(pathname: string): Ruta {
   const id = pathname.match(/^\/ofertas\/([^/]+)\/?$/)?.[1]
   if (id) return { pagina: 'oferta', id }
   if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
+  if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
   if (/^\/perfil\/?$/.test(pathname)) return { pagina: 'perfil' }
   return { pagina: 'inicio' }
 }
@@ -96,6 +99,9 @@ function App() {
       const enlace = (evento.target as Element).closest('a')
       if (!enlace || enlace.target || enlace.origin !== window.location.origin) return
 
+      // Un enlace a una seccion de la misma pantalla lo resuelve el navegador
+      if (enlace.pathname === window.location.pathname && enlace.hash) return
+
       const abrePantalla = rutaDe(enlace.pathname).pagina !== 'inicio'
       const vuelveAlInicio = rutaActual().pagina !== 'inicio' && enlace.pathname === '/'
       if (!abrePantalla && !vuelveAlInicio) return
@@ -115,10 +121,14 @@ function App() {
 
   // Al cambiar de pantalla la seccion del enlace aun no existia: hay que desplazarse aqui
   useEffect(() => {
-    if (ruta.pagina !== 'inicio') {
+    const seccion = window.location.hash
+      ? document.getElementById(window.location.hash.slice(1))
+      : null
+
+    if (seccion) {
+      seccion.scrollIntoView()
+    } else if (ruta.pagina !== 'inicio') {
       window.scrollTo(0, 0)
-    } else if (window.location.hash) {
-      document.getElementById(window.location.hash.slice(1))?.scrollIntoView()
     }
   }, [ruta])
 
@@ -178,6 +188,10 @@ function App() {
           onCerrarSesion={cerrarSesion}
         />
       )
+    }
+
+    if (ruta.pagina === 'oportunidades') {
+      return <Oportunidades usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
 
     // Un voluntario que llegue a /gestionar-ofertas ve el inicio

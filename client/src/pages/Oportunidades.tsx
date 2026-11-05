@@ -3,12 +3,12 @@
  * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
  * Funcion: Catalogo con todas las ofertas disponibles y el buscador.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import './HomePage.css'
 import './Oportunidades.css'
 import type { Usuario } from './Login.tsx'
 import TarjetaOferta from '../components/TarjetaOferta.tsx'
-import { ISLAS } from '../ofertas.ts'
+import { ISLAS, hoyIso } from '../ofertas.ts'
 import { useOfertasPublicadas } from '../useOfertasPublicadas.ts'
 
 type OportunidadesProps = {
@@ -16,25 +16,68 @@ type OportunidadesProps = {
   onCerrarSesion: () => void
 }
 
+type Categoria = { id: string; nombre: string; slug: string }
+
+// Limite de la API para el texto de busqueda
+const BUSQUEDA_MAX = 100
+const ESPERA_ESCRITURA_MS = 350
+
+// Devuelve el valor cuando el usuario deja de escribir: evita una peticion por tecla
+function useValorRetrasado(valor: string): string {
+  const [retrasado, setRetrasado] = useState(valor)
+
+  useEffect(() => {
+    const temporizador = setTimeout(() => setRetrasado(valor), ESPERA_ESCRITURA_MS)
+    return () => clearTimeout(temporizador)
+  }, [valor])
+
+  return retrasado
+}
+
 function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
   const [busqueda, setBusqueda] = useState('')
+  const [categoria, setCategoria] = useState('')
   const [isla, setIsla] = useState('')
-  const { ofertas, error: errorOfertas } = useOfertasPublicadas()
+  const [municipio, setMunicipio] = useState('')
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const [categorias, setCategorias] = useState<Categoria[]>([])
 
-  const oportunidadesFiltradas = useMemo(() => {
-    const termino = busqueda.trim().toLowerCase()
+  const { ofertas, error: errorOfertas, cargando } = useOfertasPublicadas({
+    q: useValorRetrasado(busqueda),
+    categoria,
+    isla,
+    municipio: useValorRetrasado(municipio),
+    fechaDesde,
+    fechaHasta,
+  })
 
-    return (ofertas ?? []).filter((oferta) => {
-      const coincideBusqueda =
-        !termino ||
-        `${oferta.titulo} ${oferta.organizacion} ${oferta.ubicacion?.municipio ?? ''}`
-          .toLowerCase()
-          .includes(termino)
-      const coincideIsla = !isla || oferta.ubicacion?.isla === isla
+  useEffect(() => {
+    const controlador = new AbortController()
 
-      return coincideBusqueda && coincideIsla
-    })
-  }, [ofertas, busqueda, isla])
+    // Si falla, el filtro de categoria se queda solo con "Todas"
+    fetch('/api/categorias', { signal: controlador.signal })
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setCategorias)
+      .catch(() => {})
+
+    return () => controlador.abort()
+  }, [])
+
+  const hayFiltros = Boolean(
+    busqueda || categoria || isla || municipio || fechaDesde || fechaHasta,
+  )
+
+  function limpiarFiltros() {
+    setBusqueda('')
+    setCategoria('')
+    setIsla('')
+    setMunicipio('')
+    setFechaDesde('')
+    setFechaHasta('')
+  }
+
+  const oportunidades = ofertas ?? []
 
   return (
     <div className="authenticated-home">
@@ -77,15 +120,26 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
             </a>
           </div>
 
-          <div className="search-controls">
-            <label>
+          <div className="search-controls catalogo-filtros">
+            <label className="filtro-busqueda">
               <span>Buscar</span>
               <input
                 type="search"
                 value={busqueda}
+                maxLength={BUSQUEDA_MAX}
                 onChange={(event) => setBusqueda(event.target.value)}
                 placeholder="Ej. costa, mayores..."
               />
+            </label>
+
+            <label>
+              <span>Categoría</span>
+              <select value={categoria} onChange={(event) => setCategoria(event.target.value)}>
+                <option value="">Todas</option>
+                {categorias.map(({ id, nombre, slug }) => (
+                  <option key={id} value={slug}>{nombre}</option>
+                ))}
+              </select>
             </label>
 
             <label>
@@ -97,6 +151,42 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
                 ))}
               </select>
             </label>
+
+            <label>
+              <span>Municipio</span>
+              <input
+                type="text"
+                value={municipio}
+                onChange={(event) => setMunicipio(event.target.value)}
+                placeholder="Ej. La Laguna"
+              />
+            </label>
+
+            <label>
+              <span>Desde</span>
+              <input
+                type="date"
+                value={fechaDesde}
+                min={hoyIso()}
+                onChange={(event) => setFechaDesde(event.target.value)}
+              />
+            </label>
+
+            <label>
+              <span>Hasta</span>
+              <input
+                type="date"
+                value={fechaHasta}
+                min={fechaDesde || hoyIso()}
+                onChange={(event) => setFechaHasta(event.target.value)}
+              />
+            </label>
+
+            {hayFiltros && (
+              <button type="button" className="btn btn-outline filtro-limpiar" onClick={limpiarFiltros}>
+                Limpiar filtros
+              </button>
+            )}
           </div>
         </section>
 
@@ -106,18 +196,24 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
             <div>
               <h2 className="section-title">Todas las oportunidades</h2>
             </div>
-            {ofertas && ofertas.length > 0 && (
+            {ofertas && (
               <p className="catalogo-total">
-                {oportunidadesFiltradas.length === 1
-                  ? '1 oportunidad'
-                  : `${oportunidadesFiltradas.length} oportunidades`}
+                {cargando
+                  ? 'Buscando...'
+                  : oportunidades.length === 1
+                    ? '1 oportunidad'
+                    : `${oportunidades.length} oportunidades`}
               </p>
             )}
           </div>
 
-          {oportunidadesFiltradas.length > 0 ? (
-            <div className="catalogo-grid">
-              {oportunidadesFiltradas.map((oferta) => (
+          {errorOfertas && oportunidades.length > 0 && (
+            <p className="empty-state">{errorOfertas}</p>
+          )}
+
+          {oportunidades.length > 0 ? (
+            <div className={`catalogo-grid${cargando ? ' catalogo-cargando' : ''}`}>
+              {oportunidades.map((oferta) => (
                 <TarjetaOferta key={oferta.id} oferta={oferta} />
               ))}
             </div>
@@ -126,9 +222,9 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
               {errorOfertas ??
                 (ofertas === null
                   ? 'Cargando oportunidades...'
-                  : ofertas.length === 0
-                    ? 'Todavía no hay oportunidades publicadas.'
-                    : 'No hemos encontrado oportunidades con esos filtros.')}
+                  : hayFiltros
+                    ? 'No hemos encontrado oportunidades con esos filtros.'
+                    : 'Todavía no hay oportunidades publicadas.')}
             </p>
           )}
         </section>

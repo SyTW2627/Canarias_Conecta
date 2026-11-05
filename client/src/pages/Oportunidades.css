@@ -44,3 +44,32 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Los filtros de la API: busqueda, categoria, isla, municipio y rango de fechas */
+.search-controls.catalogo-filtros {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+
+.catalogo-filtros .filtro-limpiar {
+  min-height: 44px;
+  justify-self: start;
+}
+
+/* Mientras llega la nueva busqueda se muestran atenuados los resultados anteriores */
+.catalogo-cargando {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+@media (max-width: 820px) {
+  .search-controls.catalogo-filtros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .search-controls.catalogo-filtros {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,13 +1,14 @@
 /**
  * Perfil de un usuario voluntario.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import './VolunteerProfile.css'
 import type { Usuario } from './Login.tsx'
 
 type VolunteerProfileProps = {
   usuario: Usuario
   onCerrarSesion: () => void
+  onUsuarioActualizado: (usuario: Usuario) => void
 }
 
 type HistorialItem = {
@@ -20,6 +21,8 @@ type HistorialItem = {
   valoracion: { puntuacion: number; comentario: string | null } | null
 }
 
+type Categoria = { id: string; nombre: string }
+
 function inicialesDe(nombre: string): string {
   const palabras = nombre.trim().split(/\s+/).filter(Boolean)
   if (palabras.length >= 2) {
@@ -28,9 +31,19 @@ function inicialesDe(nombre: string): string {
   return nombre.slice(0, 2).toUpperCase()
 }
 
-function VolunteerProfile({ usuario, onCerrarSesion }: VolunteerProfileProps) {
+function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: VolunteerProfileProps) {
   const [historial, setHistorial] = useState<HistorialItem[] | null>(null)
   const [errorHistorial, setErrorHistorial] = useState<string | null>(null)
+  const [mostrarEditor, setMostrarEditor] = useState(false)
+  const [nombre, setNombre] = useState(usuario.nombre)
+  const [email, setEmail] = useState(usuario.email)
+  const [passwordActual, setPasswordActual] = useState('')
+  const [passwordNueva, setPasswordNueva] = useState('')
+  const [errorEditor, setErrorEditor] = useState<string | null>(null)
+  const [guardandoEditor, setGuardandoEditor] = useState(false)
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [interesIds, setInteresIds] = useState<string[]>(usuario.interesIds ?? [])
+  const [nombresIntereses, setNombresIntereses] = useState<Categoria[]>([])
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -54,10 +67,29 @@ function VolunteerProfile({ usuario, onCerrarSesion }: VolunteerProfileProps) {
     return () => controlador.abort()
   }, [])
 
+  useEffect(() => {
+    const token = localStorage.getItem('token') ?? ''
+    Promise.all([
+      fetch('/api/categorias').then((res) => res.json()),
+      fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).then((res) => res.json()),
+    ])
+      .then(([categoriasData, perfilData]) => {
+        setCategorias(categoriasData)
+        const intereses = perfilData.user?.intereses ?? []
+        setNombresIntereses(intereses)
+        setInteresIds(intereses.map((interes: Categoria) => interes.id))
+      })
+      .catch(() => {
+        setCategorias([])
+      })
+  }, [])
+
   const colaboracionesCompletadas = historial?.filter(
     (item) => item.estado === 'completada',
   ).length ?? 0
-  const horasDedicadas = historial?.reduce((total, item) => total + item.horas, 0) ?? 0
+  const horasDedicadas = historial
+    ?.filter((item) => item.estado === 'completada')
+    .reduce((total, item) => total + item.horas, 0) ?? 0
   const valoraciones = (historial ?? []).filter((item) => item.valoracion)
   const valoracionMedia = valoraciones.length
     ? valoraciones.reduce((total, item) => total + (item.valoracion?.puntuacion ?? 0), 0) /
@@ -83,6 +115,41 @@ function VolunteerProfile({ usuario, onCerrarSesion }: VolunteerProfileProps) {
       completada: 'Completada',
       no_presentado: 'No presentado',
     }[estado]
+  }
+
+  async function guardarPerfil(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    setErrorEditor(null)
+    setGuardandoEditor(true)
+
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
+        },
+        body: JSON.stringify({
+          nombre,
+          email,
+          interesIds,
+          ...(passwordNueva && { passwordActual, passwordNueva }),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message ?? 'No se pudo actualizar el perfil')
+
+      onUsuarioActualizado(data.user)
+      const interesesActualizados = categorias.filter((categoria) => interesIds.includes(categoria.id))
+      setNombresIntereses(interesesActualizados)
+      setPasswordActual('')
+      setPasswordNueva('')
+      setMostrarEditor(false)
+    } catch (error) {
+      setErrorEditor(error instanceof Error ? error.message : 'No se pudo actualizar el perfil')
+    } finally {
+      setGuardandoEditor(false)
+    }
   }
 
   return (
@@ -124,12 +191,19 @@ function VolunteerProfile({ usuario, onCerrarSesion }: VolunteerProfileProps) {
               <p className="profile-member-since">Voluntaria desde noviembre de 2026</p>
 
               <div className="profile-interests">
-                <span className="tag">Medio ambiente</span>
-                <span className="tag">Personas mayores</span>
-                <span className="tag">Comunidad</span>
+                {nombresIntereses.length > 0 ? nombresIntereses.map((interes) => (
+                  <span className="tag" key={interes.id}>{interes.nombre}</span>
+                )) : <span className="profile-no-interests">Aún no has añadido intereses</span>}
               </div>
 
-              <button type="button" className="btn profile-edit-button">
+              <button
+                type="button"
+                className="btn profile-edit-button"
+                onClick={() => {
+                  setErrorEditor(null)
+                  setMostrarEditor(true)
+                }}
+              >
                 Editar perfil
               </button>
             </section>
@@ -203,6 +277,64 @@ function VolunteerProfile({ usuario, onCerrarSesion }: VolunteerProfileProps) {
           </div>
         </div>
       </main>
+
+      {mostrarEditor && (
+        <div className="profile-modal-backdrop" role="presentation">
+          <section className="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+            <div className="profile-modal-header">
+              <h2 id="profile-modal-title">Editar perfil</h2>
+              <button type="button" className="profile-modal-close" onClick={() => setMostrarEditor(false)} aria-label="Cerrar">
+                ×
+              </button>
+            </div>
+            <form onSubmit={guardarPerfil}>
+              <label className="profile-field">
+                <span>Nombre</span>
+                <input value={nombre} onChange={(event) => setNombre(event.target.value)} required />
+              </label>
+              <fieldset className="profile-interests-field">
+                <legend>Intereses</legend>
+                <div className="profile-interest-options">
+                  {categorias.map((categoria) => (
+                    <label className="profile-interest-option" key={categoria.id}>
+                      <input
+                        type="checkbox"
+                        checked={interesIds.includes(categoria.id)}
+                        onChange={() => setInteresIds((actuales) =>
+                          actuales.includes(categoria.id)
+                            ? actuales.filter((id) => id !== categoria.id)
+                            : [...actuales, categoria.id],
+                        )}
+                      />
+                      <span>{categoria.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <label className="profile-field">
+                <span>Email</span>
+                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+              </label>
+              <p className="profile-modal-help">Deja las contraseñas vacías si no quieres cambiarla.</p>
+              <label className="profile-field">
+                <span>Contraseña actual</span>
+                <input type="password" value={passwordActual} onChange={(event) => setPasswordActual(event.target.value)} />
+              </label>
+              <label className="profile-field">
+                <span>Nueva contraseña</span>
+                <input type="password" minLength={8} value={passwordNueva} onChange={(event) => setPasswordNueva(event.target.value)} />
+              </label>
+              {errorEditor && <p className="profile-modal-error" role="alert">{errorEditor}</p>}
+              <div className="profile-modal-actions">
+                <button type="button" className="btn btn-outline" onClick={() => setMostrarEditor(false)}>Cancelar</button>
+                <button type="submit" className="btn" disabled={guardandoEditor}>
+                  {guardandoEditor ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       <footer className="footer">
         <div className="footer-brand">

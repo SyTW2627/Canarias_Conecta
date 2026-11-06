@@ -8,12 +8,134 @@ import type { Request, Response } from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { User, ROLES_REGISTRO } from '../models/User.js'
+import { Categoria } from '../models/Categoria.js'
+import { isObjectIdOrHexString } from 'mongoose'
 
 const PASSWORD_MIN = 8
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function esRolValido(rol: string): rol is (typeof ROLES_REGISTRO)[number] {
   return (ROLES_REGISTRO as readonly string[]).includes(rol)
+}
+
+// PATCH /api/auth/me -> actualiza los datos editables del usuario autenticado
+export async function actualizarPerfil(req: Request, res: Response): Promise<void> {
+  if (!req.usuario) {
+    res.status(401).json({ message: 'Debes iniciar sesión' })
+    return
+  }
+
+  const { nombre, email, passwordActual, passwordNueva, interesIds } = req.body ?? {}
+  if (
+    (nombre !== undefined && (typeof nombre !== 'string' || !nombre.trim())) ||
+    (email !== undefined && (typeof email !== 'string' || !EMAIL_REGEX.test(email.trim()))) ||
+    (passwordActual !== undefined && typeof passwordActual !== 'string') ||
+    (passwordNueva !== undefined && typeof passwordNueva !== 'string')
+    || (interesIds !== undefined &&
+      (!Array.isArray(interesIds) ||
+        interesIds.some((id) => typeof id !== 'string' || !isObjectIdOrHexString(id))))
+  ) {
+    res.status(400).json({ message: 'Los datos del perfil no son válidos' })
+    return
+  }
+
+  if (
+    nombre === undefined &&
+    email === undefined &&
+    passwordNueva === undefined &&
+    interesIds === undefined
+  ) {
+    res.status(400).json({ message: 'No hay cambios que guardar' })
+    return
+  }
+
+  if (passwordNueva !== undefined && passwordNueva.length < PASSWORD_MIN) {
+    res.status(400).json({ message: `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres` })
+    return
+  }
+
+  try {
+    const user = await User.findById(req.usuario.id).select('+password')
+    if (!user) {
+      res.status(404).json({ message: 'No se encontró el usuario' })
+      return
+    }
+
+    if (passwordNueva !== undefined) {
+      if (!passwordActual || !(await bcrypt.compare(passwordActual, user.password))) {
+        res.status(401).json({ message: 'La contraseña actual no es correcta' })
+        return
+      }
+      user.password = await bcrypt.hash(passwordNueva, 10)
+    }
+
+    if (nombre !== undefined) user.nombre = nombre.trim()
+    if (email !== undefined) user.email = email.trim().toLowerCase()
+    if (interesIds !== undefined) {
+      const idsUnicos = [...new Set(interesIds)]
+      const categorias = await Categoria.find({ _id: { $in: idsUnicos }, activa: true }).select('_id')
+      if (categorias.length !== idsUnicos.length) {
+        res.status(400).json({ message: 'Algún interés seleccionado no es válido' })
+        return
+      }
+      user.set('voluntario.interesIds', idsUnicos)
+    }
+    await user.save()
+
+    res.json({
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+        interesIds: user.voluntario?.interesIds?.map((id) => id.toString()) ?? [],
+      },
+    })
+  } catch (error) {
+    if ((error as { code?: number }).code === 11000) {
+      res.status(409).json({ message: 'Ya existe una cuenta con ese email' })
+      return
+    }
+
+    console.error('Error al actualizar el perfil:', error)
+    res.status(500).json({ message: 'No se pudo actualizar el perfil' })
+  }
+
+}
+
+// GET /api/auth/me -> datos editables del usuario autenticado
+export async function getPerfil(req: Request, res: Response): Promise<void> {
+  if (!req.usuario) {
+    res.status(401).json({ message: 'Debes iniciar sesión' })
+    return
+  }
+
+  try {
+    const user = await User.findById(req.usuario.id).populate('voluntario.interesIds', 'nombre')
+    if (!user) {
+      res.status(404).json({ message: 'No se encontró el usuario' })
+      return
+    }
+    const intereses = (user.voluntario?.interesIds ?? []) as unknown as Array<{
+      id: string
+      nombre: string
+    }>
+    res.json({
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+        intereses: intereses.map((interes) => ({
+          id: interes.id,
+          nombre: interes.nombre,
+        })),
+      },
+    })
+  } catch (error) {
+    console.error('Error al obtener el perfil:', error)
+    res.status(500).json({ message: 'No se pudo cargar el perfil' })
+  }
 }
 
 // POST /api/auth/register -> crea el usuario y devuelve { token, user } para entrar directamente

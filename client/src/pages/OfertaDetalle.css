@@ -112,6 +112,31 @@
   padding-bottom: 0;
 }
 
+.oferta-turno-seleccion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--texto);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.oferta-turno-seleccion input {
+  accent-color: var(--verde);
+}
+
+.oferta-inscribirse {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.oferta-inscripcion-mensaje {
+  margin-top: 12px;
+  color: var(--verde-oscuro);
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .oferta-turnos strong {
   color: var(--texto);
   font-size: 16px;

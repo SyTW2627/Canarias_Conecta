@@ -7,7 +7,8 @@
 import type { Request, Response } from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { User, ROLES_REGISTRO } from '../models/User.js'
+import { User, ROLES_REGISTRO, TIPOS_ENTIDAD } from '../models/User.js'
+import { ISLAS } from '../models/constantes.js'
 import { Categoria } from '../models/Categoria.js'
 import { isObjectIdOrHexString } from 'mongoose'
 
@@ -18,6 +19,10 @@ function esRolValido(rol: string): rol is (typeof ROLES_REGISTRO)[number] {
   return (ROLES_REGISTRO as readonly string[]).includes(rol)
 }
 
+function esValorPermitido<T extends readonly string[]>(valor: string, opciones: T): valor is T[number] {
+  return (opciones as readonly string[]).includes(valor)
+}
+
 // PATCH /api/auth/me -> actualiza los datos editables del usuario autenticado
 export async function actualizarPerfil(req: Request, res: Response): Promise<void> {
   if (!req.usuario) {
@@ -25,7 +30,22 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     return
   }
 
-  const { nombre, email, passwordActual, passwordNueva, interesIds } = req.body ?? {}
+  const {
+    nombre,
+    email,
+    passwordActual,
+    passwordNueva,
+    interesIds,
+    telefono,
+    isla,
+    municipio,
+    tipoEntidad,
+    descripcion,
+    web,
+    personaContacto,
+    cif,
+    direccion,
+  } = req.body ?? {}
   if (
     (nombre !== undefined && (typeof nombre !== 'string' || !nombre.trim())) ||
     (email !== undefined && (typeof email !== 'string' || !EMAIL_REGEX.test(email.trim()))) ||
@@ -33,7 +53,17 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     (passwordNueva !== undefined && typeof passwordNueva !== 'string')
     || (interesIds !== undefined &&
       (!Array.isArray(interesIds) ||
-        interesIds.some((id) => typeof id !== 'string' || !isObjectIdOrHexString(id))))
+        interesIds.some((id) => typeof id !== 'string' || !isObjectIdOrHexString(id)))) ||
+    (telefono !== undefined && typeof telefono !== 'string') ||
+    (isla !== undefined && (typeof isla !== 'string' || !esValorPermitido(isla, ISLAS))) ||
+    (municipio !== undefined && (typeof municipio !== 'string' || !municipio.trim())) ||
+    (tipoEntidad !== undefined &&
+      (typeof tipoEntidad !== 'string' || !esValorPermitido(tipoEntidad, TIPOS_ENTIDAD))) ||
+    (descripcion !== undefined && typeof descripcion !== 'string') ||
+    (web !== undefined && typeof web !== 'string') ||
+    (personaContacto !== undefined && typeof personaContacto !== 'string') ||
+    (cif !== undefined && typeof cif !== 'string') ||
+    (direccion !== undefined && typeof direccion !== 'string')
   ) {
     res.status(400).json({ message: 'Los datos del perfil no son válidos' })
     return
@@ -43,7 +73,16 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     nombre === undefined &&
     email === undefined &&
     passwordNueva === undefined &&
-    interesIds === undefined
+    interesIds === undefined &&
+    telefono === undefined &&
+    isla === undefined &&
+    municipio === undefined &&
+    tipoEntidad === undefined &&
+    descripcion === undefined &&
+    web === undefined &&
+    personaContacto === undefined &&
+    cif === undefined &&
+    direccion === undefined
   ) {
     res.status(400).json({ message: 'No hay cambios que guardar' })
     return
@@ -80,6 +119,19 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
       }
       user.set('voluntario.interesIds', idsUnicos)
     }
+    if (req.usuario.rol === 'ofertante') {
+      if (telefono !== undefined) user.telefono = telefono.trim() || undefined
+      if (isla !== undefined) user.isla = isla || undefined
+      if (municipio !== undefined) user.municipio = municipio.trim()
+      if (tipoEntidad !== undefined) user.set('ofertante.tipoEntidad', tipoEntidad)
+      if (descripcion !== undefined) user.set('ofertante.descripcion', descripcion.trim() || undefined)
+      if (web !== undefined) user.set('ofertante.web', web.trim() || undefined)
+      if (personaContacto !== undefined) {
+        user.set('ofertante.personaContacto', personaContacto.trim() || undefined)
+      }
+      if (cif !== undefined) user.set('ofertante.cif', cif.trim() || undefined)
+      if (direccion !== undefined) user.set('ofertante.direccion', direccion.trim() || undefined)
+    }
     await user.save()
 
     res.json({
@@ -89,6 +141,21 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
         email: user.email,
         rol: user.rol,
         interesIds: user.voluntario?.interesIds?.map((id) => id.toString()) ?? [],
+        telefono: user.telefono,
+        isla: user.isla,
+        municipio: user.municipio,
+        ofertante: user.ofertante
+          ? {
+              tipoEntidad: user.ofertante.tipoEntidad,
+              descripcion: user.ofertante.descripcion,
+              web: user.ofertante.web,
+              personaContacto: user.ofertante.personaContacto,
+              cif: user.ofertante.cif,
+              direccion: user.ofertante.direccion,
+              verificada: user.ofertante.verificada,
+              estadisticas: user.ofertante.estadisticas,
+            }
+          : undefined,
       },
     })
   } catch (error) {
@@ -130,6 +197,21 @@ export async function getPerfil(req: Request, res: Response): Promise<void> {
           id: interes.id,
           nombre: interes.nombre,
         })),
+        telefono: user.telefono,
+        isla: user.isla,
+        municipio: user.municipio,
+        ofertante: user.ofertante
+          ? {
+              tipoEntidad: user.ofertante.tipoEntidad,
+              descripcion: user.ofertante.descripcion,
+              web: user.ofertante.web,
+              personaContacto: user.ofertante.personaContacto,
+              cif: user.ofertante.cif,
+              direccion: user.ofertante.direccion,
+              verificada: user.ofertante.verificada,
+              estadisticas: user.ofertante.estadisticas,
+            }
+          : undefined,
       },
     })
   } catch (error) {

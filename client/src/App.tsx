@@ -145,6 +145,11 @@ function App() {
     setPantalla('publica')
   }
 
+  function actualizarUsuario(nuevoUsuario: Usuario) {
+    setUsuario(nuevoUsuario)
+    localStorage.setItem('usuario', JSON.stringify(nuevoUsuario))
+  }
+
   function experienciaAnterior() {
     setExperienciaActual(
     (indice) => (indice - 1 + EXPERIENCIAS.length) % EXPERIENCIAS.length,
@@ -200,7 +205,13 @@ function App() {
     }
 
     if (ruta.pagina === 'perfil' && usuario.rol === 'voluntario') {
-      return <VolunteerProfile usuario={usuario} onCerrarSesion={cerrarSesion} />
+      return (
+        <VolunteerProfile
+          usuario={usuario}
+          onCerrarSesion={cerrarSesion}
+          onUsuarioActualizado={actualizarUsuario}
+        />
+      )
     }
 
     return <HomePage usuario={usuario} onCerrarSesion={cerrarSesion} />

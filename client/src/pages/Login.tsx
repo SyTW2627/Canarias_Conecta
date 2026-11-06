@@ -11,6 +11,7 @@ export type Usuario = {
   nombre: string
   email: string
   rol: 'voluntario' | 'ofertante'
+  interesIds?: string[]
 }
 
 type LoginProps = {

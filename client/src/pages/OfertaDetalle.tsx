@@ -30,6 +30,9 @@ function textoPlazas(plazasLibres: number): string {
 function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps) {
   const [oferta, setOferta] = useState<Oferta | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [turnosSeleccionados, setTurnosSeleccionados] = useState<string[]>([])
+  const [estadoInscripcion, setEstadoInscripcion] = useState<string | null>(null)
+  const [inscribiendo, setInscribiendo] = useState(false)
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -47,6 +50,7 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
         }
 
         setOferta(data)
+        setTurnosSeleccionados(data.turnos.filter(esTurnoProximo).map((turno: { id: string }) => turno.id))
       } catch {
         if (!controlador.signal.aborted) {
           setError('No se pudo conectar con el servidor')
@@ -59,6 +63,30 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
   }, [ofertaId])
 
   const turnosProximos = oferta?.turnos.filter(esTurnoProximo) ?? []
+
+  async function inscribirse() {
+    if (!oferta || turnosSeleccionados.length === 0) return
+
+    setInscribiendo(true)
+    setEstadoInscripcion(null)
+    try {
+      const res = await fetch('/api/inscripciones', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
+        },
+        body: JSON.stringify({ ofertaId: oferta.id, turnoIds: turnosSeleccionados }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message ?? 'No se pudo completar la inscripción')
+      setEstadoInscripcion('Solicitud enviada correctamente')
+    } catch (error) {
+      setEstadoInscripcion(error instanceof Error ? error.message : 'No se pudo completar la inscripción')
+    } finally {
+      setInscribiendo(false)
+    }
+  }
 
   return (
     <div className="authenticated-home">
@@ -148,6 +176,20 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
                   <ul className="oferta-turnos">
                     {turnosProximos.map((turno) => (
                       <li key={turno.id}>
+                        <label className="oferta-turno-seleccion">
+                          <input
+                            type="checkbox"
+                            checked={turnosSeleccionados.includes(turno.id)}
+                            onChange={() =>
+                              setTurnosSeleccionados((seleccionados) =>
+                                seleccionados.includes(turno.id)
+                                  ? seleccionados.filter((id) => id !== turno.id)
+                                  : [...seleccionados, turno.id],
+                              )
+                            }
+                          />
+                          <span>Seleccionar</span>
+                        </label>
                         <strong>{formatearFecha(turno.fecha)}</strong>
                         <span>{turno.horaInicio} - {turno.horaFin}</span>
                         <span className={turno.plazasLibres === 0 ? 'oferta-sin-plazas' : 'oferta-plazas'}>
@@ -158,6 +200,23 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
                   </ul>
                 ) : (
                   <p>Esta oferta no tiene turnos próximos.</p>
+                )}
+                {usuario.rol === 'voluntario' && turnosProximos.length > 0 && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn oferta-inscribirse"
+                      onClick={inscribirse}
+                      disabled={inscribiendo || turnosSeleccionados.length === 0}
+                    >
+                      {inscribiendo ? 'Enviando...' : 'Inscribirme'}
+                    </button>
+                    {estadoInscripcion && (
+                      <p className="oferta-inscripcion-mensaje" role="status">
+                        {estadoInscripcion}
+                      </p>
+                    )}
+                  </>
                 )}
               </section>
             </div>

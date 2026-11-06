@@ -77,7 +77,7 @@ const ofertaSchema = new Schema(
     },
     requisitos: { type: String, trim: true, maxlength: 2000 },
     edadMinima: { type: Number, min: 0 },
-    imagenes: { type: [String], default: [] },
+    imagenes: { type: [{ type: Schema.Types.ObjectId, ref: 'Imagen' }], default: [] },
     turnos: {
       type: [turnoSchema],
       validate: {

@@ -11,6 +11,8 @@ const categoriaSchema = new Schema(
     nombre: { type: String, required: true, unique: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     icono: { type: String, trim: true },
+    // Imagen que muestran las ofertas de esta categoria que no tienen ninguna propia
+    imagenId: { type: Schema.Types.ObjectId, ref: 'Imagen' },
     activa: { type: Boolean, default: true }
   },
   { collection: 'categorias' }

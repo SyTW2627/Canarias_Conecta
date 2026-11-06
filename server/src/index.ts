@@ -14,6 +14,7 @@ import authRoutes from './routes/authRoutes.js'
 import categoriaRoutes from './routes/categoriaRoutes.js'
 import ofertaRoutes from './routes/ofertaRoutes.js'
 import inscripcionRoutes from './routes/inscripcionRoutes.js'
+import imagenRoutes from './routes/imagenRoutes.js'
 
 dotenv.config()
 
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/categorias', categoriaRoutes)
 app.use('/api/ofertas', ofertaRoutes)
 app.use('/api/inscripciones', inscripcionRoutes)
+app.use('/api/imagenes', imagenRoutes)
 
 // Errores que no gestiona ningun controlador, como un JSON mal formado.
 // Express necesita los cuatro parametros para reconocerlo como manejador de errores

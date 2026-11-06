@@ -5,7 +5,7 @@
  */
 
 import type { Request, Response } from 'express'
-import mongoose, { isObjectIdOrHexString, type QueryFilter } from 'mongoose'
+import mongoose, { isObjectIdOrHexString, type QueryFilter, type Types } from 'mongoose'
 import { Categoria } from '../models/Categoria.js'
 import { Inscripcion } from '../models/Inscripcion.js'
 import { SolicitudAyuda } from '../models/SolicitudAyuda.js'
@@ -55,7 +55,11 @@ function escaparRegex(texto: string): string {
 
 type DatosPoblados = {
   ofertanteId: { nombre: string }
-  categoriaIds: Array<{ id: string; nombre: string; slug: string }>
+  categoriaIds: Array<{ id: string; nombre: string; slug: string; imagenId?: Types.ObjectId }>
+}
+
+function urlImagen(id: Types.ObjectId): string {
+  return `/api/imagenes/${id}`
 }
 
 // Por defecto, primero las que tienen el turno mas cercano
@@ -68,7 +72,7 @@ function consultarOfertas(
     .maxTimeMS(CONSULTA_MAX_MS)
     .populate<DatosPoblados>([
       { path: 'ofertanteId', select: 'nombre' },
-      { path: 'categoriaIds', select: 'nombre slug' }
+      { path: 'categoriaIds', select: 'nombre slug imagenId' }
     ])
 }
 
@@ -78,7 +82,12 @@ function serializarOferta(oferta: Awaited<ReturnType<typeof consultarOfertas>>[n
     titulo: oferta.titulo,
     descripcion: oferta.descripcion,
     organizacion: oferta.ofertanteId.nombre,
-    categorias: oferta.categoriaIds.map(({ id, nombre, slug }) => ({ id, nombre, slug })),
+    categorias: oferta.categoriaIds.map(({ id, nombre, slug, imagenId }) => ({
+      id,
+      nombre,
+      slug,
+      imagen: imagenId && urlImagen(imagenId)
+    })),
     modalidad: oferta.modalidad,
     tipoDuracion: oferta.tipoDuracion,
     // La direccion no se publica: puede ser un domicilio y esta API no exige sesion
@@ -88,7 +97,7 @@ function serializarOferta(oferta: Awaited<ReturnType<typeof consultarOfertas>>[n
     },
     requisitos: oferta.requisitos,
     edadMinima: oferta.edadMinima,
-    imagenes: oferta.imagenes,
+    imagenes: oferta.imagenes.map(urlImagen),
     turnos: oferta.turnos.map((turno) => ({
       id: turno._id,
       fecha: turno.fecha,

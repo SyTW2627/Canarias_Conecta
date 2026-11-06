@@ -18,7 +18,7 @@ export type Oferta = {
   titulo: string
   descripcion: string
   organizacion: string
-  categorias: { id: string; nombre: string; slug: string }[]
+  categorias: { id: string; nombre: string; slug: string; imagen?: string }[]
   modalidad: string
   tipoDuracion: string
   ubicacion?: { isla: string; municipio: string; direccion?: string }
@@ -50,20 +50,11 @@ export const DURACIONES: Record<string, string> = {
   periodo_corto: 'Periodo corto',
 }
 
-// Las ofertas aun no suben imagenes: se usa una foto segun su primera categoria
-const IMAGENES_POR_CATEGORIA: Record<string, string> = {
-  'medio-ambiente': '/fotos/reforestacion.jpg',
-  'personas-mayores': '/fotos/imagen_personamayor.jpg',
-  educacion: '/fotos/apoyo_escolar.jpeg',
-  comunidad: '/fotos/voluntariado-2.png',
-  alimentacion: '/fotos/recogida_alimentos.png',
-  animales: '/fotos/voluntariado-3.png',
-}
-
+// Las imagenes llegan de la API. Sin imagen propia se usa la de su primera categoria
 export function imagenDeOferta(oferta: Oferta): string {
   return (
     oferta.imagenes[0] ??
-    IMAGENES_POR_CATEGORIA[oferta.categorias[0]?.slug] ??
+    oferta.categorias[0]?.imagen ??
     '/fotos/voluntariado-1.png'
   )
 }

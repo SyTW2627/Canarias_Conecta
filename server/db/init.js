@@ -12,6 +12,7 @@ const colecciones = [
   'users',
   'categorias',
   'ofertas',
+  'imagenes',
   'inscripciones',
   'solicitudes_ayuda',
   'notificaciones',

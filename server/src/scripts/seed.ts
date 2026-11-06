@@ -9,8 +9,10 @@ import bcrypt from 'bcrypt'
 import mongoose from 'mongoose'
 import { connectDB } from '../config/db.js'
 import { prepararBaseDeDatos } from '../config/catalogo.js'
+import { cargarImagen } from '../config/imagenes.js'
 import { User } from '../models/User.js'
 import { Categoria } from '../models/Categoria.js'
+import { Imagen } from '../models/Imagen.js'
 import { Oferta, construirTextoBusqueda } from '../models/Oferta.js'
 
 dotenv.config()
@@ -40,7 +42,7 @@ const OFERTAS = [
     horaInicio: '10:00',
     horaFin: '13:00',
     plazas: 8,
-    imagen: '/fotos/imagen_personamayor.jpg'
+    imagen: 'imagen_personamayor.jpg'
   },
   {
     email: 'marycomunidad@ejemplo.com',
@@ -53,7 +55,7 @@ const OFERTAS = [
     horaInicio: '09:00',
     horaFin: '12:00',
     plazas: 15,
-    imagen: '/fotos/limpieza_costa.jpg'
+    imagen: 'limpieza_costa.jpg'
   },
   {
     email: 'redparticipa@ejemplo.com',
@@ -66,7 +68,7 @@ const OFERTAS = [
     horaInicio: '16:00',
     horaFin: '19:00',
     plazas: 5,
-    imagen: '/fotos/voluntariado-2.png'
+    imagen: 'voluntariado-2.png'
   },
   {
     email: 'islasverdes@ejemplo.com',
@@ -79,7 +81,7 @@ const OFERTAS = [
     horaInicio: '15:30',
     horaFin: '18:30',
     plazas: 12,
-    imagen: '/fotos/reforestacion.jpg'
+    imagen: 'reforestacion.jpg'
   },
   {
     email: 'crecerjuntos@ejemplo.com',
@@ -92,7 +94,7 @@ const OFERTAS = [
     horaInicio: '17:00',
     horaFin: '19:00',
     plazas: 6,
-    imagen: '/fotos/apoyo_escolar.jpeg'
+    imagen: 'apoyo_escolar.jpeg'
   },
   {
     email: 'bancocanario@ejemplo.com',
@@ -105,7 +107,7 @@ const OFERTAS = [
     horaInicio: '09:30',
     horaFin: '13:30',
     plazas: 20,
-    imagen: '/fotos/recogida_alimentos.png'
+    imagen: 'recogida_alimentos.png'
   }
 ] as const
 
@@ -119,10 +121,15 @@ async function seedOfertas(): Promise<void> {
     const slugs: readonly string[] = ejemplo.categorias
     const ofertante = await User.findOne({ email: ejemplo.email }).orFail()
 
-    // Ejecutar el seed varias veces no duplica ofertas
-    if (await Oferta.exists({ ofertanteId: ofertante._id, titulo: ejemplo.titulo })) {
-      continue
-    }
+    const imagenId = await cargarImagen(ejemplo.imagen)
+
+    // Ejecutar el seed varias veces no duplica ofertas. Las que ya existen se actualizan
+    // porque las de seeds anteriores guardan una ruta a /fotos en lugar de la imagen
+    const { matchedCount } = await Oferta.updateOne(
+      { ofertanteId: ofertante._id, titulo: ejemplo.titulo },
+      { imagenes: [imagenId] }
+    )
+    if (matchedCount > 0) continue
 
     await Oferta.create({
       ofertanteId: ofertante._id,
@@ -134,7 +141,7 @@ async function seedOfertas(): Promise<void> {
       modalidad: 'presencial',
       tipoDuracion: 'jornada',
       ubicacion: { isla: ejemplo.isla, municipio: ejemplo.municipio },
-      imagenes: [ejemplo.imagen],
+      imagenes: [imagenId],
       turnos: [
         {
           fecha: new Date(`${ejemplo.fecha}T00:00:00.000Z`),
@@ -175,6 +182,7 @@ async function seed(): Promise<void> {
   console.log(`Usuarios en la coleccion: ${await User.countDocuments()}`)
   console.log(`Categorias en la coleccion: ${await Categoria.countDocuments()}`)
   console.log(`Ofertas en la coleccion: ${await Oferta.countDocuments()}`)
+  console.log(`Imagenes en la coleccion: ${await Imagen.countDocuments()}`)
 }
 
 seed()

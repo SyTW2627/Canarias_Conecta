@@ -11,6 +11,7 @@ import HomePage from './pages/HomePage.tsx'
 import OfertaDetalle from './pages/OfertaDetalle.tsx'
 import GestionarOfertas from './pages/GestionarOfertas.tsx'
 import VolunteerProfile from './pages/VolunteerProfile.tsx'
+import OrganizationProfile from './pages/OrganizationProfile.tsx'
 import Oportunidades from './pages/Oportunidades.tsx'
 
 const PASOS = [
@@ -207,6 +208,16 @@ function App() {
     if (ruta.pagina === 'perfil' && usuario.rol === 'voluntario') {
       return (
         <VolunteerProfile
+          usuario={usuario}
+          onCerrarSesion={cerrarSesion}
+          onUsuarioActualizado={actualizarUsuario}
+        />
+      )
+    }
+
+    if (ruta.pagina === 'perfil' && usuario.rol === 'ofertante') {
+      return (
+        <OrganizationProfile
           usuario={usuario}
           onCerrarSesion={cerrarSesion}
           onUsuarioActualizado={actualizarUsuario}

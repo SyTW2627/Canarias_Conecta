@@ -11,6 +11,8 @@ type VolunteerProfileProps = {
   onUsuarioActualizado: (usuario: Usuario) => void
 }
 
+type Categoria = { id: string; nombre: string }
+
 type HistorialItem = {
   id: string
   titulo: string
@@ -39,6 +41,9 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
   const [passwordNueva, setPasswordNueva] = useState('')
   const [errorEditor, setErrorEditor] = useState<string | null>(null)
   const [guardandoEditor, setGuardandoEditor] = useState(false)
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [interesIds, setInteresIds] = useState<string[]>(usuario.interesIds ?? [])
+  const [nombresIntereses, setNombresIntereses] = useState<Categoria[]>([])
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -62,10 +67,32 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
     return () => controlador.abort()
   }, [])
 
+  useEffect(() => {
+    const token = localStorage.getItem('token') ?? ''
+    Promise.all([
+      fetch('/api/categorias').then((res) => res.json()),
+      fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((res) => res.json()),
+    ])
+      .then(([categoriasData, perfilData]) => {
+        const categoriasDisponibles = Array.isArray(categoriasData) ? categoriasData : []
+        setCategorias(categoriasDisponibles)
+        const intereses = perfilData.user?.intereses ?? []
+        setNombresIntereses(intereses)
+        setInteresIds(intereses.map((interes: Categoria) => interes.id))
+      })
+      .catch(() => {
+        setCategorias([])
+      })
+  }, [])
+
   const colaboracionesCompletadas = historial?.filter(
     (item) => item.estado === 'completada',
   ).length ?? 0
-  const horasDedicadas = historial?.reduce((total, item) => total + item.horas, 0) ?? 0
+  const horasDedicadas = historial
+    ?.filter((item) => item.estado === 'completada')
+    .reduce((total, item) => total + item.horas, 0) ?? 0
   const valoraciones = (historial ?? []).filter((item) => item.valoracion)
   const valoracionMedia = valoraciones.length
     ? valoraciones.reduce((total, item) => total + (item.valoracion?.puntuacion ?? 0), 0) /
@@ -108,6 +135,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
         body: JSON.stringify({
           nombre,
           email,
+          interesIds,
           ...(passwordNueva && { passwordActual, passwordNueva }),
         }),
       })
@@ -115,6 +143,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
       if (!res.ok) throw new Error(data.message ?? 'No se pudo actualizar el perfil')
 
       onUsuarioActualizado(data.user)
+      setNombresIntereses(categorias.filter((categoria) => interesIds.includes(categoria.id)))
       setPasswordActual('')
       setPasswordNueva('')
       setMostrarEditor(false)
@@ -164,9 +193,9 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
               <p className="profile-member-since">Voluntaria desde noviembre de 2026</p>
 
               <div className="profile-interests">
-                <span className="tag">Medio ambiente</span>
-                <span className="tag">Personas mayores</span>
-                <span className="tag">Comunidad</span>
+                {nombresIntereses.length > 0 ? nombresIntereses.map((interes) => (
+                  <span className="tag" key={interes.id}>{interes.nombre}</span>
+                )) : <span className="profile-no-interests">Aún no has añadido intereses</span>}
               </div>
 
               <button
@@ -269,6 +298,25 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
                 <span>Email</span>
                 <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
               </label>
+              <fieldset className="profile-interests-field">
+                <legend>Intereses</legend>
+                <div className="profile-interest-options">
+                  {categorias.map((categoria) => (
+                    <label className="profile-interest-option" key={categoria.id}>
+                      <input
+                        type="checkbox"
+                        checked={interesIds.includes(categoria.id)}
+                        onChange={() => setInteresIds((actuales) =>
+                          actuales.includes(categoria.id)
+                            ? actuales.filter((id) => id !== categoria.id)
+                            : [...actuales, categoria.id],
+                        )}
+                      />
+                      <span>{categoria.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <p className="profile-modal-help">Deja las contraseñas vacías si no quieres cambiarla.</p>
               <label className="profile-field">
                 <span>Contraseña actual</span>

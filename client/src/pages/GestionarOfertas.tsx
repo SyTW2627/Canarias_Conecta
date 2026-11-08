@@ -3,7 +3,7 @@
  * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
  * Funcion: Pantalla del ofertante para publicar ofertas y ver las que ya ha publicado.
  */
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import './HomePage.css'
 import './GestionarOfertas.css'
 import type { Usuario } from './Login.tsx'
@@ -77,6 +77,10 @@ function cabecerasConSesion(): HeadersInit {
   }
 }
 
+// Mismos limites que comprueba el servidor
+const IMAGEN_MAX_BYTES = 5 * 1024 * 1024
+const TIPOS_IMAGEN = ['image/jpeg', 'image/png', 'image/webp']
+
 // Devuelve el mensaje de error del formulario, o null si se puede enviar
 function validarFormulario(
   datos: typeof FORMULARIO_VACIO,
@@ -122,6 +126,40 @@ function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
   const [mensajeExito, setMensajeExito] = useState<string | null>(null)
   const [ofertaEnCurso, setOfertaEnCurso] = useState<string | null>(null)
   const [errorAccion, setErrorAccion] = useState<string | null>(null)
+  const [imagen, setImagen] = useState<{ archivo: File; vistaPrevia: string } | null>(null)
+  const inputImagen = useRef<HTMLInputElement>(null)
+  const vistaPreviaActual = useRef<string | null>(null)
+
+  // La URL de la vista previa ocupa memoria hasta que se libera, tambien al salir de la pantalla
+  useEffect(() => () => {
+    if (vistaPreviaActual.current) URL.revokeObjectURL(vistaPreviaActual.current)
+  }, [])
+
+  function cambiarImagen(archivo: File | null) {
+    if (vistaPreviaActual.current) URL.revokeObjectURL(vistaPreviaActual.current)
+    const vistaPrevia = archivo ? URL.createObjectURL(archivo) : null
+    vistaPreviaActual.current = vistaPrevia
+    setImagen(archivo && vistaPrevia ? { archivo, vistaPrevia } : null)
+    if (!archivo && inputImagen.current) inputImagen.current.value = ''
+  }
+
+  function elegirImagen(evento: ChangeEvent<HTMLInputElement>) {
+    const archivo = evento.target.files?.[0] ?? null
+    setErrorFormulario(null)
+
+    if (archivo && !TIPOS_IMAGEN.includes(archivo.type)) {
+      setErrorFormulario('La imagen debe ser JPG, PNG o WebP')
+      cambiarImagen(null)
+      return
+    }
+    if (archivo && archivo.size > IMAGEN_MAX_BYTES) {
+      setErrorFormulario('La imagen no puede superar los 5 MB')
+      cambiarImagen(null)
+      return
+    }
+
+    cambiarImagen(archivo)
+  }
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -254,11 +292,16 @@ function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
       estado: 'publicada',
     }
 
+    // Con imagen se envia como multipart; el navegador pone el Content-Type con su boundary
+    const formulario = new FormData()
+    formulario.append('datos', JSON.stringify(cuerpo))
+    if (imagen) formulario.append('imagen', imagen.archivo)
+
     try {
       const res = await fetch('/api/ofertas', {
         method: 'POST',
-        headers: cabecerasConSesion(),
-        body: JSON.stringify(cuerpo),
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+        body: formulario,
       })
       const data = await res.json()
 
@@ -270,6 +313,7 @@ function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
       setDatos(FORMULARIO_VACIO)
       setCategoriaIds([])
       setTurnos([turnoVacio()])
+      cambiarImagen(null)
       setMensajeExito('Oferta publicada. Los voluntarios ya pueden verla.')
       setRecargas((n) => n + 1)
     } catch {
@@ -335,6 +379,30 @@ function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
                 placeholder="Qué harán los voluntarios, a quién ayuda la actividad..."
               />
             </label>
+
+            <div className="gestion-imagen">
+              <label>
+                <span>Foto de presentación</span>
+                <input
+                  ref={inputImagen}
+                  type="file"
+                  accept={TIPOS_IMAGEN.join(',')}
+                  onChange={elegirImagen}
+                />
+              </label>
+              <p className="gestion-ayuda">
+                Opcional. JPG, PNG o WebP de hasta 5 MB. Si no subes ninguna, se usará la de la
+                categoría.
+              </p>
+              {imagen && (
+                <div className="gestion-imagen-previa">
+                  <img src={imagen.vistaPrevia} alt="Vista previa de la foto de la oferta" />
+                  <button type="button" className="gestion-accion" onClick={() => cambiarImagen(null)}>
+                    Quitar foto
+                  </button>
+                </div>
+              )}
+            </div>
 
             <fieldset>
               <legend>Categorías *</legend>

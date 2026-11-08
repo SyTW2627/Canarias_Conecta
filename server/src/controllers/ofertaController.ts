@@ -4,12 +4,15 @@
  * Funcion: Gestiona las peticiones relacionadas con las ofertas de voluntariado.
  */
 
+import { randomUUID } from 'node:crypto'
 import type { Request, Response } from 'express'
 import mongoose, { isObjectIdOrHexString, type QueryFilter, type Types } from 'mongoose'
 import { Categoria } from '../models/Categoria.js'
+import { Imagen } from '../models/Imagen.js'
 import { Inscripcion } from '../models/Inscripcion.js'
 import { SolicitudAyuda } from '../models/SolicitudAyuda.js'
 import { HORA_REGEX, ISLAS } from '../models/constantes.js'
+import { detectarTipoImagen } from '../middleware/subidaImagen.js'
 import {
   Oferta,
   construirTextoBusqueda,
@@ -206,8 +209,33 @@ function leerTurnos(valor: unknown) {
   return turnos
 }
 
-// POST /api/ofertas -> crea una oferta del ofertante que ha iniciado sesion
+// Con multipart/form-data los datos llegan como texto JSON en el campo "datos"
+function leerCuerpo(req: Request): Record<string, unknown> | null {
+  if (!req.is('multipart/form-data')) return req.body ?? {}
+
+  try {
+    const datos = JSON.parse(req.body?.datos ?? '{}')
+    return datos && typeof datos === 'object' && !Array.isArray(datos) ? datos : null
+  } catch {
+    return null
+  }
+}
+
+// POST /api/ofertas -> crea una oferta del ofertante que ha iniciado sesion.
+// Acepta JSON o multipart/form-data con los campos "datos" (JSON) e "imagen" (opcional)
 export async function crearOferta(req: Request, res: Response): Promise<void> {
+  const cuerpo = leerCuerpo(req)
+  if (!cuerpo) {
+    res.status(400).json({ message: 'Los datos de la oferta no son válidos' })
+    return
+  }
+
+  const tipoImagen = req.file ? detectarTipoImagen(req.file.buffer) : undefined
+  if (tipoImagen === null) {
+    res.status(400).json({ message: 'La imagen debe ser JPG, PNG o WebP' })
+    return
+  }
+
   const {
     titulo,
     descripcion,
@@ -219,7 +247,7 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
     edadMinima,
     turnos: turnosRecibidos = [],
     estado = 'publicada'
-  } = req.body ?? {}
+  } = cuerpo as Record<string, any>
 
   if (
     typeof titulo !== 'string' || !titulo.trim() ||
@@ -265,6 +293,8 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
     return
   }
 
+  let imagenId: Types.ObjectId | undefined
+
   try {
     const idsUnicos = [...new Set<string>(categoriaIds)]
     const existentes = await Categoria.countDocuments({ _id: { $in: idsUnicos }, activa: true })
@@ -272,6 +302,16 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
     if (existentes !== idsUnicos.length) {
       res.status(400).json({ message: 'Las categorías no son válidas' })
       return
+    }
+
+    // Se guarda despues de validar todo lo demas para no dejar imagenes sueltas
+    if (req.file && tipoImagen) {
+      const imagen = await Imagen.create({
+        nombre: `oferta-${randomUUID()}${tipoImagen.extension}`,
+        contentType: tipoImagen.contentType,
+        data: req.file.buffer
+      })
+      imagenId = imagen._id
     }
 
     const usuario = req.usuario!
@@ -285,6 +325,7 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
       ubicacion: ubicacionRecibida,
       requisitos,
       edadMinima,
+      imagenes: imagenId ? [imagenId] : [],
       turnos,
       textoBusqueda: construirTextoBusqueda([
         titulo,
@@ -298,6 +339,13 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
 
     res.status(201).json({ id: oferta.id, estado: oferta.estado })
   } catch (error) {
+    // Si la oferta no se ha creado, su imagen no la usaria nadie
+    if (imagenId) {
+      await Imagen.deleteOne({ _id: imagenId }).catch((borrado) => {
+        console.error('Error al borrar la imagen de una oferta no creada:', borrado)
+      })
+    }
+
     if (error instanceof mongoose.Error.ValidationError) {
       // Los validadores propios tienen mensaje en español; los de Mongoose no
       const propio = Object.values(error.errors).find(
@@ -387,9 +435,11 @@ export async function eliminarOferta(req: Request, res: Response): Promise<void>
     }
 
     // Sin la oferta, sus inscripciones no se pueden mostrar; las solicitudes de ayuda se conservan
+    // Las imagenes del seed se comparten entre ofertas; solo se borran las subidas con la oferta
     await Promise.all([
       Inscripcion.deleteMany({ ofertaId: id }),
-      SolicitudAyuda.updateMany({ ofertaId: id }, { $unset: { ofertaId: 1 } })
+      SolicitudAyuda.updateMany({ ofertaId: id }, { $unset: { ofertaId: 1 } }),
+      Imagen.deleteMany({ _id: { $in: oferta.imagenes }, nombre: /^oferta-/ })
     ])
 
     res.status(204).end()

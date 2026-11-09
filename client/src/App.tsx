@@ -13,6 +13,7 @@ import GestionarOfertas from './pages/GestionarOfertas.tsx'
 import VolunteerProfile from './pages/VolunteerProfile.tsx'
 import OrganizationProfile from './pages/OrganizationProfile.tsx'
 import Oportunidades from './pages/Oportunidades.tsx'
+import MisInscripciones from './pages/MisInscripciones.tsx'
 
 const PASOS = [
   {
@@ -65,6 +66,7 @@ type Ruta =
   | { pagina: 'oportunidades' }
   | { pagina: 'oferta'; id: string }
   | { pagina: 'gestion' }
+  | { pagina: 'inscripciones' }
   | { pagina: 'perfil' }
 
 function rutaDe(pathname: string): Ruta {
@@ -72,6 +74,7 @@ function rutaDe(pathname: string): Ruta {
   if (id) return { pagina: 'oferta', id }
   if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
   if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
+  if (/^\/mis_inscripciones\/?$/.test(pathname)) return { pagina: 'inscripciones' }
   if (/^\/perfil\/?$/.test(pathname)) return { pagina: 'perfil' }
   return { pagina: 'inicio' }
 }
@@ -198,6 +201,10 @@ function App() {
 
     if (ruta.pagina === 'oportunidades') {
       return <Oportunidades usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    if (ruta.pagina === 'inscripciones' && usuario.rol === 'voluntario') {
+      return <MisInscripciones usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
 
     // Un voluntario que llegue a /gestionar-ofertas ve el inicio

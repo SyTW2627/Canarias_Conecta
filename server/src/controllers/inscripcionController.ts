@@ -141,6 +141,7 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
 
         return {
           id: inscripcion.id,
+          ofertaId: oferta.id,
           titulo: oferta.titulo,
           organizador: oferta.ofertanteId.nombre,
           fecha: fecha?.toISOString() ?? null,

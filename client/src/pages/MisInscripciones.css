@@ -1,0 +1,197 @@
+.inscriptions-main {
+  width: min(1000px, 100%);
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+}
+
+.inscriptions-title {
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.inscriptions-title::after {
+  right: auto;
+  left: 0;
+  width: 220px;
+}
+
+.inscriptions-intro {
+  margin-bottom: 36px;
+  color: var(--texto-suave);
+}
+
+.inscriptions-groups {
+  display: grid;
+  gap: 32px;
+}
+
+.inscriptions-group h2 {
+  margin-bottom: 14px;
+  color: var(--verde-oscuro);
+  font-size: 22px;
+}
+
+.inscriptions-list {
+  display: grid;
+  gap: 14px;
+}
+
+.inscription-card,
+.inscriptions-empty {
+  padding: 22px 24px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgb(27 42 42 / 5%);
+}
+
+.inscription-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 24px;
+}
+
+.inscription-date-badge {
+  display: flex;
+  width: 58px;
+  min-width: 58px;
+  height: 58px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  text-align: center;
+}
+
+.inscription-date-badge strong {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.inscription-date-badge span {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: lowercase;
+}
+
+.inscription-organizer,
+.inscription-hours {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+.inscription-card h3 {
+  margin: 0 0 6px;
+  color: var(--texto);
+  font-size: 20px;
+}
+
+.inscription-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.inscription-title-link:hover,
+.inscription-title-link:focus-visible {
+  color: var(--verde);
+  text-decoration: underline;
+}
+
+.inscription-card-content {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.inscription-hours {
+  margin-top: 8px;
+}
+
+.inscription-card-status {
+  display: flex;
+  min-width: 130px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.inscription-status {
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.status-pendiente { background: #fff4d6; color: #806000; }
+.status-aceptada,
+.status-completada { background: #dff3e8; color: #17653b; }
+.status-rechazada,
+.status-cancelada,
+.status-no_presentado { background: #fde4e4; color: #8d2929; }
+
+.inscription-rating {
+  color: #d69a16;
+  font-size: 16px;
+  text-align: right;
+}
+
+.inscription-empty-stars {
+  color: #d9d9d9;
+}
+
+.inscription-rating p {
+  max-width: 220px;
+  margin: 5px 0 0;
+  color: var(--texto-suave);
+  font-size: 13px;
+}
+
+.inscriptions-message,
+.inscriptions-empty {
+  margin-top: 24px;
+}
+
+.inscriptions-message {
+  color: var(--texto-suave);
+}
+
+.inscriptions-error {
+  color: #a12a2a;
+}
+
+.inscriptions-empty {
+  text-align: center;
+}
+
+.inscriptions-empty h2 {
+  margin-bottom: 8px;
+  color: var(--texto);
+}
+
+.inscriptions-empty p {
+  margin-bottom: 20px;
+  color: var(--texto-suave);
+}
+
+@media (max-width: 700px) {
+  .inscription-card {
+    flex-direction: column;
+  }
+
+  .inscription-date-badge {
+    width: 58px;
+  }
+
+  .inscription-card-status {
+    align-items: flex-start;
+  }
+
+  .inscription-rating {
+    text-align: left;
+  }
+}

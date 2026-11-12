@@ -4,6 +4,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import './VolunteerProfile.css'
 import type { Usuario } from './Login.tsx'
+import Notificaciones from '../components/Notificaciones.tsx'
 
 type VolunteerProfileProps = {
   usuario: Usuario
@@ -173,6 +174,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
         </nav>
 
         <div className="authenticated-user">
+          <Notificaciones />
           <span>Hola, {usuario.nombre}</span>
           <button type="button" className="btn btn-outline" onClick={onCerrarSesion}>
             Cerrar sesión

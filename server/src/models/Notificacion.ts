@@ -8,10 +8,20 @@ import { Schema, model, type InferSchemaType } from 'mongoose'
 
 const NOVENTA_DIAS_EN_SEGUNDOS = 90 * 24 * 60 * 60
 
+export const TIPOS_NOTIFICACION = [
+  // Para el ofertante: un voluntario se ha postulado a una de sus ofertas
+  'inscripcion_nueva',
+  // Para el voluntario: el ofertante ha resuelto su solicitud
+  'inscripcion_aceptada',
+  'inscripcion_rechazada',
+  // Para el voluntario: la oferta en la que estaba inscrito se ha cerrado
+  'oferta_cerrada'
+] as const
+
 const notificacionSchema = new Schema(
   {
     usuarioId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    tipo: { type: String, required: true, trim: true },
+    tipo: { type: String, enum: TIPOS_NOTIFICACION, required: true },
     titulo: { type: String, required: true, trim: true },
     mensaje: { type: String, required: true, trim: true },
     enlace: { type: String, trim: true },

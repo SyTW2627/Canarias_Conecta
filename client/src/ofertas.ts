@@ -28,6 +28,22 @@ export type Oferta = {
   turnos: Turno[]
 }
 
+// Como la ve su propio ofertante: con su estado
+export type MiOferta = Oferta & {
+  estado: 'borrador' | 'publicada' | 'cerrada' | 'cancelada'
+  terminada: boolean
+  fechaPublicacion?: string
+  creadaEn: string
+  candidatosPendientes: number
+}
+
+export function cabecerasConSesion(): HeadersInit {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
+  }
+}
+
 export const ISLAS: Record<string, string> = {
   tenerife: 'Tenerife',
   gran_canaria: 'Gran Canaria',

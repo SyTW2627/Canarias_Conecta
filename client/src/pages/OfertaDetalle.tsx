@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import './HomePage.css'
 import './OfertaDetalle.css'
 import type { Usuario } from './Login.tsx'
+import Notificaciones from '../components/Notificaciones.tsx'
 import {
   DURACIONES,
   ISLAS,
@@ -108,6 +109,7 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
         </nav>
 
         <div className="authenticated-user">
+          <Notificaciones />
           <span>Hola, {usuario.nombre}</span>
           <button type="button" className="btn btn-outline" onClick={onCerrarSesion}>
             Cerrar sesión

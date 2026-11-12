@@ -172,3 +172,19 @@
 .login-enlace:hover {
   text-decoration: underline;
 }
+
+/* Recuperacion de contrasena */
+.login-exito {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  font-size: 15px;
+}
+
+.login-ayuda {
+  margin: -6px 0 0;
+  color: var(--texto-suave);
+  font-size: 13px;
+}

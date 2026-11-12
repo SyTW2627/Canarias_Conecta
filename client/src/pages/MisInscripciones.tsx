@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './MisInscripciones.css'
 import type { Usuario } from './Login.tsx'
+import Notificaciones from '../components/Notificaciones.tsx'
 
 type EstadoInscripcion =
   | 'pendiente'
@@ -21,6 +22,7 @@ type Inscripcion = {
   fecha: string | null
   horas: number
   estado: EstadoInscripcion
+  motivoRechazo: string | null
   valoracion: { puntuacion: number; comentario: string | null } | null
 }
 
@@ -123,6 +125,7 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
           <a href="/perfil">Mi perfil</a>
         </nav>
         <div className="authenticated-user">
+          <Notificaciones />
           <span>Hola, {usuario.nombre}</span>
           <button type="button" className="btn btn-outline" onClick={onCerrarSesion}>Cerrar sesión</button>
         </div>
@@ -160,6 +163,11 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
                         </h3>
                         <p className="inscription-organizer">Organiza: {inscripcion.organizador}</p>
                         <p className="inscription-hours">{inscripcion.horas} horas previstas</p>
+                        {inscripcion.estado === 'rechazada' && inscripcion.motivoRechazo && (
+                          <p className="inscription-organizer">
+                            Motivo del rechazo: {inscripcion.motivoRechazo}
+                          </p>
+                        )}
                       </div>
                       <div className="inscription-card-status">
                         <span className={`inscription-status status-${inscripcion.estado}`}>

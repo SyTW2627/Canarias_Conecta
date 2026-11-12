@@ -4,6 +4,7 @@
  * Funcion: Gestiona el registro y el inicio de sesion de los usuarios.
  */
 
+import { createHash, randomBytes } from 'node:crypto'
 import type { Request, Response } from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
@@ -11,9 +12,16 @@ import { User, ROLES_REGISTRO, TIPOS_ENTIDAD } from '../models/User.js'
 import { ISLAS } from '../models/constantes.js'
 import { Categoria } from '../models/Categoria.js'
 import { isObjectIdOrHexString } from 'mongoose'
+import { Token } from '../models/Token.js'
+import { enviarCorreo } from '../services/correo.js'
 
 const PASSWORD_MIN = 8
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const RECUPERACION_MS = 60 * 60 * 1000
+// Tiempo minimo entre dos correos de recuperacion para la misma cuenta
+const RECUPERACION_ESPERA_MS = 60 * 1000
+const MENSAJE_RECUPERACION =
+  'Si existe una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña.'
 
 function esRolValido(rol: string): rol is (typeof ROLES_REGISTRO)[number] {
   return (ROLES_REGISTRO as readonly string[]).includes(rol)
@@ -316,5 +324,128 @@ export async function login(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('Error al iniciar sesión:', error)
     res.status(500).json({ message: 'Error al iniciar sesión' })
+  }
+}
+
+// Solo se guarda el hash: quien lea la base de datos no puede usar los enlaces pendientes
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+function escaparHtml(texto: string): string {
+  return texto.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+}
+
+// POST /api/auth/recuperar-password -> envia un enlace para elegir una contrasena nueva.
+// Responde igual exista o no la cuenta, para no revelar que emails estan registrados
+export async function solicitarRecuperacion(req: Request, res: Response): Promise<void> {
+  const { email } = req.body ?? {}
+
+  if (typeof email !== 'string' || !EMAIL_REGEX.test(email.trim())) {
+    res.status(400).json({ message: 'El email no es válido' })
+    return
+  }
+
+  try {
+    const user = await User.findOne({ email: email.trim().toLowerCase(), estado: 'activo' })
+
+    if (user) {
+      const ahora = Date.now()
+      // Un token que caduca dentro de mas de (1 h - 1 min) se ha pedido hace menos de un minuto
+      const reciente = await Token.exists({
+        usuarioId: user._id,
+        tipo: 'recuperar_password',
+        usado: false,
+        expiraEn: { $gt: new Date(ahora + RECUPERACION_MS - RECUPERACION_ESPERA_MS) }
+      })
+
+      if (!reciente) {
+        const token = randomBytes(32).toString('hex')
+
+        // Solo vale el ultimo enlace enviado
+        await Token.deleteMany({ usuarioId: user._id, tipo: 'recuperar_password' })
+        await Token.create({
+          usuarioId: user._id,
+          tipo: 'recuperar_password',
+          tokenHash: hashToken(token),
+          expiraEn: new Date(ahora + RECUPERACION_MS)
+        })
+
+        const base = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '')
+        const enlace = `${base}/restablecer-password?token=${token}`
+        const nombre = escaparHtml(user.nombre)
+
+        await enviarCorreo({
+          para: user.email,
+          asunto: 'Restablece tu contraseña de Canarias Conecta',
+          texto:
+            `Hola, ${user.nombre}:\n\n` +
+            'Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.\n' +
+            `Abre este enlace para elegir una nueva (caduca en 1 hora):\n\n${enlace}\n\n` +
+            'Si no lo has pedido tú, ignora este correo: tu contraseña no cambiará.',
+          html:
+            `<p>Hola, ${nombre}:</p>` +
+            '<p>Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.</p>' +
+            `<p><a href="${enlace}">Elegir una nueva contraseña</a></p>` +
+            '<p>El enlace caduca en 1 hora. Si no lo has pedido tú, ignora este correo: ' +
+            'tu contraseña no cambiará.</p>'
+        })
+      }
+    }
+
+    res.json({ message: MENSAJE_RECUPERACION })
+  } catch (error) {
+    console.error('Error al solicitar la recuperación de contraseña:', error)
+    res.status(500).json({ message: 'No se pudo enviar el correo. Inténtalo más tarde' })
+  }
+}
+
+// POST /api/auth/restablecer-password -> cambia la contrasena con el token del correo
+export async function restablecerPassword(req: Request, res: Response): Promise<void> {
+  const { token, password } = req.body ?? {}
+
+  if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) {
+    res.status(400).json({ message: 'El enlace no es válido o ha caducado' })
+    return
+  }
+
+  if (typeof password !== 'string' || password.length < PASSWORD_MIN) {
+    res.status(400).json({ message: `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres` })
+    return
+  }
+
+  try {
+    // Se marca como usado en la misma operacion: el enlace solo sirve una vez
+    const guardado = await Token.findOneAndUpdate(
+      {
+        tokenHash: hashToken(token),
+        tipo: 'recuperar_password',
+        usado: false,
+        expiraEn: { $gt: new Date() }
+      },
+      { usado: true }
+    )
+
+    if (!guardado) {
+      res.status(400).json({ message: 'El enlace no es válido o ha caducado' })
+      return
+    }
+
+    const user = await User.findOneAndUpdate(
+      { _id: guardado.usuarioId, estado: 'activo' },
+      { password: await bcrypt.hash(password, 10), passwordCambiadaEn: new Date() }
+    )
+
+    if (!user) {
+      res.status(400).json({ message: 'El enlace no es válido o ha caducado' })
+      return
+    }
+
+    await Token.deleteMany({ usuarioId: user._id, tipo: 'recuperar_password' })
+
+    res.json({ message: 'Contraseña actualizada. Ya puedes iniciar sesión con la nueva.' })
+  } catch (error) {
+    console.error('Error al restablecer la contraseña:', error)
+    res.status(500).json({ message: 'No se pudo cambiar la contraseña' })
   }
 }

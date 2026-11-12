@@ -1,0 +1,155 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la campana de notificaciones de la cabecera.
+ */
+.notificaciones {
+  position: relative;
+}
+
+.notificaciones-boton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1.5px solid var(--borde);
+  border-radius: 50%;
+  background: #fff;
+  color: var(--verde-oscuro);
+  cursor: pointer;
+}
+
+.notificaciones-boton:hover,
+.notificaciones-boton[aria-expanded='true'] {
+  border-color: var(--verde);
+  background: var(--verde-claro);
+}
+
+.notificaciones-contador {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #c0392b;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.notificaciones-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 440px;
+  overflow-y: auto;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  white-space: normal;
+  text-align: left;
+}
+
+.notificaciones-cabecera {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--borde);
+  background: #fff;
+  color: var(--texto);
+}
+
+.notificaciones-todas {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--verde-oscuro);
+  font: 600 13px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.notificaciones-todas:hover {
+  text-decoration: underline;
+}
+
+.notificaciones-vacio {
+  margin: 0;
+  padding: 20px 14px;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+.notificaciones-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notificaciones-lista li + li {
+  border-top: 1px solid var(--borde);
+}
+
+.notificaciones-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 12px 14px 12px 22px;
+  border: none;
+  background: #fff;
+  color: var(--texto);
+  font: 14px 'DM Sans', sans-serif;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.notificaciones-item:hover {
+  background: #f6f8f7;
+}
+
+.notificaciones-item span {
+  color: var(--texto-suave);
+}
+
+.notificaciones-item time {
+  color: var(--texto-suave);
+  font-size: 12px;
+}
+
+.notificaciones-item.no-leida {
+  position: relative;
+  background: var(--verde-claro);
+}
+
+.notificaciones-item.no-leida::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--verde);
+}
+
+@media (max-width: 860px) {
+  .notificaciones-panel {
+    right: auto;
+    left: 0;
+  }
+}

@@ -39,9 +39,11 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   let id: unknown
+  let emitidoEn: number | undefined
   try {
     const payload = jwt.verify(token, secret, { algorithms: ['HS256'] })
     id = typeof payload === 'string' ? undefined : payload.id
+    emitidoEn = typeof payload === 'string' ? undefined : payload.iat
   } catch {
     res.status(401).json({ message: 'La sesión no es válida o ha caducado' })
     return
@@ -52,6 +54,13 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const user = typeof id === 'string' && isObjectIdOrHexString(id) ? await User.findById(id) : null
 
     if (!user) {
+      res.status(401).json({ message: 'La sesión no es válida o ha caducado' })
+      return
+    }
+
+    // iat va en segundos: un token emitido en el mismo segundo del cambio sigue valiendo
+    const cambio = user.passwordCambiadaEn
+    if (cambio && (emitidoEn === undefined || emitidoEn < Math.floor(cambio.getTime() / 1000))) {
       res.status(401).json({ message: 'La sesión no es válida o ha caducado' })
       return
     }

@@ -4,6 +4,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import './OrganizationProfile.css'
 import type { Usuario } from './Login.tsx'
+import Notificaciones from '../components/Notificaciones.tsx'
 import { ISLAS, type Oferta } from '../ofertas.ts'
 
 type OrganizationProfileProps = {
@@ -174,6 +175,7 @@ function OrganizationProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: 
           <a href="/perfil" aria-current="page">Mi perfil</a>
         </nav>
         <div className="authenticated-user">
+          <Notificaciones />
           <span>Hola, {perfil.nombre}</span>
           <button type="button" className="btn btn-outline" onClick={onCerrarSesion}>
             Cerrar sesión

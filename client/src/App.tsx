@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import Login, { type Usuario } from './pages/Login.tsx'
 import Register from './pages/Register.tsx'
+import RecuperarPassword from './pages/RecuperarPassword.tsx'
+import RestablecerPassword from './pages/RestablecerPassword.tsx'
 import HomePage from './pages/HomePage.tsx'
 import OfertaDetalle from './pages/OfertaDetalle.tsx'
 import GestionarOfertas from './pages/GestionarOfertas.tsx'
@@ -14,6 +16,8 @@ import VolunteerProfile from './pages/VolunteerProfile.tsx'
 import OrganizationProfile from './pages/OrganizationProfile.tsx'
 import Oportunidades from './pages/Oportunidades.tsx'
 import MisInscripciones from './pages/MisInscripciones.tsx'
+import EditarOferta from './pages/EditarOferta.tsx'
+import Candidatos from './pages/Candidatos.tsx'
 
 const PASOS = [
   {
@@ -66,16 +70,24 @@ type Ruta =
   | { pagina: 'oportunidades' }
   | { pagina: 'oferta'; id: string }
   | { pagina: 'gestion' }
+  | { pagina: 'editarOferta'; id: string }
+  | { pagina: 'candidatos'; id: string }
   | { pagina: 'inscripciones' }
   | { pagina: 'perfil' }
+  | { pagina: 'restablecer' }
 
 function rutaDe(pathname: string): Ruta {
   const id = pathname.match(/^\/ofertas\/([^/]+)\/?$/)?.[1]
   if (id) return { pagina: 'oferta', id }
+  const idEditar = pathname.match(/^\/gestionar-ofertas\/([^/]+)\/editar\/?$/)?.[1]
+  if (idEditar) return { pagina: 'editarOferta', id: idEditar }
+  const idCandidatos = pathname.match(/^\/gestionar-ofertas\/([^/]+)\/candidatos\/?$/)?.[1]
+  if (idCandidatos) return { pagina: 'candidatos', id: idCandidatos }
   if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
   if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
   if (/^\/mis_inscripciones\/?$/.test(pathname)) return { pagina: 'inscripciones' }
   if (/^\/perfil\/?$/.test(pathname)) return { pagina: 'perfil' }
+  if (/^\/restablecer-password\/?$/.test(pathname)) return { pagina: 'restablecer' }
   return { pagina: 'inicio' }
 }
 
@@ -85,7 +97,7 @@ function rutaActual(): Ruta {
 
 function App() {
   const [usuario, setUsuario] = useState<Usuario | null>(usuarioGuardado)
-  const [pantalla, setPantalla] = useState<'publica' | 'login' | 'registro' | 'autenticada'>(
+  const [pantalla, setPantalla] = useState<'publica' | 'login' | 'registro' | 'recuperar' | 'autenticada'>(
     usuario ? 'autenticada' : 'publica',
   )
   const [experienciaActual, setExperienciaActual] = useState(0)
@@ -167,12 +179,46 @@ function App() {
   }
 
 
+  // Sale de la pantalla del enlace del correo; se quita el token de la URL y del historial
+  function salirDeRestablecer(destino: 'publica' | 'login' | 'recuperar') {
+    window.history.replaceState(null, '', '/')
+    setRuta({ pagina: 'inicio' })
+    setPantalla(usuario && destino === 'publica' ? 'autenticada' : destino)
+  }
+
+  // El enlace del correo se abre tanto con sesion como sin ella
+  if (ruta.pagina === 'restablecer') {
+    return (
+      <RestablecerPassword
+        token={new URLSearchParams(window.location.search).get('token')}
+        onVolver={() => salirDeRestablecer('publica')}
+        onIrALogin={() => salirDeRestablecer('login')}
+        onRecuperarPassword={() => salirDeRestablecer('recuperar')}
+        onPasswordCambiada={() => {
+          localStorage.removeItem('token')
+          localStorage.removeItem('usuario')
+          setUsuario(null)
+        }}
+      />
+    )
+  }
+
   if (pantalla === 'login') {
     return (
       <Login
         onLogin={handleLogin}
         onVolver={() => setPantalla('publica')}
+        onRecuperarPassword={() => setPantalla('recuperar')}
         onRegistro={() => setPantalla('registro')}
+      />
+    )
+  }
+
+  if (pantalla === 'recuperar') {
+    return (
+      <RecuperarPassword
+        onVolver={() => setPantalla('publica')}
+        onIrALogin={() => setPantalla('login')}
       />
     )
   }
@@ -210,6 +256,28 @@ function App() {
     // Un voluntario que llegue a /gestionar-ofertas ve el inicio
     if (ruta.pagina === 'gestion' && usuario.rol === 'ofertante') {
       return <GestionarOfertas usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    if (ruta.pagina === 'editarOferta' && usuario.rol === 'ofertante') {
+      return (
+        <EditarOferta
+          key={ruta.id}
+          ofertaId={ruta.id}
+          usuario={usuario}
+          onCerrarSesion={cerrarSesion}
+        />
+      )
+    }
+
+    if (ruta.pagina === 'candidatos' && usuario.rol === 'ofertante') {
+      return (
+        <Candidatos
+          key={ruta.id}
+          ofertaId={ruta.id}
+          usuario={usuario}
+          onCerrarSesion={cerrarSesion}
+        />
+      )
     }
 
     if (ruta.pagina === 'perfil' && usuario.rol === 'voluntario') {

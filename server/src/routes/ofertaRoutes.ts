@@ -9,7 +9,9 @@ import {
   buscarOfertas,
   cerrarOferta,
   crearOferta,
+  editarOferta,
   eliminarOferta,
+  getMiOferta,
   getMisOfertas,
   getOferta
 } from '../controllers/ofertaController.js'
@@ -23,8 +25,10 @@ router.get('/', buscarOfertas)
 router.post('/', requireAuth, requireRol('ofertante'), recibirImagen, crearOferta)
 // Va antes de /:id para que "mias" no se lea como el id de una oferta
 router.get('/mias', requireAuth, requireRol('ofertante'), getMisOfertas)
+router.get('/mias/:id', requireAuth, requireRol('ofertante'), getMiOferta)
 router.get('/:id', getOferta)
 router.patch('/:id/cerrar', requireAuth, requireRol('ofertante'), cerrarOferta)
+router.put('/:id', requireAuth, requireRol('ofertante'), recibirImagen, editarOferta)
 router.delete('/:id', requireAuth, requireRol('ofertante'), eliminarOferta)
 
 export default router

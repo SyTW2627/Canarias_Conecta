@@ -13,6 +13,7 @@ import { Inscripcion } from '../models/Inscripcion.js'
 import { SolicitudAyuda } from '../models/SolicitudAyuda.js'
 import { HORA_REGEX, ISLAS } from '../models/constantes.js'
 import { detectarTipoImagen } from '../middleware/subidaImagen.js'
+import { notificar } from '../services/notificaciones.js'
 import {
   Oferta,
   construirTextoBusqueda,
@@ -188,10 +189,11 @@ function leerTurnos(valor: unknown) {
   const turnos = []
 
   for (const turno of valor) {
-    const { fecha: textoFecha, horaInicio, horaFin, plazas } = turno ?? {}
+    const { id, fecha: textoFecha, horaInicio, horaFin, plazas } = turno ?? {}
     const fecha = typeof textoFecha === 'string' ? leerFecha(textoFecha) : null
 
     if (
+      (id !== undefined && (typeof id !== 'string' || !isObjectIdOrHexString(id))) ||
       !fecha ||
       typeof horaInicio !== 'string' ||
       typeof horaFin !== 'string' ||
@@ -203,7 +205,7 @@ function leerTurnos(valor: unknown) {
       return null
     }
 
-    turnos.push({ fecha, horaInicio, horaFin, plazas, plazasLibres: plazas })
+    turnos.push({ id: id as string | undefined, fecha, horaInicio, horaFin, plazas, plazasLibres: plazas })
   }
 
   return turnos
@@ -219,6 +221,27 @@ function leerCuerpo(req: Request): Record<string, unknown> | null {
   } catch {
     return null
   }
+}
+
+// Los validadores propios tienen mensaje en español; los de Mongoose no
+function mensajeDeValidacion(error: mongoose.Error.ValidationError): string {
+  const propio = Object.values(error.errors).find(
+    (detalle) => 'kind' in detalle && detalle.kind === 'user defined'
+  )
+  return propio?.message ?? 'Los datos de la oferta no son válidos'
+}
+
+// Solo se guarda una imagen si la peticion trae una y su firma es valida
+async function guardarImagenSubida(
+  archivo: Express.Multer.File,
+  tipo: { contentType: string; extension: string }
+): Promise<Types.ObjectId> {
+  const imagen = await Imagen.create({
+    nombre: `oferta-${randomUUID()}${tipo.extension}`,
+    contentType: tipo.contentType,
+    data: archivo.buffer
+  })
+  return imagen._id
 }
 
 // POST /api/ofertas -> crea una oferta del ofertante que ha iniciado sesion.
@@ -270,11 +293,13 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
     return
   }
 
-  const turnos = leerTurnos(turnosRecibidos)
-  if (!turnos) {
+  const turnosLeidos = leerTurnos(turnosRecibidos)
+  if (!turnosLeidos) {
     res.status(400).json({ message: 'Los turnos no son válidos' })
     return
   }
+  // Al crear no hay turnos previos: un id recibido no significa nada y se descarta
+  const turnos = turnosLeidos.map(({ id: _id, ...turno }) => turno)
 
   const hoy = hoyEnUtc()
   if (turnos.some((turno) => turno.fecha < hoy)) {
@@ -306,12 +331,7 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
 
     // Se guarda despues de validar todo lo demas para no dejar imagenes sueltas
     if (req.file && tipoImagen) {
-      const imagen = await Imagen.create({
-        nombre: `oferta-${randomUUID()}${tipoImagen.extension}`,
-        contentType: tipoImagen.contentType,
-        data: req.file.buffer
-      })
-      imagenId = imagen._id
+      imagenId = await guardarImagenSubida(req.file, tipoImagen)
     }
 
     const usuario = req.usuario!
@@ -347,11 +367,7 @@ export async function crearOferta(req: Request, res: Response): Promise<void> {
     }
 
     if (error instanceof mongoose.Error.ValidationError) {
-      // Los validadores propios tienen mensaje en español; los de Mongoose no
-      const propio = Object.values(error.errors).find(
-        (detalle) => 'kind' in detalle && detalle.kind === 'user defined'
-      )
-      res.status(400).json({ message: propio?.message ?? 'Los datos de la oferta no son válidos' })
+      res.status(400).json({ message: mensajeDeValidacion(error) })
       return
     }
 
@@ -392,6 +408,21 @@ export async function cerrarOferta(req: Request, res: Response): Promise<void> {
         .json({ message: existe ? 'La oferta ya está cerrada' : MENSAJE_NO_EXISTE })
       return
     }
+
+    // Avisa a quien seguia pendiente o aceptado: la oferta ya no aparecera en la web
+    const afectados = await Inscripcion.find({
+      ofertaId: oferta._id,
+      estado: { $in: ['pendiente', 'aceptada'] }
+    }).select('voluntarioId')
+    await notificar(
+      afectados.map((inscripcion) => ({
+        usuarioId: inscripcion.voluntarioId,
+        tipo: 'oferta_cerrada' as const,
+        titulo: 'Oferta cerrada',
+        mensaje: `${req.usuario!.nombre} ha cerrado la oferta "${oferta.titulo}".`,
+        enlace: '/mis_inscripciones'
+      }))
+    )
 
     res.json({ id: oferta.id, estado: oferta.estado })
   } catch (error) {
@@ -449,24 +480,40 @@ export async function eliminarOferta(req: Request, res: Response): Promise<void>
   }
 }
 
+// Para el propio ofertante: incluye la direccion y el estado de la oferta
+function serializarOfertaPropia(oferta: Awaited<ReturnType<typeof consultarOfertas>>[number]) {
+  return {
+    ...serializarOferta(oferta),
+    // Son sus propios datos: aqui si se devuelve la direccion
+    ubicacion: oferta.ubicacion && {
+      isla: oferta.ubicacion.isla,
+      municipio: oferta.ubicacion.municipio,
+      direccion: oferta.ubicacion.direccion
+    },
+    estado: oferta.estado,
+    terminada: estaTerminada(oferta.turnos),
+    fechaPublicacion: oferta.fechaPublicacion,
+    creadaEn: oferta.createdAt
+  }
+}
+
 // GET /api/ofertas/mias -> todas las ofertas del ofertante, en cualquier estado
 export async function getMisOfertas(req: Request, res: Response): Promise<void> {
   try {
-    const ofertas = await consultarOfertas({ ofertanteId: req.usuario!.id }, { createdAt: -1 })
+    const [ofertas, pendientes] = await Promise.all([
+      consultarOfertas({ ofertanteId: req.usuario!.id }, { createdAt: -1 }),
+      Inscripcion.aggregate<{ _id: Types.ObjectId; total: number }>([
+        { $match: { ofertanteId: new mongoose.Types.ObjectId(req.usuario!.id), estado: 'pendiente' } },
+        { $group: { _id: '$ofertaId', total: { $sum: 1 } } }
+      ])
+    ])
+
+    const pendientesPorOferta = new Map(pendientes.map(({ _id, total }) => [_id.toString(), total]))
 
     res.json(
       ofertas.map((oferta) => ({
-        ...serializarOferta(oferta),
-        // Son sus propios datos: aqui si se devuelve la direccion
-        ubicacion: oferta.ubicacion && {
-          isla: oferta.ubicacion.isla,
-          municipio: oferta.ubicacion.municipio,
-          direccion: oferta.ubicacion.direccion
-        },
-        estado: oferta.estado,
-        terminada: estaTerminada(oferta.turnos),
-        fechaPublicacion: oferta.fechaPublicacion,
-        creadaEn: oferta.createdAt
+        ...serializarOfertaPropia(oferta),
+        candidatosPendientes: pendientesPorOferta.get(oferta.id) ?? 0
       }))
     )
   } catch (error) {
@@ -496,5 +543,242 @@ export async function getOferta(req: Request, res: Response): Promise<void> {
   } catch (error) {
     console.error('Error al obtener la oferta:', error)
     res.status(500).json({ message: 'Error al obtener la oferta' })
+  }
+}
+
+// GET /api/ofertas/mias/:id -> una oferta propia, en cualquier estado, para editarla
+export async function getMiOferta(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: MENSAJE_NO_EXISTE })
+    return
+  }
+
+  try {
+    const [oferta] = await consultarOfertas({ _id: id, ofertanteId: req.usuario!.id })
+
+    if (!oferta) {
+      res.status(404).json({ message: MENSAJE_NO_EXISTE })
+      return
+    }
+
+    res.json(serializarOfertaPropia(oferta))
+  } catch (error) {
+    console.error('Error al obtener la oferta del ofertante:', error)
+    res.status(500).json({ message: 'Error al obtener la oferta' })
+  }
+}
+
+const MENSAJE_NO_EDITABLE = 'Solo se pueden editar las ofertas publicadas que no han terminado'
+
+// PUT /api/ofertas/:id -> modifica una oferta propia mientras esta activa.
+// Acepta los mismos datos que crearOferta. Los turnos que ya existian llevan su "id";
+// "quitarImagen": true vuelve a usar la imagen de la categoria
+export async function editarOferta(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: MENSAJE_NO_EXISTE })
+    return
+  }
+
+  const cuerpo = leerCuerpo(req)
+  if (!cuerpo) {
+    res.status(400).json({ message: 'Los datos de la oferta no son válidos' })
+    return
+  }
+
+  const tipoImagen = req.file ? detectarTipoImagen(req.file.buffer) : undefined
+  if (tipoImagen === null) {
+    res.status(400).json({ message: 'La imagen debe ser JPG, PNG o WebP' })
+    return
+  }
+
+  const {
+    titulo,
+    descripcion,
+    categoriaIds = [],
+    modalidad,
+    tipoDuracion,
+    ubicacion,
+    requisitos,
+    edadMinima,
+    turnos: turnosRecibidos = [],
+    quitarImagen = false
+  } = cuerpo as Record<string, any>
+
+  if (
+    typeof titulo !== 'string' || !titulo.trim() ||
+    typeof descripcion !== 'string' || !descripcion.trim()
+  ) {
+    res.status(400).json({ message: 'El título y la descripción son obligatorios' })
+    return
+  }
+
+  if (
+    !Array.isArray(categoriaIds) ||
+    !categoriaIds.every((id) => typeof id === 'string' && isObjectIdOrHexString(id))
+  ) {
+    res.status(400).json({ message: 'Las categorías no son válidas' })
+    return
+  }
+
+  const turnos = leerTurnos(turnosRecibidos)
+  const idsTurnos = turnos?.flatMap((turno) => (turno.id ? [turno.id] : [])) ?? []
+  if (!turnos || new Set(idsTurnos).size !== idsTurnos.length) {
+    res.status(400).json({ message: 'Los turnos no son válidos' })
+    return
+  }
+
+  const hoy = hoyEnUtc()
+  if (turnos.length === 0) {
+    res.status(400).json({ message: 'La oferta necesita al menos un turno próximo' })
+    return
+  }
+  if (turnos.some((turno) => turno.fecha < hoy)) {
+    res.status(400).json({ message: 'Los turnos no pueden tener una fecha pasada' })
+    return
+  }
+
+  const ubicacionRecibida =
+    modalidad !== 'online' && ubicacion && typeof ubicacion === 'object'
+      ? { isla: ubicacion.isla, municipio: ubicacion.municipio, direccion: ubicacion.direccion }
+      : undefined
+
+  if (modalidad !== 'online' && !ubicacionRecibida) {
+    res.status(400).json({ message: 'La oferta necesita una ubicación' })
+    return
+  }
+
+  let imagenNueva: Types.ObjectId | undefined
+
+  try {
+    const oferta = await Oferta.findOne({ _id: id, ofertanteId: req.usuario!.id })
+
+    if (!oferta) {
+      res.status(404).json({ message: MENSAJE_NO_EXISTE })
+      return
+    }
+
+    if (oferta.estado !== 'publicada' || estaTerminada(oferta.turnos)) {
+      res.status(409).json({ message: MENSAJE_NO_EDITABLE })
+      return
+    }
+
+    // Los turnos que ya pasaron forman parte del historial y no se tocan
+    const pasados = oferta.turnos.filter((turno) => turno.fecha < hoy)
+    const proximos = oferta.turnos.filter((turno) => turno.fecha >= hoy)
+
+    const turnosFinales = []
+    for (const { id: turnoId, ...turno } of turnos) {
+      if (!turnoId) {
+        turnosFinales.push(turno)
+        continue
+      }
+
+      const actual = proximos.find((otro) => otro._id.toString() === turnoId)
+      if (!actual) {
+        res.status(400).json({ message: 'Los turnos no son válidos' })
+        return
+      }
+
+      // Las plazas ya reservadas se mantienen: solo cambian las libres
+      const ocupadas = actual.plazas - actual.plazasLibres
+      if (turno.plazas < ocupadas) {
+        res.status(409).json({
+          message: `Un turno ya tiene ${ocupadas} plazas ocupadas: no puede tener menos plazas`
+        })
+        return
+      }
+
+      turnosFinales.push({ ...turno, _id: actual._id, plazasLibres: turno.plazas - ocupadas })
+    }
+
+    const quitadosConInscritos = proximos.some(
+      (turno) => turno.plazasLibres < turno.plazas && !idsTurnos.includes(turno._id.toString())
+    )
+    if (quitadosConInscritos) {
+      res.status(409).json({ message: 'No puedes quitar un turno que ya tiene voluntarios inscritos' })
+      return
+    }
+
+    const idsUnicos = [...new Set<string>(categoriaIds)]
+    const existentes = await Categoria.countDocuments({ _id: { $in: idsUnicos }, activa: true })
+    if (existentes !== idsUnicos.length) {
+      res.status(400).json({ message: 'Las categorías no son válidas' })
+      return
+    }
+
+    const imagenesAnteriores = oferta.imagenes
+    let imagenes = imagenesAnteriores
+    if (req.file && tipoImagen) {
+      imagenNueva = await guardarImagenSubida(req.file, tipoImagen)
+      imagenes = [imagenNueva]
+    } else if (quitarImagen === true) {
+      imagenes = []
+    }
+
+    const usuario = req.usuario!
+    oferta.set({
+      titulo,
+      descripcion,
+      categoriaIds: idsUnicos,
+      modalidad,
+      tipoDuracion,
+      ubicacion: ubicacionRecibida,
+      requisitos: typeof requisitos === 'string' && requisitos.trim() ? requisitos : undefined,
+      edadMinima: edadMinima ?? undefined,
+      imagenes,
+      turnos: [...pasados, ...turnosFinales],
+      textoBusqueda: construirTextoBusqueda([
+        titulo,
+        descripcion,
+        usuario.nombre,
+        ubicacionRecibida?.municipio
+      ])
+    })
+
+    await oferta.validate()
+
+    // Una inscripcion o un cierre a la vez cambian updatedAt: asi no se pisan las plazas reservadas
+    const { matchedCount } = await Oferta.updateOne(
+      { _id: oferta._id, estado: 'publicada', updatedAt: oferta.updatedAt },
+      oferta.getChanges()
+    )
+
+    if (matchedCount === 0) {
+      if (imagenNueva) await Imagen.deleteOne({ _id: imagenNueva })
+      res.status(409).json({
+        message: 'La oferta ha cambiado mientras la editabas. Recarga la página e inténtalo de nuevo'
+      })
+      return
+    }
+
+    // Las imagenes del seed se comparten entre ofertas; solo se borran las subidas con la oferta
+    const sinUso = imagenesAnteriores.filter(
+      (anterior) => !imagenes.some((actual) => actual.equals(anterior))
+    )
+    if (sinUso.length > 0) {
+      await Imagen.deleteMany({ _id: { $in: sinUso }, nombre: /^oferta-/ }).catch((borrado) => {
+        console.error('Error al borrar la imagen anterior de una oferta:', borrado)
+      })
+    }
+
+    res.json({ id: oferta.id, estado: oferta.estado })
+  } catch (error) {
+    if (imagenNueva) {
+      await Imagen.deleteOne({ _id: imagenNueva }).catch((borrado) => {
+        console.error('Error al borrar la imagen de una oferta no editada:', borrado)
+      })
+    }
+
+    if (error instanceof mongoose.Error.ValidationError) {
+      res.status(400).json({ message: mensajeDeValidacion(error) })
+      return
+    }
+
+    console.error('Error al editar la oferta:', error)
+    res.status(500).json({ message: 'Error al editar la oferta' })
   }
 }

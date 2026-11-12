@@ -1,0 +1,198 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la pantalla de candidatos de una oferta.
+ */
+.candidatos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 860px;
+}
+
+.candidatos-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.candidatos-filtro {
+  padding: 6px 14px;
+  border: 1.5px solid var(--borde);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--texto);
+  font: 600 14px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+.candidatos-filtro span {
+  margin-left: 4px;
+  color: var(--texto-suave);
+}
+
+.candidatos-filtro.activo {
+  border-color: var(--verde);
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+}
+
+.candidatos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.candidato-cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.candidato-avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  font-weight: 700;
+}
+
+.candidato-resumen {
+  flex: 1;
+  min-width: 0;
+}
+
+.candidato-resumen h3 {
+  margin: 0 0 4px;
+  color: var(--texto);
+  font-size: 18px;
+}
+
+.candidato-resumen p,
+.candidato-perfil p,
+.candidato-turnos li {
+  margin: 2px 0;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+.candidato-turnos {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.candidato-turnos ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.candidato-mensaje {
+  margin: 12px 0 0;
+  font-style: italic;
+  color: var(--texto);
+}
+
+.candidato-perfil {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borde);
+}
+
+.candidato-perfil h4 {
+  margin: 14px 0 4px;
+  color: var(--verde-oscuro);
+  font-size: 15px;
+}
+
+.candidato-estadisticas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0;
+}
+
+.candidato-estadisticas div {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--verde-claro);
+}
+
+.candidato-estadisticas dt {
+  color: var(--texto-suave);
+  font-size: 12px;
+}
+
+.candidato-estadisticas dd {
+  margin: 2px 0 0;
+  color: var(--verde-oscuro);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.candidato-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.candidato-rechazo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.candidato-rechazo textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  font: 15px 'DM Sans', sans-serif;
+  resize: vertical;
+}
+
+.candidato-aceptar {
+  border-color: var(--verde);
+  color: var(--verde-oscuro);
+}
+
+.candidato-aceptar:hover:not(:disabled) {
+  background: var(--verde-claro);
+}
+
+.candidato-estado-pendiente {
+  background: #fff4dc;
+  color: #8a5a00;
+}
+
+.candidato-estado-aceptada,
+.candidato-estado-completada {
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+}
+
+.candidato-estado-rechazada {
+  background: #fdecea;
+  color: #a12a1f;
+}
+
+@media (max-width: 560px) {
+  .candidato-estadisticas {
+    grid-template-columns: 1fr;
+  }
+
+  .candidato-cabecera {
+    flex-wrap: wrap;
+  }
+}

@@ -95,6 +95,8 @@ const userSchema = new Schema(
     municipio: { type: String, trim: true },
     consentimientos: { type: [consentimientoSchema], default: [] },
     ultimoAcceso: { type: Date },
+    // Los JWT emitidos antes de esta fecha dejan de valer (p. ej. tras restablecer la contrasena)
+    passwordCambiadaEn: { type: Date },
     // Solo rol voluntario
     voluntario: { type: perfilVoluntarioSchema },
     // Solo rol ofertante

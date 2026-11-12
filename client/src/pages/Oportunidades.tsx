@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import './HomePage.css'
 import './Oportunidades.css'
 import type { Usuario } from './Login.tsx'
+import Notificaciones from '../components/Notificaciones.tsx'
 import TarjetaOferta from '../components/TarjetaOferta.tsx'
 import { ISLAS, hoyIso } from '../ofertas.ts'
 import { useOfertasPublicadas } from '../useOfertasPublicadas.ts'
@@ -101,6 +102,7 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
         </nav>
 
         <div className="authenticated-user">
+          <Notificaciones />
           <span>Hola, {usuario.nombre}</span>
           <button type="button" className="btn btn-outline" onClick={onCerrarSesion}>
             Cerrar sesión

@@ -20,7 +20,7 @@ type HistorialItem = {
   organizador: string
   fecha: string | null
   horas: number
-  estado: 'pendiente' | 'aceptada' | 'rechazada' | 'cancelada' | 'completada' | 'no_presentado'
+  estado: 'pendiente' | 'en_espera' | 'aceptada' | 'rechazada' | 'cancelada' | 'completada' | 'no_presentado'
   valoracion: { puntuacion: number; comentario: string | null } | null
 }
 
@@ -113,6 +113,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
   function etiquetaEstado(estado: HistorialItem['estado']): string {
     return {
       pendiente: 'Pendiente',
+      en_espera: 'En lista de espera',
       aceptada: 'Aceptada',
       rechazada: 'Rechazada',
       cancelada: 'Cancelada',

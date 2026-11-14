@@ -8,6 +8,7 @@ import Notificaciones from '../components/Notificaciones.tsx'
 
 type EstadoInscripcion =
   | 'pendiente'
+  | 'en_espera'
   | 'aceptada'
   | 'rechazada'
   | 'cancelada'
@@ -25,6 +26,7 @@ type Inscripcion = {
   inicio: string | null
   puedeCancelar: boolean
   cancelacionTardia: boolean
+  posicionEspera: number | null
   motivoRechazo: string | null
   valoracion: { puntuacion: number; comentario: string | null } | null
 }
@@ -36,6 +38,7 @@ type MisInscripcionesProps = {
 
 const ETIQUETAS_ESTADO: Record<EstadoInscripcion, string> = {
   pendiente: 'Pendiente',
+  en_espera: 'En lista de espera',
   aceptada: 'Aceptada',
   rechazada: 'Rechazada',
   cancelada: 'Cancelada',
@@ -200,6 +203,11 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
                         </h3>
                         <p className="inscription-organizer">Organiza: {inscripcion.organizador}</p>
                         <p className="inscription-hours">{inscripcion.horas} horas previstas</p>
+                        {inscripcion.estado === 'en_espera' && inscripcion.posicionEspera !== null && (
+                          <p className="inscription-organizer">
+                            Puesto {inscripcion.posicionEspera} en la lista de espera. Si se libera una plaza, te avisaremos.
+                          </p>
+                        )}
                         {inscripcion.estado === 'rechazada' && inscripcion.motivoRechazo && (
                           <p className="inscription-organizer">
                             Motivo del rechazo: {inscripcion.motivoRechazo}
@@ -208,7 +216,9 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
                         {cancelando === inscripcion.id && (
                           <div className="inscription-cancel" role="alertdialog" aria-label="Confirmar cancelación">
                             <p>
-                              {esCancelacionTardia(inscripcion.inicio)
+                              {inscripcion.estado === 'en_espera'
+                                ? '¿Seguro que quieres salir de la lista de espera?'
+                                : esCancelacionTardia(inscripcion.inicio)
                                 ? `Quedan menos de ${ANTELACION_CANCELAR_HORAS} h para que empiece. Puedes cancelar, pero quedará registrada como cancelación tardía en tu historial.`
                                 : '¿Seguro que quieres cancelar? Tu plaza quedará libre para otra persona.'}
                             </p>

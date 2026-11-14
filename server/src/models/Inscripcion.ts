@@ -8,6 +8,8 @@ import { Schema, model, type InferSchemaType } from 'mongoose'
 
 export const ESTADOS_INSCRIPCION = [
   'pendiente',
+  // Sin plaza: espera a que se libere una en sus turnos
+  'en_espera',
   'aceptada',
   'rechazada',
   'cancelada',
@@ -16,7 +18,7 @@ export const ESTADOS_INSCRIPCION = [
 ] as const
 
 // Estados que impiden volver a inscribirse en la misma oferta
-const ESTADOS_QUE_BLOQUEAN = ['pendiente', 'aceptada', 'completada', 'no_presentado']
+const ESTADOS_QUE_BLOQUEAN = ['pendiente', 'en_espera', 'aceptada', 'completada', 'no_presentado']
 
 const valoracionSchema = new Schema(
   {
@@ -61,7 +63,8 @@ inscripcionSchema.index(
   { voluntarioId: 1, ofertaId: 1 },
   { unique: true, partialFilterExpression: { estado: { $in: ESTADOS_QUE_BLOQUEAN } } }
 )
-inscripcionSchema.index({ ofertaId: 1, estado: 1 })
+// Tambien sirve para recorrer la lista de espera de una oferta por orden de llegada
+inscripcionSchema.index({ ofertaId: 1, estado: 1, createdAt: 1 })
 inscripcionSchema.index({ ofertanteId: 1, estado: 1 })
 inscripcionSchema.index({ voluntarioId: 1, estado: 1 })
 

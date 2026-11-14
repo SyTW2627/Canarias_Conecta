@@ -30,6 +30,12 @@ function horasEntre(horaInicio: string, horaFin: string): number {
   return (finHoras * 60 + finMinutos - inicioHoras * 60 - inicioMinutos) / 60
 }
 
+// La fecha del turno es el dia a las 00:00 UTC y la hora va aparte
+function finDelTurno(turno: Pick<Turno, 'fecha' | 'horaFin'>): Date {
+  const [horas, minutos] = turno.horaFin.split(':').map(Number)
+  return new Date(turno.fecha.getTime() + (horas * 60 + minutos) * 60 * 1000)
+}
+
 function fechaMasReciente(turnos: Turno[]): Date | null {
   return turnos.reduce<Date | null>(
     (reciente, turno) => (!reciente || turno.fecha > reciente ? turno.fecha : reciente),
@@ -241,10 +247,20 @@ export async function getCandidatosOferta(req: Request, res: Response): Promise<
         const perfil = voluntario.voluntario
         // El contacto solo se comparte con la entidad una vez aceptado el voluntario
         const compartirContacto = ['aceptada', 'completada'].includes(inscripcion.estado)
+        const turnos = oferta.turnos.filter((turno) =>
+          inscripcion.turnoIds.some((turnoId) => turnoId.toString() === turno._id.toString()),
+        )
 
         return {
           id: inscripcion.id,
           estado: inscripcion.estado,
+          // Solo se puede confirmar la asistencia cuando han terminado todos sus turnos
+          terminada: turnos.length > 0 && turnos.every((turno) => finDelTurno(turno) <= new Date()),
+          horasPrevistas: turnos.reduce(
+            (total, turno) => total + horasEntre(turno.horaInicio, turno.horaFin),
+            0,
+          ),
+          horasRealizadas: inscripcion.horasRealizadas ?? null,
           mensaje: inscripcion.mensaje ?? null,
           motivoRechazo: inscripcion.motivoRechazo ?? null,
           fechaSolicitud: inscripcion.createdAt,
@@ -360,4 +376,94 @@ export function aceptarInscripcion(req: Request, res: Response): Promise<void> {
 
 export function rechazarInscripcion(req: Request, res: Response): Promise<void> {
   return resolverInscripcion(req, res, 'rechazada')
+}
+
+const HORAS_MAX = 24 * 30
+
+// PATCH /api/inscripciones/:id/completar -> el ofertante confirma si el voluntario participo
+export async function completarInscripcion(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+  const { asistio, horas } = req.body ?? {}
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: 'La inscripción no existe' })
+    return
+  }
+  if (typeof asistio !== 'boolean') {
+    res.status(400).json({ message: 'Indica si el voluntario asistió' })
+    return
+  }
+  if (
+    horas !== undefined &&
+    (typeof horas !== 'number' || !Number.isFinite(horas) || horas <= 0 || horas > HORAS_MAX)
+  ) {
+    res.status(400).json({ message: 'Las horas realizadas no son válidas' })
+    return
+  }
+
+  try {
+    const inscripcion = await Inscripcion.findOne({
+      _id: id,
+      ofertanteId: req.usuario!.id,
+    })
+    if (!inscripcion) {
+      res.status(404).json({ message: 'La inscripción no existe' })
+      return
+    }
+    if (inscripcion.estado !== 'aceptada') {
+      res.status(409).json({ message: 'Solo se puede completar una inscripción aceptada' })
+      return
+    }
+
+    const oferta = await Oferta.findById(inscripcion.ofertaId).select('titulo turnos')
+    const turnos = (oferta?.turnos ?? []).filter((turno) =>
+      inscripcion.turnoIds.some((turnoId) => turnoId.toString() === turno._id.toString()),
+    )
+    if (turnos.length === 0 || turnos.some((turno) => finDelTurno(turno) > new Date())) {
+      res.status(409).json({ message: 'La actividad todavía no ha terminado' })
+      return
+    }
+
+    const horasRealizadas = asistio
+      ? (horas ?? turnos.reduce((total, turno) => total + horasEntre(turno.horaInicio, turno.horaFin), 0))
+      : 0
+
+    // El filtro incluye el estado: si llegan dos peticiones a la vez, solo una suma las horas
+    const actualizada = await Inscripcion.findOneAndUpdate(
+      { _id: inscripcion._id, estado: 'aceptada' },
+      {
+        estado: asistio ? 'completada' : 'no_presentado',
+        horasRealizadas,
+      },
+      { returnDocument: 'after' },
+    )
+    if (!actualizada) {
+      res.status(409).json({ message: 'Esta inscripción ya se ha completado' })
+      return
+    }
+
+    if (asistio) {
+      await User.updateOne(
+        { _id: inscripcion.voluntarioId },
+        {
+          $inc: {
+            'voluntario.estadisticas.horasTotales': horasRealizadas,
+            'voluntario.estadisticas.colaboraciones': 1,
+          },
+        },
+      )
+      await notificar({
+        usuarioId: inscripcion.voluntarioId,
+        tipo: 'inscripcion_completada',
+        titulo: 'Colaboración completada',
+        mensaje: `${req.usuario!.nombre} ha confirmado tu participación en "${oferta?.titulo ?? 'una oferta'}". Se han sumado ${horasRealizadas} h a tu perfil.`,
+        enlace: '/mis_inscripciones',
+      })
+    }
+
+    res.json({ id: actualizada.id, estado: actualizada.estado, horasRealizadas })
+  } catch (error) {
+    console.error('Error al completar la inscripción:', error)
+    res.status(500).json({ message: 'No se pudo completar la inscripción' })
+  }
 }

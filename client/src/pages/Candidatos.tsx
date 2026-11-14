@@ -22,6 +22,9 @@ type EstadoInscripcion =
 type Candidato = {
   id: string
   estado: EstadoInscripcion
+  terminada: boolean
+  horasPrevistas: number
+  horasRealizadas: number | null
   mensaje: string | null
   motivoRechazo: string | null
   fechaSolicitud: string
@@ -55,11 +58,12 @@ type CandidatosProps = {
   onCerrarSesion: () => void
 }
 
-type Filtro = 'pendiente' | 'aceptada' | 'rechazada' | 'todas'
+type Filtro = 'pendiente' | 'aceptada' | 'completada' | 'rechazada' | 'todas'
 
 const FILTROS: { valor: Filtro; texto: string }[] = [
   { valor: 'pendiente', texto: 'Pendientes' },
   { valor: 'aceptada', texto: 'Aceptados' },
+  { valor: 'completada', texto: 'Finalizados' },
   { valor: 'rechazada', texto: 'Rechazados' },
   { valor: 'todas', texto: 'Todos' },
 ]
@@ -78,6 +82,12 @@ const FORMATO_SOLICITUD = new Intl.DateTimeFormat('es-ES', {
   month: 'long',
   year: 'numeric',
 })
+
+// "Finalizados" agrupa a quien participo y a quien no se presento
+function filtroDeEstado(estado: EstadoInscripcion): Filtro | null {
+  if (estado === 'no_presentado') return 'completada'
+  return estado === 'cancelada' ? null : estado
+}
 
 function iniciales(nombre: string): string {
   return nombre
@@ -98,6 +108,8 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
   const [rechazando, setRechazando] = useState<string | null>(null)
   const [motivo, setMotivo] = useState('')
   const [enCurso, setEnCurso] = useState<string | null>(null)
+  const [completando, setCompletando] = useState<string | null>(null)
+  const [horas, setHoras] = useState('')
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -137,16 +149,23 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
   )
 
   const contadores = useMemo(() => {
-    const cuenta: Record<Filtro, number> = { pendiente: 0, aceptada: 0, rechazada: 0, todas: 0 }
+    const cuenta: Record<Filtro, number> = {
+      pendiente: 0,
+      aceptada: 0,
+      completada: 0,
+      rechazada: 0,
+      todas: 0,
+    }
     for (const candidato of candidatos ?? []) {
       cuenta.todas++
-      if (candidato.estado in cuenta) cuenta[candidato.estado as Filtro]++
+      const grupo = filtroDeEstado(candidato.estado)
+      if (grupo) cuenta[grupo]++
     }
     return cuenta
   }, [candidatos])
 
   const visibles = (candidatos ?? []).filter(
-    (candidato) => filtro === 'todas' || candidato.estado === filtro,
+    (candidato) => filtro === 'todas' || filtroDeEstado(candidato.estado) === filtro,
   )
 
   async function resolver(candidato: Candidato, decision: 'aceptar' | 'rechazar') {
@@ -171,6 +190,37 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
         setMotivo('')
       }
       // Se recarga siempre: otra pestaña puede haber resuelto la solicitud
+      setRecargas((n) => n + 1)
+    } catch {
+      setErrorAccion('No se pudo conectar con el servidor')
+    } finally {
+      setEnCurso(null)
+    }
+  }
+
+  async function completar(candidato: Candidato, asistio: boolean) {
+    const horasNumero = Number(horas.replace(',', '.'))
+    if (asistio && !(horasNumero > 0)) {
+      setErrorAccion('Indica las horas realizadas')
+      return
+    }
+
+    setErrorAccion(null)
+    setEnCurso(candidato.id)
+
+    try {
+      const res = await fetch(`/api/inscripciones/${encodeURIComponent(candidato.id)}/completar`, {
+        method: 'PATCH',
+        headers: cabecerasConSesion(),
+        body: JSON.stringify(asistio ? { asistio, horas: horasNumero } : { asistio }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setErrorAccion(data.message ?? 'No se pudo completar la inscripción')
+      } else {
+        setCompletando(null)
+      }
       setRecargas((n) => n + 1)
     } catch {
       setErrorAccion('No se pudo conectar con el servidor')
@@ -370,6 +420,34 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                         <p className="gestion-ayuda">Motivo del rechazo: {candidato.motivoRechazo}</p>
                       )}
 
+                      {candidato.estado === 'completada' && candidato.horasRealizadas !== null && (
+                        <p className="gestion-ayuda">
+                          Participó: {candidato.horasRealizadas} h sumadas a su perfil.
+                        </p>
+                      )}
+
+                      {candidato.estado === 'aceptada' && !candidato.terminada && (
+                        <p className="gestion-ayuda">
+                          Podrás confirmar su asistencia cuando terminen sus turnos.
+                        </p>
+                      )}
+
+                      {completando === candidato.id && (
+                        <div className="candidato-rechazo">
+                          <label htmlFor={`horas-${candidato.id}`}>
+                            Horas realizadas (se suman a su perfil)
+                          </label>
+                          <input
+                            id={`horas-${candidato.id}`}
+                            type="number"
+                            min="0.5"
+                            step="0.5"
+                            value={horas}
+                            onChange={(evento) => setHoras(evento.target.value)}
+                          />
+                        </div>
+                      )}
+
                       {rechazando === candidato.id && (
                         <div className="candidato-rechazo">
                           <label htmlFor={`motivo-${candidato.id}`}>
@@ -416,6 +494,53 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                               disabled={enCurso !== null}
                             >
                               Rechazar
+                            </button>
+                          </>
+                        )}
+
+                        {candidato.estado === 'aceptada' &&
+                          candidato.terminada &&
+                          completando !== candidato.id && (
+                            <>
+                              <button
+                                type="button"
+                                className="gestion-accion candidato-aceptar"
+                                onClick={() => {
+                                  setCompletando(candidato.id)
+                                  setHoras(String(candidato.horasPrevistas))
+                                }}
+                                disabled={enCurso !== null}
+                              >
+                                Participó
+                              </button>
+                              <button
+                                type="button"
+                                className="gestion-accion gestion-accion-peligro"
+                                onClick={() => completar(candidato, false)}
+                                disabled={enCurso !== null}
+                              >
+                                {enCurso === candidato.id ? 'Guardando...' : 'No se presentó'}
+                              </button>
+                            </>
+                          )}
+
+                        {completando === candidato.id && (
+                          <>
+                            <button
+                              type="button"
+                              className="gestion-accion candidato-aceptar"
+                              onClick={() => completar(candidato, true)}
+                              disabled={enCurso !== null}
+                            >
+                              {enCurso === candidato.id ? 'Guardando...' : 'Confirmar participación'}
+                            </button>
+                            <button
+                              type="button"
+                              className="gestion-accion"
+                              onClick={() => setCompletando(null)}
+                              disabled={enCurso !== null}
+                            >
+                              Cancelar
                             </button>
                           </>
                         )}

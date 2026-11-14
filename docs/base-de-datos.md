@@ -67,7 +67,11 @@ su **valoración**.
   `completada`, con los datos de su oferta. No hay tabla ni atributo aparte: así incluye fecha, horas
   y valoración, y no hay dos copias que mantener.
 - **Estados calculados.** Una oferta llena o con todos sus turnos pasados no cambia de estado: se
-  calcula a partir de los turnos, porque ningún proceso actualizaría ese estado.
+  calcula a partir de los turnos, porque ningún proceso actualizaría ese estado. El cliente la
+  muestra como **Completa** cuando tiene turnos próximos pero ninguno con plazas libres
+  (`estaCompleta` en `client/src/ofertas.ts`), y como **Finalizada** cuando ya no le quedan turnos
+  próximos. Las plazas disponibles que se muestran suman solo los turnos próximos: las de un turno
+  pasado ya no se pueden pedir.
 
 ## Reglas
 

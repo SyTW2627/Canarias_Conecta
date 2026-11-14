@@ -13,7 +13,9 @@ import {
   ISLAS,
   MODALIDADES,
   esTurnoProximo,
+  estaCompleta,
   formatearFecha,
+  textoPlazas,
   type Oferta,
 } from '../ofertas.ts'
 
@@ -21,11 +23,6 @@ type OfertaDetalleProps = {
   ofertaId: string
   usuario: Usuario
   onCerrarSesion: () => void
-}
-
-function textoPlazas(plazasLibres: number): string {
-  if (plazasLibres === 0) return 'Sin plazas'
-  return plazasLibres === 1 ? '1 plaza disponible' : `${plazasLibres} plazas disponibles`
 }
 
 function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps) {
@@ -51,7 +48,12 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
         }
 
         setOferta(data)
-        setTurnosSeleccionados(data.turnos.filter(esTurnoProximo).map((turno: { id: string }) => turno.id))
+        // Solo se preseleccionan los turnos que aun tienen plazas
+        setTurnosSeleccionados(
+          (data as Oferta).turnos
+            .filter((turno) => esTurnoProximo(turno) && turno.plazasLibres > 0)
+            .map((turno) => turno.id),
+        )
       } catch {
         if (!controlador.signal.aborted) {
           setError('No se pudo conectar con el servidor')
@@ -64,6 +66,7 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
   }, [ofertaId])
 
   const turnosProximos = oferta?.turnos.filter(esTurnoProximo) ?? []
+  const completa = oferta !== null && estaCompleta(oferta)
 
   async function inscribirse() {
     if (!oferta || turnosSeleccionados.length === 0) return
@@ -181,6 +184,7 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
                         <label className="oferta-turno-seleccion">
                           <input
                             type="checkbox"
+                            disabled={turno.plazasLibres === 0}
                             checked={turnosSeleccionados.includes(turno.id)}
                             onChange={() =>
                               setTurnosSeleccionados((seleccionados) =>
@@ -203,7 +207,12 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
                 ) : (
                   <p>Esta oferta no tiene turnos próximos.</p>
                 )}
-                {usuario.rol === 'voluntario' && turnosProximos.length > 0 && (
+                {completa && (
+                  <p className="oferta-completa" role="status">
+                    Esta oferta está completa: no quedan plazas libres en sus próximos turnos.
+                  </p>
+                )}
+                {usuario.rol === 'voluntario' && turnosProximos.length > 0 && !completa && (
                   <>
                     <button
                       type="button"

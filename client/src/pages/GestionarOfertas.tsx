@@ -14,6 +14,7 @@ import {
   MODALIDADES,
   cabecerasConSesion,
   esTurnoProximo,
+  estaCompleta,
   formatearFecha,
   type MiOferta,
 } from '../ofertas.ts'
@@ -31,8 +32,15 @@ const ESTADOS: Record<MiOferta['estado'], string> = {
 }
 
 // Una oferta publicada cuyos turnos ya pasaron se muestra como finalizada
-function textoEstado(oferta: MiOferta): string {
-  return oferta.estado === 'publicada' && oferta.terminada ? 'Finalizada' : ESTADOS[oferta.estado]
+// Finalizada y completa se calculan a partir de los turnos: no son estados guardados
+function estadoVisible(oferta: MiOferta): { clase: string; texto: string } {
+  if (oferta.estado === 'publicada' && oferta.terminada) {
+    return { clase: 'finalizada', texto: 'Finalizada' }
+  }
+  if (oferta.estado === 'publicada' && estaCompleta(oferta)) {
+    return { clase: 'completa', texto: 'Completa' }
+  }
+  return { clase: oferta.estado, texto: ESTADOS[oferta.estado] }
 }
 
 function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
@@ -198,17 +206,14 @@ function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
                     .sort((a, b) => a.fecha.localeCompare(b.fecha))
                   const plazas = oferta.turnos.reduce((total, t) => total + t.plazas, 0)
                   const libres = oferta.turnos.reduce((total, t) => total + t.plazasLibres, 0)
+                  const estado = estadoVisible(oferta)
 
                   return (
                     <li key={oferta.id}>
                       <div className="gestion-lista-cabecera">
                         <h3>{oferta.titulo}</h3>
-                        <span
-                          className={`gestion-estado gestion-estado-${
-                            oferta.estado === 'publicada' && oferta.terminada ? 'finalizada' : oferta.estado
-                          }`}
-                        >
-                          {textoEstado(oferta)}
+                        <span className={`gestion-estado gestion-estado-${estado.clase}`}>
+                          {estado.texto}
                         </span>
                       </div>
                       <p>

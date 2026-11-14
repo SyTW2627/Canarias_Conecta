@@ -210,3 +210,8 @@
   background: #fdecea;
   color: #a12a1f;
 }
+
+.candidato-estado-en_espera {
+  background: #e6eefc;
+  color: #2c4f8f;
+}

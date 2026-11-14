@@ -6,7 +6,7 @@ import { ESTADOS_INSCRIPCION, Inscripcion } from '../models/Inscripcion.js'
 import { Oferta } from '../models/Oferta.js'
 import { User } from '../models/User.js'
 import { notificar } from '../services/notificaciones.js'
-import { devolverPlazas } from '../services/plazas.js'
+import { liberarPlazas, promoverListaEspera, reservarPlazas } from '../services/plazas.js'
 import { isObjectIdOrHexString } from 'mongoose'
 
 const MOTIVO_MAX = 500
@@ -51,7 +51,7 @@ function inicioDeTurnos(turnos: Array<Pick<Turno, 'fecha' | 'horaInicio'>>): Dat
 
 // Antelacion minima para cancelar sin que quede como cancelacion tardia
 export const ANTELACION_CANCELAR_HORAS = 48
-const ESTADOS_CANCELABLES: Array<(typeof ESTADOS_INSCRIPCION)[number]> = ['pendiente', 'aceptada']
+const ESTADOS_CANCELABLES: Array<(typeof ESTADOS_INSCRIPCION)[number]> = ['pendiente', 'aceptada', 'en_espera']
 
 function fechaMasReciente(turnos: Turno[]): Date | null {
   return turnos.reduce<Date | null>(
@@ -68,6 +68,8 @@ export async function crearInscripcion(req: Request, res: Response): Promise<voi
   }
 
   const { ofertaId, turnoIds } = req.body ?? {}
+  // Si algun turno no tiene plaza, entra en la lista de espera en lugar de recibir un 409
+  const listaEspera = req.body?.listaEspera === true
   if (
     typeof ofertaId !== 'string' ||
     !isObjectIdOrHexString(ofertaId) ||
@@ -94,12 +96,13 @@ export async function crearInscripcion(req: Request, res: Response): Promise<voi
     const hoy = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`)
     if (
       turnos.length !== idsUnicos.length ||
-      turnos.some((turno) => turno.fecha < hoy || turno.plazasLibres < 1)
+      turnos.some((turno) => turno.fecha < hoy || (!listaEspera && turno.plazasLibres < 1))
     ) {
       res.status(409).json({ message: 'Alguno de los turnos ya no está disponible' })
       return
     }
 
+    // Se crea primero: el indice unico impide inscribirse dos veces antes de tocar las plazas
     const inscripcion = await Inscripcion.create({
       voluntarioId: req.usuario.id,
       ofertaId: oferta.id,
@@ -108,21 +111,19 @@ export async function crearInscripcion(req: Request, res: Response): Promise<voi
       estado: 'pendiente',
     })
 
-    const ofertaActualizada = await Oferta.findOneAndUpdate(
-      {
-        _id: oferta.id,
-        estado: 'publicada',
-        $and: idsUnicos.map((turnoId) => ({
-          turnos: { $elemMatch: { _id: turnoId, plazasLibres: { $gte: 1 } } },
-        })),
-      },
-      { $inc: { 'turnos.$[turno].plazasLibres': -1 } },
-      { arrayFilters: [{ 'turno._id': { $in: idsUnicos } }], returnDocument: 'after' },
-    )
+    if (!(await reservarPlazas(oferta.id, idsUnicos))) {
+      if (!listaEspera) {
+        await Inscripcion.findByIdAndDelete(inscripcion.id)
+        res.status(409).json({ message: 'Alguno de los turnos ya no está disponible' })
+        return
+      }
 
-    if (!ofertaActualizada) {
-      await Inscripcion.findByIdAndDelete(inscripcion.id)
-      res.status(409).json({ message: 'Alguno de los turnos ya no está disponible' })
+      inscripcion.estado = 'en_espera'
+      await inscripcion.save()
+      // Por si se libero una plaza mientras se creaba la inscripcion
+      await promoverListaEspera(oferta.id)
+      const actual = await Inscripcion.findById(inscripcion.id).select('estado')
+      res.status(201).json({ id: inscripcion.id, estado: actual?.estado ?? inscripcion.estado })
       return
     }
 
@@ -161,6 +162,18 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
         populate: { path: 'ofertanteId', select: 'nombre' },
       })
 
+    // Posicion en la cola: cuantas personas de la misma oferta llevan esperando mas tiempo
+    const posiciones = new Map<string, number>()
+    for (const inscripcion of inscripciones) {
+      if (inscripcion.estado !== 'en_espera' || !inscripcion.ofertaId) continue
+      const delante = await Inscripcion.countDocuments({
+        ofertaId: inscripcion.ofertaId.id,
+        estado: 'en_espera',
+        createdAt: { $lt: inscripcion.createdAt },
+      })
+      posiciones.set(inscripcion.id, delante + 1)
+    }
+
     const historial = inscripciones
       .filter((inscripcion) => inscripcion.ofertaId)
       .map((inscripcion) => {
@@ -188,6 +201,7 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
           puedeCancelar:
             ESTADOS_CANCELABLES.includes(inscripcion.estado) && !!inicio && inicio > new Date(),
           cancelacionTardia: inscripcion.cancelacionTardia ?? false,
+          posicionEspera: posiciones.get(inscripcion.id) ?? null,
           motivoRechazo: inscripcion.motivoRechazo ?? null,
           valoracion: inscripcion.valoracionAlVoluntario
             ? {
@@ -366,7 +380,7 @@ async function resolverInscripcion(
 
     // Al rechazar, las plazas que reservo la solicitud vuelven a quedar libres
     if (decision === 'rechazada') {
-      await devolverPlazas(inscripcion)
+      await liberarPlazas(inscripcion)
     }
 
     const oferta = await Oferta.findById(inscripcion.ofertaId).select('titulo')
@@ -519,23 +533,27 @@ export async function cancelarInscripcion(req: Request, res: Response): Promise<
       return
     }
 
+    // Salir de la lista de espera no deja a nadie sin plaza: nunca es tardio
+    const teniaPlaza = inscripcion.estado !== 'en_espera'
     const tardia =
-      !!inicio && inicio.getTime() - ahora.getTime() < ANTELACION_CANCELAR_HORAS * 60 * 60 * 1000
+      teniaPlaza &&
+      !!inicio &&
+      inicio.getTime() - ahora.getTime() < ANTELACION_CANCELAR_HORAS * 60 * 60 * 1000
 
     // El filtro incluye el estado: si llegan dos peticiones a la vez, solo una devuelve las plazas
     const cancelada = await Inscripcion.findOneAndUpdate(
-      { _id: inscripcion._id, estado: { $in: ESTADOS_CANCELABLES } },
+      { _id: inscripcion._id, estado: inscripcion.estado },
       { estado: 'cancelada', fechaCancelacion: ahora, cancelacionTardia: tardia },
       { returnDocument: 'after' },
     )
     if (!cancelada) {
-      res.status(409).json({ message: 'Esta inscripción ya no se puede cancelar' })
+      res.status(409).json({ message: 'Esta inscripción ha cambiado: vuelve a intentarlo' })
       return
     }
 
-    await devolverPlazas(cancelada)
+    if (teniaPlaza) await liberarPlazas(cancelada)
 
-    await notificar({
+    if (teniaPlaza) await notificar({
       usuarioId: cancelada.ofertanteId,
       tipo: 'inscripcion_cancelada',
       titulo: tardia ? 'Cancelación de última hora' : 'Inscripción cancelada',

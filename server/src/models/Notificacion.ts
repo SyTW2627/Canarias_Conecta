@@ -18,6 +18,8 @@ export const TIPOS_NOTIFICACION = [
   'inscripcion_rechazada',
   // Para el voluntario: el ofertante ha confirmado que participo en la actividad
   'inscripcion_completada',
+  // Para el voluntario: se ha liberado una plaza y sale de la lista de espera
+  'lista_espera_plaza',
   // Para el voluntario: la oferta en la que estaba inscrito se ha cerrado
   'oferta_cerrada'
 ] as const

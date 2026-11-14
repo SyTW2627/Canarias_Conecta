@@ -48,12 +48,10 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
         }
 
         setOferta(data)
-        // Solo se preseleccionan los turnos que aun tienen plazas
-        setTurnosSeleccionados(
-          (data as Oferta).turnos
-            .filter((turno) => esTurnoProximo(turno) && turno.plazasLibres > 0)
-            .map((turno) => turno.id),
-        )
+        // Se preseleccionan los turnos con plaza; si no queda ninguna, todos para la lista de espera
+        const proximos = (data as Oferta).turnos.filter(esTurnoProximo)
+        const conPlaza = proximos.filter((turno) => turno.plazasLibres > 0)
+        setTurnosSeleccionados((conPlaza.length > 0 ? conPlaza : proximos).map((turno) => turno.id))
       } catch {
         if (!controlador.signal.aborted) {
           setError('No se pudo conectar con el servidor')
@@ -67,6 +65,10 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
 
   const turnosProximos = oferta?.turnos.filter(esTurnoProximo) ?? []
   const completa = oferta !== null && estaCompleta(oferta)
+  // Si algun turno elegido esta lleno, la solicitud va a la lista de espera
+  const aListaEspera = turnosProximos.some(
+    (turno) => turnosSeleccionados.includes(turno.id) && turno.plazasLibres === 0,
+  )
 
   async function inscribirse() {
     if (!oferta || turnosSeleccionados.length === 0) return
@@ -80,11 +82,15 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
         },
-        body: JSON.stringify({ ofertaId: oferta.id, turnoIds: turnosSeleccionados }),
+        body: JSON.stringify({ ofertaId: oferta.id, turnoIds: turnosSeleccionados, listaEspera: aListaEspera }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message ?? 'No se pudo completar la inscripción')
-      setEstadoInscripcion('Solicitud enviada correctamente')
+      setEstadoInscripcion(
+        data.estado === 'en_espera'
+          ? 'Te has apuntado a la lista de espera. Te avisaremos si se libera una plaza.'
+          : 'Solicitud enviada correctamente',
+      )
     } catch (error) {
       setEstadoInscripcion(error instanceof Error ? error.message : 'No se pudo completar la inscripción')
     } finally {
@@ -184,7 +190,6 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
                         <label className="oferta-turno-seleccion">
                           <input
                             type="checkbox"
-                            disabled={turno.plazasLibres === 0}
                             checked={turnosSeleccionados.includes(turno.id)}
                             onChange={() =>
                               setTurnosSeleccionados((seleccionados) =>
@@ -210,9 +215,11 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
                 {completa && (
                   <p className="oferta-completa" role="status">
                     Esta oferta está completa: no quedan plazas libres en sus próximos turnos.
+                    {usuario.rol === 'voluntario' &&
+                      ' Puedes apuntarte a la lista de espera y te avisaremos si se libera una plaza.'}
                   </p>
                 )}
-                {usuario.rol === 'voluntario' && turnosProximos.length > 0 && !completa && (
+                {usuario.rol === 'voluntario' && turnosProximos.length > 0 && (
                   <>
                     <button
                       type="button"
@@ -220,7 +227,11 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
                       onClick={inscribirse}
                       disabled={inscribiendo || turnosSeleccionados.length === 0}
                     >
-                      {inscribiendo ? 'Enviando...' : 'Inscribirme'}
+                      {inscribiendo
+                        ? 'Enviando...'
+                        : aListaEspera
+                          ? 'Apuntarme a la lista de espera'
+                          : 'Inscribirme'}
                     </button>
                     {estadoInscripcion && (
                       <p className="oferta-inscripcion-mensaje" role="status">

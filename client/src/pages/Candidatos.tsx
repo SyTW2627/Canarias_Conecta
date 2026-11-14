@@ -13,6 +13,7 @@ import { ISLAS, cabecerasConSesion, formatearFecha, type MiOferta } from '../ofe
 
 type EstadoInscripcion =
   | 'pendiente'
+  | 'en_espera'
   | 'aceptada'
   | 'rechazada'
   | 'cancelada'
@@ -59,10 +60,11 @@ type CandidatosProps = {
   onCerrarSesion: () => void
 }
 
-type Filtro = 'pendiente' | 'aceptada' | 'completada' | 'rechazada' | 'todas'
+type Filtro = 'pendiente' | 'en_espera' | 'aceptada' | 'completada' | 'rechazada' | 'todas'
 
 const FILTROS: { valor: Filtro; texto: string }[] = [
   { valor: 'pendiente', texto: 'Pendientes' },
+  { valor: 'en_espera', texto: 'En espera' },
   { valor: 'aceptada', texto: 'Aceptados' },
   { valor: 'completada', texto: 'Finalizados' },
   { valor: 'rechazada', texto: 'Rechazados' },
@@ -71,6 +73,7 @@ const FILTROS: { valor: Filtro; texto: string }[] = [
 
 const ETIQUETAS_ESTADO: Record<EstadoInscripcion, string> = {
   pendiente: 'Pendiente',
+  en_espera: 'En espera',
   aceptada: 'Aceptado',
   rechazada: 'Rechazado',
   cancelada: 'Cancelada',
@@ -152,6 +155,7 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
   const contadores = useMemo(() => {
     const cuenta: Record<Filtro, number> = {
       pendiente: 0,
+      en_espera: 0,
       aceptada: 0,
       completada: 0,
       rechazada: 0,
@@ -424,6 +428,12 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                       {candidato.estado === 'completada' && candidato.horasRealizadas !== null && (
                         <p className="gestion-ayuda">
                           Participó: {candidato.horasRealizadas} h sumadas a su perfil.
+                        </p>
+                      )}
+
+                      {candidato.estado === 'en_espera' && (
+                        <p className="gestion-ayuda">
+                          En lista de espera: pasará a pendiente en cuanto se libere una plaza en sus turnos.
                         </p>
                       )}
 

@@ -360,3 +360,12 @@
     min-height: auto;
   }
 }
+
+/* Oferta sin plazas libres en sus turnos proximos */
+.opportunity-completa {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #fdecea;
+  color: #a12a1f;
+  font-weight: 600;
+}

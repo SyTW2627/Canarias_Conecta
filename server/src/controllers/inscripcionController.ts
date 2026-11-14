@@ -100,7 +100,7 @@ export async function crearInscripcion(req: Request, res: Response): Promise<voi
         })),
       },
       { $inc: { 'turnos.$[turno].plazasLibres': -1 } },
-      { arrayFilters: [{ 'turno._id': { $in: idsUnicos } }], new: true },
+      { arrayFilters: [{ 'turno._id': { $in: idsUnicos } }], returnDocument: 'after' },
     )
 
     if (!ofertaActualizada) {

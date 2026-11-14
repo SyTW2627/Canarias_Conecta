@@ -360,3 +360,8 @@ a.gestion-accion {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.gestion-estado-completa {
+  background: #fdecea;
+  color: #a12a1f;
+}

@@ -1,8 +1,9 @@
 /**
  * Proyecto: Canarias Conecta
  * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
- * Funcion: Configura Vite y el proxy de /api hacia el servidor.
+ * Funcion: Configura Vite, el proxy de /api hacia el servidor y los tests con Vitest.
  */
+/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
@@ -16,5 +17,12 @@ export default defineConfig({
         changeOrigin:true,
       },
     },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    // Cada test empieza con mocks y localStorage limpios
+    restoreMocks: true,
+    unstubGlobals: true,
   },
 })

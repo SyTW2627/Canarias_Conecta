@@ -42,6 +42,7 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 | `POST` | `/api/ofertas` | Ofertante | Crea una oferta |
 | `GET` | `/api/ofertas/:id` | No | Devuelve una oferta publicada |
 | `GET` | `/api/categorias` | No | Lista las categorías activas |
+| `PATCH` | `/api/inscripciones/:id/completar` | Ofertante | Confirma si el voluntario participó en la actividad |
 
 ### `GET /api/health`
 
@@ -222,6 +223,36 @@ Devuelve las categorías activas ordenadas por nombre.
 | Error | Mensaje |
 |---|---|
 | `500` | `Error al obtener las categorías` |
+
+### `PATCH /api/inscripciones/:id/completar`
+
+El ofertante confirma, cuando han terminado todos los turnos de una inscripción `aceptada`, si el
+voluntario participó. `horas` es opcional: por defecto son las horas de sus turnos.
+
+```json
+{ "asistio": true, "horas": 2.5 }
+```
+
+| `asistio` | Estado final | Efecto |
+|---|---|---|
+| `true` | `completada` | Suma `horas` y una colaboración a las estadísticas del voluntario y le envía una notificación (`inscripcion_completada`) |
+| `false` | `no_presentado` | Guarda `horasRealizadas: 0` |
+
+```json
+200 OK
+{ "id": "6aeb...", "estado": "completada", "horasRealizadas": 2.5 }
+```
+
+| Error | Mensaje |
+|---|---|
+| `400` | `Indica si el voluntario asistió` · `Las horas realizadas no son válidas` (≤ 0 o más de 720) |
+| `403` | Si quien llama no es ofertante |
+| `404` | `La inscripción no existe` (también si es de otro ofertante) |
+| `409` | `Solo se puede completar una inscripción aceptada` · `La actividad todavía no ha terminado` · `Esta inscripción ya se ha completado` |
+| `500` | `No se pudo completar la inscripción` |
+
+`GET /api/inscripciones/oferta/:ofertaId` (candidatos) incluye además, en cada candidato, `terminada`
+(si ya puede confirmarse), `horasPrevistas` y `horasRealizadas`.
 
 ## Pendiente
 

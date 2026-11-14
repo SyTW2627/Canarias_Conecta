@@ -54,8 +54,15 @@ su **valoración**.
 - **Sin transacciones.** Un MongoDB sin replica set no las admite, y la plaza y la inscripción están
   en colecciones distintas. Primero se reserva la plaza, después se cambia la inscripción y, si esto
   falla, se devuelve la plaza.
-- **La plaza se ocupa al aceptar.** Una inscripción `pendiente` no reserva plaza, así las solicitudes
-  sin resolver no bloquean la oferta. Puede haber más solicitudes que plazas.
+- **La plaza se ocupa al solicitar.** Una inscripción `pendiente` ya reserva su plaza, y rechazarla
+  la devuelve. Así nunca hay más solicitudes que plazas, el voluntario que ve una plaza libre y la
+  solicita la conserva mientras no lo rechacen, y una oferta llena tiene sentido para la lista de
+  espera. A cambio, un ofertante que no resuelve sus solicitudes mantiene esas plazas ocupadas.
+- **Asistencia confirmada por el ofertante.** Cuando terminan todos los turnos de una inscripción
+  aceptada, el ofertante la marca como `completada` (con las horas realizadas, que por defecto son
+  las de sus turnos) o `no_presentado`. Al completarla se suman las horas y una colaboración a las
+  `estadisticas` del voluntario. El cambio de estado filtra por `aceptada`, así dos peticiones a la
+  vez no suman las horas dos veces.
 - **El historial sale de `inscripciones`.** Es la lista de inscripciones del voluntario en estado
   `completada`, con los datos de su oferta. No hay tabla ni atributo aparte: así incluye fecha, horas
   y valoración, y no hay dos copias que mantener.
@@ -68,8 +75,10 @@ su **valoración**.
 - Un voluntario solo puede tener una inscripción activa en cada oferta, y solo si quedan plazas. Si
   su inscripción se canceló o se rechazó, puede volver a inscribirse.
 - Un ofertante solo gestiona sus propias ofertas.
-- No se puede aceptar una inscripción si no quedan plazas. Cancelar una inscripción aceptada devuelve
-  la plaza.
+- No se puede solicitar un turno sin plazas libres. Rechazar o cancelar una inscripción devuelve la
+  plaza.
+- Solo se puede marcar como `completada` o `no_presentado` una inscripción `aceptada` cuyos turnos
+  hayan terminado (fecha del turno + `horaFin`).
 - Las ofertas no se borran, se marcan como `cancelada`, para que el historial conserve sus datos.
 - Al registrarse solo se puede elegir `voluntario` u `ofertante`, nunca `admin`.
 - Una oferta necesita al menos un turno y una categoría para publicarse, y una ubicación salvo que

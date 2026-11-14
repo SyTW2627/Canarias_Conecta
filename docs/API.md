@@ -43,6 +43,7 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 | `GET` | `/api/ofertas/:id` | No | Devuelve una oferta publicada |
 | `GET` | `/api/categorias` | No | Lista las categorías activas |
 | `PATCH` | `/api/inscripciones/:id/completar` | Ofertante | Confirma si el voluntario participó en la actividad |
+| `PATCH` | `/api/inscripciones/:id/cancelar` | Voluntario | Cancela una inscripción propia antes de que empiece |
 
 ### `GET /api/health`
 
@@ -252,7 +253,29 @@ voluntario participó. `horas` es opcional: por defecto son las horas de sus tur
 | `500` | `No se pudo completar la inscripción` |
 
 `GET /api/inscripciones/oferta/:ofertaId` (candidatos) incluye además, en cada candidato, `terminada`
-(si ya puede confirmarse), `horasPrevistas` y `horasRealizadas`.
+(si ya puede confirmarse), `horasPrevistas`, `horasRealizadas` y `cancelacionTardia`.
+
+### `PATCH /api/inscripciones/:id/cancelar`
+
+El voluntario cancela una inscripción suya en estado `pendiente` o `aceptada`, siempre que no haya
+empezado su primer turno. Sin cuerpo. Devuelve las plazas a la oferta y avisa al ofertante
+(`inscripcion_cancelada`). Si quedan menos de **48 h** para el inicio, se cancela igualmente pero
+queda marcada como tardía.
+
+```json
+200 OK
+{ "id": "6aeb...", "estado": "cancelada", "cancelacionTardia": true }
+```
+
+| Error | Mensaje |
+|---|---|
+| `403` | Si quien llama no es voluntario |
+| `404` | `La inscripción no existe` (también si es de otro voluntario) |
+| `409` | `Esta inscripción ya no se puede cancelar` · `La actividad ya ha empezado: no se puede cancelar` |
+| `500` | `No se pudo cancelar la inscripción` |
+
+`GET /api/inscripciones/mias` incluye además, en cada inscripción, `inicio` (inicio del primer turno),
+`puedeCancelar` y `cancelacionTardia`.
 
 ## Pendiente
 

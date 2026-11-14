@@ -63,6 +63,12 @@ su **valoración**.
   las de sus turnos) o `no_presentado`. Al completarla se suman las horas y una colaboración a las
   `estadisticas` del voluntario. El cambio de estado filtra por `aceptada`, así dos peticiones a la
   vez no suman las horas dos veces.
+- **Cancelación con plazo mínimo de 48 h.** El voluntario puede cancelar una inscripción `pendiente`
+  o `aceptada` hasta que empiece su primer turno (fecha + `horaInicio`). Con menos de 48 h de
+  antelación se permite igualmente, pero se guarda `cancelacionTardia: true`, que queda en su
+  historial y ve el ofertante. Se eligió avisar en lugar de bloquear para no dejar al voluntario
+  atrapado, y 48 h en lugar de 24 h para que dé tiempo a que la plaza pase a la lista de espera y el
+  ofertante acepte al siguiente. El plazo es la constante `ANTELACION_CANCELAR_HORAS`.
 - **El historial sale de `inscripciones`.** Es la lista de inscripciones del voluntario en estado
   `completada`, con los datos de su oferta. No hay tabla ni atributo aparte: así incluye fecha, horas
   y valoración, y no hay dos copias que mantener.
@@ -83,6 +89,8 @@ su **valoración**.
   plaza.
 - Solo se puede marcar como `completada` o `no_presentado` una inscripción `aceptada` cuyos turnos
   hayan terminado (fecha del turno + `horaFin`).
+- Solo el propio voluntario cancela su inscripción, y solo antes de que empiece la actividad.
+  Cancelar devuelve las plazas y avisa al ofertante (`inscripcion_cancelada`).
 - Las ofertas no se borran, se marcan como `cancelada`, para que el historial conserve sus datos.
 - Al registrarse solo se puede elegir `voluntario` u `ofertante`, nunca `admin`.
 - Una oferta necesita al menos un turno y una categoría para publicarse, y una ubicación salvo que

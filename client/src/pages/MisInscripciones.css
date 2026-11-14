@@ -195,3 +195,40 @@
     text-align: left;
   }
 }
+
+.inscription-cancel-link {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8d2929;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.inscription-cancel {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #fde4e4;
+  color: #8d2929;
+  font-size: 14px;
+}
+
+.inscription-cancel p {
+  margin: 0 0 10px;
+}
+
+.inscription-cancel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inscription-cancel-confirm {
+  background: #a12a1f;
+  border-color: #a12a1f;
+}

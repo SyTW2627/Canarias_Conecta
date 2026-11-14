@@ -25,6 +25,7 @@ type Candidato = {
   terminada: boolean
   horasPrevistas: number
   horasRealizadas: number | null
+  cancelacionTardia: boolean
   mensaje: string | null
   motivoRechazo: string | null
   fechaSolicitud: string
@@ -424,6 +425,10 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                         <p className="gestion-ayuda">
                           Participó: {candidato.horasRealizadas} h sumadas a su perfil.
                         </p>
+                      )}
+
+                      {candidato.estado === 'cancelada' && candidato.cancelacionTardia && (
+                        <p className="gestion-ayuda">Canceló con menos de 48 h de antelación.</p>
                       )}
 
                       {candidato.estado === 'aceptada' && !candidato.terminada && (

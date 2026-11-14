@@ -2,10 +2,11 @@
  * Gestiona las consultas de inscripciones del voluntario autenticado.
  */
 import type { Request, Response } from 'express'
-import { Inscripcion } from '../models/Inscripcion.js'
+import { ESTADOS_INSCRIPCION, Inscripcion } from '../models/Inscripcion.js'
 import { Oferta } from '../models/Oferta.js'
 import { User } from '../models/User.js'
 import { notificar } from '../services/notificaciones.js'
+import { devolverPlazas } from '../services/plazas.js'
 import { isObjectIdOrHexString } from 'mongoose'
 
 const MOTIVO_MAX = 500
@@ -31,10 +32,26 @@ function horasEntre(horaInicio: string, horaFin: string): number {
 }
 
 // La fecha del turno es el dia a las 00:00 UTC y la hora va aparte
-function finDelTurno(turno: Pick<Turno, 'fecha' | 'horaFin'>): Date {
-  const [horas, minutos] = turno.horaFin.split(':').map(Number)
-  return new Date(turno.fecha.getTime() + (horas * 60 + minutos) * 60 * 1000)
+function instante(fecha: Date, hora: string): Date {
+  const [horas, minutos] = hora.split(':').map(Number)
+  return new Date(fecha.getTime() + (horas * 60 + minutos) * 60 * 1000)
 }
+
+function finDelTurno(turno: Pick<Turno, 'fecha' | 'horaFin'>): Date {
+  return instante(turno.fecha, turno.horaFin)
+}
+
+// Inicio del primer turno: desde ahi se cuenta el plazo para cancelar
+function inicioDeTurnos(turnos: Array<Pick<Turno, 'fecha' | 'horaInicio'>>): Date | null {
+  return turnos.reduce<Date | null>((primero, turno) => {
+    const inicio = instante(turno.fecha, turno.horaInicio)
+    return !primero || inicio < primero ? inicio : primero
+  }, null)
+}
+
+// Antelacion minima para cancelar sin que quede como cancelacion tardia
+export const ANTELACION_CANCELAR_HORAS = 48
+const ESTADOS_CANCELABLES: Array<(typeof ESTADOS_INSCRIPCION)[number]> = ['pendiente', 'aceptada']
 
 function fechaMasReciente(turnos: Turno[]): Date | null {
   return turnos.reduce<Date | null>(
@@ -152,6 +169,7 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
           inscripcion.turnoIds.some((turnoId) => turnoId.toString() === turno._id.toString()),
         )
         const fecha = fechaMasReciente(turnos)
+        const inicio = inicioDeTurnos(turnos)
         const horas = inscripcion.horasRealizadas ?? turnos.reduce(
           (total, turno) => total + horasEntre(turno.horaInicio, turno.horaFin),
           0,
@@ -165,6 +183,11 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
           fecha: fecha?.toISOString() ?? null,
           horas,
           estado: inscripcion.estado,
+          inicio: inicio?.toISOString() ?? null,
+          // Se puede cancelar mientras siga activa y no haya empezado su primer turno
+          puedeCancelar:
+            ESTADOS_CANCELABLES.includes(inscripcion.estado) && !!inicio && inicio > new Date(),
+          cancelacionTardia: inscripcion.cancelacionTardia ?? false,
           motivoRechazo: inscripcion.motivoRechazo ?? null,
           valoracion: inscripcion.valoracionAlVoluntario
             ? {
@@ -261,6 +284,7 @@ export async function getCandidatosOferta(req: Request, res: Response): Promise<
             0,
           ),
           horasRealizadas: inscripcion.horasRealizadas ?? null,
+          cancelacionTardia: inscripcion.cancelacionTardia ?? false,
           mensaje: inscripcion.mensaje ?? null,
           motivoRechazo: inscripcion.motivoRechazo ?? null,
           fechaSolicitud: inscripcion.createdAt,
@@ -342,11 +366,7 @@ async function resolverInscripcion(
 
     // Al rechazar, las plazas que reservo la solicitud vuelven a quedar libres
     if (decision === 'rechazada') {
-      await Oferta.updateOne(
-        { _id: inscripcion.ofertaId },
-        { $inc: { 'turnos.$[turno].plazasLibres': 1 } },
-        { arrayFilters: [{ 'turno._id': { $in: inscripcion.turnoIds } }] },
-      )
+      await devolverPlazas(inscripcion)
     }
 
     const oferta = await Oferta.findById(inscripcion.ofertaId).select('titulo')
@@ -465,5 +485,69 @@ export async function completarInscripcion(req: Request, res: Response): Promise
   } catch (error) {
     console.error('Error al completar la inscripción:', error)
     res.status(500).json({ message: 'No se pudo completar la inscripción' })
+  }
+}
+
+// PATCH /api/inscripciones/:id/cancelar -> el voluntario cancela su inscripcion antes de que empiece
+export async function cancelarInscripcion(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: 'La inscripción no existe' })
+    return
+  }
+
+  try {
+    const inscripcion = await Inscripcion.findOne({ _id: id, voluntarioId: req.usuario!.id })
+    if (!inscripcion) {
+      res.status(404).json({ message: 'La inscripción no existe' })
+      return
+    }
+    if (!ESTADOS_CANCELABLES.includes(inscripcion.estado)) {
+      res.status(409).json({ message: 'Esta inscripción ya no se puede cancelar' })
+      return
+    }
+
+    const oferta = await Oferta.findById(inscripcion.ofertaId).select('titulo ofertanteId turnos')
+    const turnos = (oferta?.turnos ?? []).filter((turno) =>
+      inscripcion.turnoIds.some((turnoId) => turnoId.toString() === turno._id.toString()),
+    )
+    const inicio = inicioDeTurnos(turnos)
+    const ahora = new Date()
+    if (inicio && inicio <= ahora) {
+      res.status(409).json({ message: 'La actividad ya ha empezado: no se puede cancelar' })
+      return
+    }
+
+    const tardia =
+      !!inicio && inicio.getTime() - ahora.getTime() < ANTELACION_CANCELAR_HORAS * 60 * 60 * 1000
+
+    // El filtro incluye el estado: si llegan dos peticiones a la vez, solo una devuelve las plazas
+    const cancelada = await Inscripcion.findOneAndUpdate(
+      { _id: inscripcion._id, estado: { $in: ESTADOS_CANCELABLES } },
+      { estado: 'cancelada', fechaCancelacion: ahora, cancelacionTardia: tardia },
+      { returnDocument: 'after' },
+    )
+    if (!cancelada) {
+      res.status(409).json({ message: 'Esta inscripción ya no se puede cancelar' })
+      return
+    }
+
+    await devolverPlazas(cancelada)
+
+    await notificar({
+      usuarioId: cancelada.ofertanteId,
+      tipo: 'inscripcion_cancelada',
+      titulo: tardia ? 'Cancelación de última hora' : 'Inscripción cancelada',
+      mensaje:
+        `${req.usuario!.nombre} ha cancelado su inscripción en "${oferta?.titulo ?? 'una oferta'}".` +
+        (tardia ? ` Lo ha hecho con menos de ${ANTELACION_CANCELAR_HORAS} h de antelación.` : ''),
+      enlace: `/gestionar-ofertas/${cancelada.ofertaId}/candidatos`,
+    })
+
+    res.json({ id: cancelada.id, estado: cancelada.estado, cancelacionTardia: tardia })
+  } catch (error) {
+    console.error('Error al cancelar la inscripción:', error)
+    res.status(500).json({ message: 'No se pudo cancelar la inscripción' })
   }
 }

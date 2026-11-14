@@ -11,6 +11,8 @@ const NOVENTA_DIAS_EN_SEGUNDOS = 90 * 24 * 60 * 60
 export const TIPOS_NOTIFICACION = [
   // Para el ofertante: un voluntario se ha postulado a una de sus ofertas
   'inscripcion_nueva',
+  // Para el ofertante: un voluntario ha cancelado su inscripcion
+  'inscripcion_cancelada',
   // Para el voluntario: el ofertante ha resuelto su solicitud
   'inscripcion_aceptada',
   'inscripcion_rechazada',

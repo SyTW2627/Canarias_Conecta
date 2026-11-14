@@ -46,6 +46,9 @@ const inscripcionSchema = new Schema(
     mensaje: { type: String, trim: true },
     motivoRechazo: { type: String, trim: true },
     fechaResolucion: { type: Date },
+    fechaCancelacion: { type: Date },
+    // Cancelada con menos antelacion de la minima: queda en el historial del voluntario
+    cancelacionTardia: { type: Boolean },
     horasRealizadas: { type: Number, min: 0 },
     valoracionAlVoluntario: { type: valoracionSchema },
     valoracionALaOferta: { type: valoracionSchema }

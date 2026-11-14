@@ -200,6 +200,8 @@
 .candidato-rechazo input {
   box-sizing: border-box;
   width: 120px;
+  background: #fff;
+  color: var(--texto);
   padding: 9px 12px;
   border: 1.5px solid var(--borde);
   border-radius: 8px;

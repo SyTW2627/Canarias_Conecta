@@ -62,6 +62,31 @@ Puedes entrar con `laura@ejemplo.com` / `Ejemplo123`, que crea `npm run seed`.
 | `Falta la variable MONGODB_URI` | Falta `server/.env`: `cp .env.example .env` |
 | *No se pudo conectar con el servidor* en la web | El servidor no está arrancado en el puerto 3000 |
 
+### Tests del cliente
+
+Con [Vitest](https://vitest.dev/) y [Testing Library](https://testing-library.com/) sobre `jsdom`. No
+necesitan el servidor ni MongoDB: `fetch` se sustituye por respuestas simuladas.
+
+```bash
+cd client
+npm test             # una pasada
+npm run test:watch   # se repiten al guardar
+```
+
+| Fichero | Qué comprueba |
+|---|---|
+| `src/test/setup.ts` | Matchers del DOM (`toBeInTheDocument`…) y limpieza entre tests |
+| `src/test/api.ts` | `simularApi()` para simular rutas de la API y datos de ejemplo (`oferta`, `turno`, usuarios) |
+| `ofertas.test.ts` | Plazas disponibles, oferta *Completa* y textos de plazas |
+| `TarjetaOferta.test.tsx` | La tarjeta no cuenta turnos pasados y muestra *Completa* |
+| `OfertaDetalle.test.tsx` | Preselección de turnos con plaza, inscripción, lista de espera y errores |
+| `MisInscripciones.test.tsx` | Puesto en la lista de espera, cancelación con confirmación y aviso de 48 h |
+| `Candidatos.test.tsx` | Pestañas por estado y confirmar asistencia o ausencia |
+
+Para probar una pantalla nueva: `simularApi({ 'GET /api/ruta': { body: datos } })` antes de
+`render()`, y comprobar lo que ve el usuario con `screen.findByRole`/`findByText`. `simularApi`
+devuelve las llamadas hechas, para verificar el cuerpo que se envió.
+
 ## Producción
 
 > Todavía no está desplegada. Esta sección describe cómo se haría.

@@ -196,3 +196,17 @@
     flex-wrap: wrap;
   }
 }
+
+.candidato-rechazo input {
+  box-sizing: border-box;
+  width: 120px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  font: 15px 'DM Sans', sans-serif;
+}
+
+.candidato-estado-no_presentado {
+  background: #fdecea;
+  color: #a12a1f;
+}

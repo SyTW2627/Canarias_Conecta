@@ -14,6 +14,8 @@ export const TIPOS_NOTIFICACION = [
   // Para el voluntario: el ofertante ha resuelto su solicitud
   'inscripcion_aceptada',
   'inscripcion_rechazada',
+  // Para el voluntario: el ofertante ha confirmado que participo en la actividad
+  'inscripcion_completada',
   // Para el voluntario: la oferta en la que estaba inscrito se ha cerrado
   'oferta_cerrada'
 ] as const

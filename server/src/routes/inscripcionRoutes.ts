@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import {
   aceptarInscripcion,
+  completarInscripcion,
   crearInscripcion,
   getCandidatosOferta,
   getMisInscripciones,
@@ -16,5 +17,7 @@ router.get('/mias', requireAuth, requireRol('voluntario'), getMisInscripciones)
 router.get('/oferta/:ofertaId', requireAuth, requireRol('ofertante'), getCandidatosOferta)
 router.patch('/:id/aceptar', requireAuth, requireRol('ofertante'), aceptarInscripcion)
 router.patch('/:id/rechazar', requireAuth, requireRol('ofertante'), rechazarInscripcion)
+// Cuando termina la actividad, confirma si el voluntario participo
+router.patch('/:id/completar', requireAuth, requireRol('ofertante'), completarInscripcion)
 
 export default router

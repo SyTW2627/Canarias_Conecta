@@ -275,7 +275,29 @@ queda marcada como tardía.
 | `500` | `No se pudo cancelar la inscripción` |
 
 `GET /api/inscripciones/mias` incluye además, en cada inscripción, `inicio` (inicio del primer turno),
-`puedeCancelar` y `cancelacionTardia`.
+`puedeCancelar`, `cancelacionTardia` y `posicionEspera` (puesto en la lista de espera, o `null`).
+
+### Lista de espera en `POST /api/inscripciones`
+
+El cuerpo admite `listaEspera: true`. Si alguno de los turnos elegidos no tiene plazas:
+
+| `listaEspera` | Resultado |
+|---|---|
+| ausente o `false` | `409` `Alguno de los turnos ya no está disponible` (como antes) |
+| `true` | `201` con `estado: "en_espera"`, sin reservar plazas |
+
+```json
+{ "ofertaId": "6aeb...", "turnoIds": ["6aec..."], "listaEspera": true }
+```
+
+```json
+201 Created
+{ "id": "6aed...", "estado": "en_espera" }
+```
+
+Si hay plazas, `listaEspera` no cambia nada: la inscripción queda `pendiente`. Cuando se libera una
+plaza, la primera inscripción de la cola que quepa pasa sola a `pendiente`, y el voluntario recibe la
+notificación `lista_espera_plaza`.
 
 ## Pendiente
 

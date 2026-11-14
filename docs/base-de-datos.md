@@ -35,7 +35,9 @@ su **valoración**.
 | `tokens` | Verificación de email y recuperación de contraseña (caducan solos) |
 
 **Estados de una inscripción:** `pendiente` → `aceptada` o `rechazada`. Una aceptada termina como
-`completada` o `no_presentado`. Se puede `cancelar` mientras no haya terminado.
+`completada` o `no_presentado`. Si no quedan plazas, la solicitud entra como `en_espera` y pasa a
+`pendiente` cuando se libera una. Se puede `cancelar` (desde `pendiente`, `en_espera` o `aceptada`)
+mientras no haya empezado.
 
 ## Decisiones
 
@@ -69,6 +71,18 @@ su **valoración**.
   historial y ve el ofertante. Se eligió avisar en lugar de bloquear para no dejar al voluntario
   atrapado, y 48 h en lugar de 24 h para que dé tiempo a que la plaza pase a la lista de espera y el
   ofertante acepte al siguiente. El plazo es la constante `ANTELACION_CANCELAR_HORAS`.
+- **Lista de espera con avance automático.** Una solicitud a un turno lleno se guarda como
+  `en_espera` sin reservar plaza. Cuando se libera una (rechazo, cancelación o el ofertante amplía
+  plazas al editar), `promoverListaEspera` (`server/src/services/plazas.ts`) recorre la cola por orden
+  de llegada y pasa a `pendiente` a quien tenga plaza en **todos** sus turnos, con aviso al voluntario
+  (`lista_espera_plaza`) y al ofertante. No se pide una segunda confirmación al voluntario: el
+  ofertante ya acepta o rechaza, y si el voluntario no puede ir, cancela y la plaza pasa al siguiente.
+  Así no hacen falta plazos ni tareas programadas. Quien espera varios turnos puede quedar detrás
+  de alguien que pidió menos, porque solo entra cuando tiene plaza en todos.
+- **Índice único y `syncIndexes`.** `en_espera` cuenta como inscripción activa en el índice único
+  parcial (`voluntarioId` + `ofertaId`). Como cambió el filtro de ese índice, el servidor usa
+  `Inscripcion.syncIndexes()` al arrancar: `init()` no modifica un índice existente con otras opciones
+  y el arranque fallaría en las bases de datos ya creadas.
 - **El historial sale de `inscripciones`.** Es la lista de inscripciones del voluntario en estado
   `completada`, con los datos de su oferta. No hay tabla ni atributo aparte: así incluye fecha, horas
   y valoración, y no hay dos copias que mantener.
@@ -90,7 +104,9 @@ su **valoración**.
 - Solo se puede marcar como `completada` o `no_presentado` una inscripción `aceptada` cuyos turnos
   hayan terminado (fecha del turno + `horaFin`).
 - Solo el propio voluntario cancela su inscripción, y solo antes de que empiece la actividad.
-  Cancelar devuelve las plazas y avisa al ofertante (`inscripcion_cancelada`).
+  Cancelar devuelve las plazas y avisa al ofertante (`inscripcion_cancelada`). Salir de la lista de
+  espera no devuelve plazas (no tenía), nunca es tardío y no avisa al ofertante.
+- La lista de espera se atiende por orden de llegada (`createdAt`).
 - Las ofertas no se borran, se marcan como `cancelada`, para que el historial conserve sus datos.
 - Al registrarse solo se puede elegir `voluntario` u `ofertante`, nunca `admin`.
 - Una oferta necesita al menos un turno y una categoría para publicarse, y una ubicación salvo que

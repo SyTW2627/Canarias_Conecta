@@ -7,7 +7,7 @@ import { Oferta } from '../models/Oferta.js'
 import { User } from '../models/User.js'
 import { notificar } from '../services/notificaciones.js'
 import { liberarPlazas, promoverListaEspera, reservarPlazas } from '../services/plazas.js'
-import { isObjectIdOrHexString } from 'mongoose'
+import { isObjectIdOrHexString, Types } from 'mongoose'
 
 const MOTIVO_MAX = 500
 
@@ -243,6 +243,10 @@ type VoluntarioPoblado = {
   }
 }
 
+const PUNTUACION_MIN = 1
+const PUNTUACION_MAX = 5
+const COMENTARIO_VALORACION_MAX = 1000
+
 function edadDesde(fechaNacimiento?: Date): number | null {
   if (!fechaNacimiento) return null
   const hoy = new Date()
@@ -298,6 +302,12 @@ export async function getCandidatosOferta(req: Request, res: Response): Promise<
             0,
           ),
           horasRealizadas: inscripcion.horasRealizadas ?? null,
+          valoracion: inscripcion.valoracionAlVoluntario
+            ? {
+                puntuacion: inscripcion.valoracionAlVoluntario.puntuacion,
+                comentario: inscripcion.valoracionAlVoluntario.comentario ?? null,
+              }
+            : null,
           cancelacionTardia: inscripcion.cancelacionTardia ?? false,
           mensaje: inscripcion.mensaje ?? null,
           motivoRechazo: inscripcion.motivoRechazo ?? null,
@@ -325,12 +335,100 @@ export async function getCandidatosOferta(req: Request, res: Response): Promise<
             telefono: compartirContacto ? (voluntario.telefono ?? null) : null,
           },
         }
+
       })
 
     res.json(candidatos)
   } catch (error) {
     console.error('Error al obtener los candidatos de la oferta:', error)
     res.status(500).json({ message: 'No se pudieron cargar los candidatos' })
+  }
+}
+
+// PATCH /api/inscripciones/:id/valorar -> el ofertante valora a un voluntario tras completar la actividad
+export async function valorarVoluntario(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+  const { puntuacion, comentario } = req.body ?? {}
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: 'La inscripción no existe' })
+    return
+  }
+  if (
+    typeof puntuacion !== 'number' ||
+    !Number.isInteger(puntuacion) ||
+    puntuacion < PUNTUACION_MIN ||
+    puntuacion > PUNTUACION_MAX
+  ) {
+    res.status(400).json({ message: 'La valoración debe tener entre 1 y 5 palmeras' })
+    return
+  }
+  if (comentario !== undefined && comentario !== null && typeof comentario !== 'string') {
+    res.status(400).json({ message: 'El comentario no es válido' })
+    return
+  }
+  const comentarioLimpio = typeof comentario === 'string' && comentario.trim()
+    ? comentario.trim()
+    : undefined
+  if (comentarioLimpio && comentarioLimpio.length > COMENTARIO_VALORACION_MAX) {
+    res.status(400).json({ message: `El comentario no puede superar los ${COMENTARIO_VALORACION_MAX} caracteres` })
+    return
+  }
+
+  try {
+    const inscripcion = await Inscripcion.findOne({ _id: id, ofertanteId: req.usuario!.id })
+    if (!inscripcion) {
+      res.status(404).json({ message: 'La inscripción no existe' })
+      return
+    }
+    if (inscripcion.estado !== 'completada') {
+      res.status(409).json({ message: 'Solo puedes valorar colaboraciones completadas' })
+      return
+    }
+    if (inscripcion.valoracionAlVoluntario) {
+      res.status(409).json({ message: 'Esta colaboración ya tiene una valoración' })
+      return
+    }
+
+    inscripcion.valoracionAlVoluntario = {
+      autorId: new Types.ObjectId(req.usuario!.id),
+      puntuacion,
+      comentario: comentarioLimpio,
+      fecha: new Date(),
+    }
+    await inscripcion.save()
+
+    const voluntario = await User.findById(inscripcion.voluntarioId).select('voluntario')
+    const estadisticas = voluntario?.voluntario?.estadisticas
+    const valoracionesPrevias = estadisticas?.numValoraciones ?? 0
+    const mediaPrevia = estadisticas?.valoracionMedia ?? 0
+    const nuevaMedia = (mediaPrevia * valoracionesPrevias + puntuacion) / (valoracionesPrevias + 1)
+
+    await User.updateOne(
+      { _id: inscripcion.voluntarioId },
+      {
+        $set: {
+          'voluntario.estadisticas.valoracionMedia': nuevaMedia,
+          'voluntario.estadisticas.numValoraciones': valoracionesPrevias + 1,
+        },
+      },
+    )
+
+    await notificar({
+      usuarioId: inscripcion.voluntarioId,
+      tipo: 'valoracion_recibida',
+      titulo: 'Has recibido una valoración',
+      mensaje: `${req.usuario!.nombre} ha valorado tu colaboración con ${puntuacion} palmeras.`,
+      enlace: '/perfil',
+    })
+
+    res.json({
+      id: inscripcion.id,
+      valoracion: { puntuacion, comentario: comentarioLimpio ?? null },
+    })
+  } catch (error) {
+    console.error('Error al valorar al voluntario:', error)
+    res.status(500).json({ message: 'No se pudo guardar la valoración' })
   }
 }
 
@@ -458,9 +556,10 @@ export async function completarInscripcion(req: Request, res: Response): Promise
       return
     }
 
-    const horasRealizadas = asistio
+    const horasRealizadasSinRedondear = asistio
       ? (horas ?? turnos.reduce((total, turno) => total + horasEntre(turno.horaInicio, turno.horaFin), 0))
       : 0
+    const horasRealizadas = Math.round(horasRealizadasSinRedondear * 100) / 100
 
     // El filtro incluye el estado: si llegan dos peticiones a la vez, solo una suma las horas
     const actualizada = await Inscripcion.findOneAndUpdate(

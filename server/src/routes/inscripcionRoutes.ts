@@ -7,6 +7,7 @@ import {
   getCandidatosOferta,
   getMisInscripciones,
   rechazarInscripcion,
+  valorarVoluntario,
 } from '../controllers/inscripcionController.js'
 import { requireAuth, requireRol } from '../middleware/auth.js'
 
@@ -21,5 +22,6 @@ router.patch('/:id/aceptar', requireAuth, requireRol('ofertante'), aceptarInscri
 router.patch('/:id/rechazar', requireAuth, requireRol('ofertante'), rechazarInscripcion)
 // Cuando termina la actividad, confirma si el voluntario participo
 router.patch('/:id/completar', requireAuth, requireRol('ofertante'), completarInscripcion)
+router.patch('/:id/valorar', requireAuth, requireRol('ofertante'), valorarVoluntario)
 
 export default router

@@ -258,7 +258,7 @@
 
 .profile-statistics article {
   display: flex;
-  min-height: 190px;
+  min-height: 132px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -272,7 +272,9 @@
 }
 
 .profile-statistics strong {
-  font-size: clamp(42px, 6vw, 64px);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: clamp(32px, 4vw, 48px);
   line-height: 1;
 }
 
@@ -280,6 +282,22 @@
   color: var(--verde-claro);
   font-size: 15px;
   font-weight: 600;
+  line-height: 1.25;
+}
+
+@media (max-width: 700px) {
+  .profile-statistics article {
+    min-height: 112px;
+    padding: 18px 10px;
+  }
+
+  .profile-statistics strong {
+    font-size: clamp(28px, 9vw, 40px);
+  }
+
+  .profile-statistics span {
+    font-size: 13px;
+  }
 }
 
 .history-section {
@@ -395,12 +413,12 @@
 
 .history-review {
   margin-top: 16px;
-  color: #e4a11b;
   font-size: 18px;
 }
 
 .history-empty-stars {
-  color: var(--borde);
+  filter: grayscale(1);
+  opacity: 0.3;
 }
 
 .history-review p {

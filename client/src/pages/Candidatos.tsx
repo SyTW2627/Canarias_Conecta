@@ -32,6 +32,7 @@ type Candidato = {
   fechaSolicitud: string
   fechaResolucion: string | null
   turnoIds: string[]
+  valoracion: { puntuacion: number; comentario: string | null } | null
   voluntario: {
     id: string
     nombre: string
@@ -114,6 +115,9 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
   const [enCurso, setEnCurso] = useState<string | null>(null)
   const [completando, setCompletando] = useState<string | null>(null)
   const [horas, setHoras] = useState('')
+  const [valorando, setValorando] = useState<string | null>(null)
+  const [puntuacion, setPuntuacion] = useState(0)
+  const [comentarioValoracion, setComentarioValoracion] = useState('')
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -225,6 +229,37 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
         setErrorAccion(data.message ?? 'No se pudo completar la inscripción')
       } else {
         setCompletando(null)
+      }
+
+      setRecargas((n) => n + 1)
+    } catch {
+      setErrorAccion('No se pudo conectar con el servidor')
+    } finally {
+      setEnCurso(null)
+    }
+  }
+
+  async function valorar(candidato: Candidato) {
+    if (puntuacion < 1) {
+      setErrorAccion('Selecciona entre 1 y 5 palmeras')
+      return
+    }
+
+    setErrorAccion(null)
+    setEnCurso(candidato.id)
+    try {
+      const res = await fetch(`/api/inscripciones/${encodeURIComponent(candidato.id)}/valorar`, {
+        method: 'PATCH',
+        headers: { ...cabecerasConSesion(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puntuacion, comentario: comentarioValoracion }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setErrorAccion(data.message ?? 'No se pudo guardar la valoración')
+      } else {
+        setValorando(null)
+        setPuntuacion(0)
+        setComentarioValoracion('')
       }
       setRecargas((n) => n + 1)
     } catch {
@@ -431,6 +466,40 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                         </p>
                       )}
 
+                      {candidato.estado === 'completada' && candidato.valoracion === null && valorando === candidato.id && (
+                        <div className="candidato-valoracion">
+                          <p className="candidato-valoracion-titulo">Valora su colaboración</p>
+                          <div className="candidato-palmeras" role="radiogroup" aria-label="Valoración de 1 a 5 palmeras">
+                            {[1, 2, 3, 4, 5].map((valor) => (
+                              <button
+                                key={valor}
+                                type="button"
+                                className={valor <= puntuacion ? 'palmera seleccionada' : 'palmera'}
+                                role="radio"
+                                aria-checked={valor === puntuacion}
+                                aria-label={`${valor} palmera${valor === 1 ? '' : 's'}`}
+                                onClick={() => setPuntuacion(valor)}
+                              >
+                                🌴
+                              </button>
+                            ))}
+                          </div>
+                          <textarea
+                            rows={3}
+                            maxLength={1000}
+                            placeholder="Comentario opcional"
+                            value={comentarioValoracion}
+                            onChange={(evento) => setComentarioValoracion(evento.target.value)}
+                          />
+                        </div>
+                      )}
+
+                      {candidato.estado === 'completada' && candidato.valoracion && (
+                        <p className="gestion-ayuda candidato-valoracion-guardada">
+                          Valoración enviada: {'🌴'.repeat(candidato.valoracion.puntuacion)}
+                        </p>
+                      )}
+
                       {candidato.estado === 'en_espera' && (
                         <p className="gestion-ayuda">
                           En lista de espera: pasará a pendiente en cuanto se libere una plaza en sus turnos.
@@ -461,6 +530,42 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                             onChange={(evento) => setHoras(evento.target.value)}
                           />
                         </div>
+                      )}
+
+                      {candidato.estado === 'completada' && candidato.valoracion === null && (
+                        valorando === candidato.id ? (
+                          <>
+                            <button
+                              type="button"
+                              className="gestion-accion candidato-aceptar"
+                              onClick={() => valorar(candidato)}
+                              disabled={enCurso !== null}
+                            >
+                              {enCurso === candidato.id ? 'Guardando...' : 'Guardar valoración'}
+                            </button>
+                            <button
+                              type="button"
+                              className="gestion-accion"
+                              onClick={() => setValorando(null)}
+                              disabled={enCurso !== null}
+                            >
+                              Cancelar
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="gestion-accion candidato-aceptar"
+                            onClick={() => {
+                              setValorando(candidato.id)
+                              setPuntuacion(0)
+                              setComentarioValoracion('')
+                            }}
+                            disabled={enCurso !== null}
+                          >
+                            Valorar con palmeras
+                          </button>
+                        )
                       )}
 
                       {rechazando === candidato.id && (

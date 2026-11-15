@@ -32,6 +32,12 @@ function inicialesDe(nombre: string): string {
   return nombre.slice(0, 2).toUpperCase()
 }
 
+function formatearHoras(horas: number): string {
+  return Number(horas.toFixed(2)).toLocaleString('es-ES', {
+    maximumFractionDigits: 2,
+  })
+}
+
 function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: VolunteerProfileProps) {
   const [historial, setHistorial] = useState<HistorialItem[] | null>(null)
   const [errorHistorial, setErrorHistorial] = useState<string | null>(null)
@@ -246,7 +252,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
                 <span>Colaboraciones</span>
               </article>
               <article>
-                <strong>{horasDedicadas}</strong>
+                <strong>{formatearHoras(horasDedicadas)}</strong>
                 <span>Horas dedicadas</span>
               </article>
               <article>
@@ -283,10 +289,10 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
                       </div>
                       {item.valoracion && (
                         <div className="history-review">
-                          <span aria-label={`${item.valoracion.puntuacion} de 5 estrellas`}>
-                            {'★'.repeat(item.valoracion.puntuacion)}
+                          <span aria-label={`${item.valoracion.puntuacion} de 5 palmeras`}>
+                            {'🌴'.repeat(item.valoracion.puntuacion)}
                             <span className="history-empty-stars">
-                              {'★'.repeat(5 - item.valoracion.puntuacion)}
+                              {'🌴'.repeat(5 - item.valoracion.puntuacion)}
                             </span>
                           </span>
                           {item.valoracion.comentario && <p>“{item.valoracion.comentario}”</p>}

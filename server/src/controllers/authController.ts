@@ -33,6 +33,13 @@ function esValorPermitido<T extends readonly string[]>(valor: string, opciones: 
   return (opciones as readonly string[]).includes(valor)
 }
 
+function esFechaObtencionValida(valor: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false
+  const fecha = new Date(`${valor}T00:00:00.000Z`)
+  return !Number.isNaN(fecha.getTime()) && fecha <= new Date() &&
+    fecha.toISOString().slice(0, 10) === valor
+}
+
 function leerCuerpoPerfil(req: Request): Record<string, unknown> | null {
   if (!req.is('multipart/form-data')) return req.body ?? {}
 
@@ -63,6 +70,7 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     passwordActual,
     passwordNueva,
     interesIds,
+    acreditaciones,
     telefono,
     isla,
     municipio,
@@ -86,6 +94,22 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     || (interesIds !== undefined &&
       (!Array.isArray(interesIds) ||
         interesIds.some((id) => typeof id !== 'string' || !isObjectIdOrHexString(id)))) ||
+    (acreditaciones !== undefined && (
+      req.usuario.rol !== 'voluntario' ||
+      !Array.isArray(acreditaciones) ||
+      acreditaciones.some((acreditacion) =>
+        !acreditacion ||
+        typeof acreditacion !== 'object' ||
+        typeof (acreditacion as { nombre?: unknown }).nombre !== 'string' ||
+        !(acreditacion as { nombre: string }).nombre.trim() ||
+        (acreditacion as { nombre: string }).nombre.trim().length > 200 ||
+        typeof (acreditacion as { fechaObtencion?: unknown }).fechaObtencion !== 'string' ||
+        !esFechaObtencionValida((acreditacion as { fechaObtencion: string }).fechaObtencion) ||
+        ((acreditacion as { identificador?: unknown }).identificador !== undefined &&
+          (typeof (acreditacion as { identificador?: unknown }).identificador !== 'string' ||
+            (acreditacion as { identificador: string }).identificador.length > 200))
+      )
+    )) ||
     (telefono !== undefined && typeof telefono !== 'string') ||
     (isla !== undefined && (typeof isla !== 'string' || !esValorPermitido(isla, ISLAS))) ||
     (municipio !== undefined && (typeof municipio !== 'string' || !municipio.trim())) ||
@@ -106,6 +130,7 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     email === undefined &&
     passwordNueva === undefined &&
     interesIds === undefined &&
+    acreditaciones === undefined &&
     telefono === undefined &&
     isla === undefined &&
     municipio === undefined &&
@@ -152,6 +177,16 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
       }
       user.set('voluntario.interesIds', idsUnicos)
     }
+    if (acreditaciones !== undefined) {
+      user.set(
+        'voluntario.acreditaciones',
+        acreditaciones.map((acreditacion) => ({
+          nombre: acreditacion.nombre.trim(),
+          identificador: acreditacion.identificador?.trim() || undefined,
+          fechaObtencion: new Date(acreditacion.fechaObtencion),
+        })),
+      )
+    }
     if (req.usuario.rol === 'ofertante') {
       if (telefono !== undefined) user.telefono = telefono.trim() || undefined
       if (isla !== undefined) user.isla = isla || undefined
@@ -183,6 +218,12 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
         rol: user.rol,
         avatarUrl: user.avatarUrl,
         interesIds: user.voluntario?.interesIds?.map((id) => id.toString()) ?? [],
+        acreditaciones: user.voluntario?.acreditaciones?.map((acreditacion) => ({
+          id: acreditacion._id.toString(),
+          nombre: acreditacion.nombre,
+          identificador: acreditacion.identificador ?? null,
+          fechaObtencion: acreditacion.fechaObtencion.toISOString().slice(0, 10),
+        })) ?? [],
         telefono: user.telefono,
         isla: user.isla,
         municipio: user.municipio,
@@ -240,6 +281,12 @@ export async function getPerfil(req: Request, res: Response): Promise<void> {
           id: interes.id,
           nombre: interes.nombre,
         })),
+        acreditaciones: user.voluntario?.acreditaciones?.map((acreditacion) => ({
+          id: acreditacion._id.toString(),
+          nombre: acreditacion.nombre,
+          identificador: acreditacion.identificador ?? null,
+          fechaObtencion: acreditacion.fechaObtencion.toISOString().slice(0, 10),
+        })) ?? [],
         telefono: user.telefono,
         isla: user.isla,
         municipio: user.municipio,

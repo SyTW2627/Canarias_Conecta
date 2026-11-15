@@ -13,6 +13,12 @@ type VolunteerProfileProps = {
 }
 
 type Categoria = { id: string; nombre: string }
+type Acreditacion = {
+  id: string
+  nombre: string
+  identificador: string | null
+  fechaObtencion: string
+}
 
 type HistorialItem = {
   id: string
@@ -54,6 +60,12 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [interesIds, setInteresIds] = useState<string[]>(usuario.interesIds ?? [])
   const [nombresIntereses, setNombresIntereses] = useState<Categoria[]>([])
+  const [acreditaciones, setAcreditaciones] = useState<Acreditacion[]>([])
+  const [mostrarAcreditacion, setMostrarAcreditacion] = useState(false)
+  const [nombreAcreditacion, setNombreAcreditacion] = useState('')
+  const [identificadorAcreditacion, setIdentificadorAcreditacion] = useState('')
+  const [fechaAcreditacion, setFechaAcreditacion] = useState('')
+  const [guardandoAcreditacion, setGuardandoAcreditacion] = useState(false)
 
   useEffect(() => {
     if (!avatarPrevia) return
@@ -97,6 +109,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
         setAvatarUrl(perfilData.user?.avatarUrl)
         setNombresIntereses(intereses)
         setInteresIds(intereses.map((interes: Categoria) => interes.id))
+        setAcreditaciones(perfilData.user?.acreditaciones ?? [])
       })
       .catch(() => {
         setCategorias([])
@@ -178,6 +191,64 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
     }
   }
 
+  async function guardarAcreditacion(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    setErrorEditor(null)
+    setGuardandoAcreditacion(true)
+    try {
+      const formulario = new FormData()
+      formulario.append('datos', JSON.stringify({
+        acreditaciones: [
+          ...acreditaciones,
+          {
+            nombre: nombreAcreditacion,
+            identificador: identificadorAcreditacion,
+            fechaObtencion: fechaAcreditacion,
+          },
+        ],
+      }))
+      const res = await fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+        body: formulario,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message ?? 'No se pudo guardar la acreditación')
+      setAcreditaciones(data.user.acreditaciones ?? [])
+      setNombreAcreditacion('')
+      setIdentificadorAcreditacion('')
+      setFechaAcreditacion('')
+      setMostrarAcreditacion(false)
+    } catch (reason) {
+      setErrorEditor(reason instanceof Error ? reason.message : 'No se pudo guardar la acreditación')
+    } finally {
+      setGuardandoAcreditacion(false)
+    }
+  }
+
+  async function eliminarAcreditacion(id: string) {
+    setErrorEditor(null)
+    setGuardandoAcreditacion(true)
+    try {
+      const formulario = new FormData()
+      formulario.append('datos', JSON.stringify({
+        acreditaciones: acreditaciones.filter((acreditacion) => acreditacion.id !== id),
+      }))
+      const res = await fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+        body: formulario,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message ?? 'No se pudo eliminar la acreditación')
+      setAcreditaciones(data.user.acreditaciones ?? [])
+    } catch (reason) {
+      setErrorEditor(reason instanceof Error ? reason.message : 'No se pudo eliminar la acreditación')
+    } finally {
+      setGuardandoAcreditacion(false)
+    }
+  }
+
   return (
     <div className="authenticated-home volunteer-profile">
       <header className="nav authenticated-nav">
@@ -240,8 +311,46 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
             </section>
 
             <section className="profile-card accreditation-card">
-              <h2>Mis acreditaciones</h2>
-              <p>Aquí aparecerán las acreditaciones que obtengas.</p>
+              <div className="accreditation-heading">
+                <h2>Mis acreditaciones</h2>
+                <button type="button" className="text-link" onClick={() => setMostrarAcreditacion((actual) => !actual)}>
+                  {mostrarAcreditacion ? 'Cancelar' : 'Añadir'}
+                </button>
+              </div>
+              {acreditaciones.length === 0 && !mostrarAcreditacion && (
+                <p>Aquí aparecerán las acreditaciones que obtengas.</p>
+              )}
+              {acreditaciones.length > 0 && (
+                <ul className="accreditation-list">
+                  {acreditaciones.map((acreditacion) => (
+                    <li key={acreditacion.id}>
+                      <div>
+                        <strong>{acreditacion.nombre}</strong>
+                        <span>Obtenida el {formatearFecha(acreditacion.fechaObtencion)}</span>
+                        {acreditacion.identificador && <span>ID: {acreditacion.identificador}</span>}
+                      </div>
+                      <button
+                        type="button"
+                        className="accreditation-delete"
+                        onClick={() => eliminarAcreditacion(acreditacion.id)}
+                        disabled={guardandoAcreditacion}
+                      >
+                        Eliminar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {mostrarAcreditacion && (
+                <form className="accreditation-form" onSubmit={guardarAcreditacion}>
+                  <label><span>Nombre de la acreditación</span><input value={nombreAcreditacion} onChange={(event) => setNombreAcreditacion(event.target.value)} required /></label>
+                  <label><span>ID o número (opcional)</span><input value={identificadorAcreditacion} onChange={(event) => setIdentificadorAcreditacion(event.target.value)} /></label>
+                  <label><span>Fecha de obtención</span><input type="date" value={fechaAcreditacion} onChange={(event) => setFechaAcreditacion(event.target.value)} required /></label>
+                  <button type="submit" className="btn" disabled={guardandoAcreditacion}>
+                    {guardandoAcreditacion ? 'Guardando...' : 'Guardar acreditación'}
+                  </button>
+                </form>
+              )}
             </section>
           </div>
 

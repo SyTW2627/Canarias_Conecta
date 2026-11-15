@@ -45,6 +45,13 @@
   color: var(--verde-oscuro);
   font-size: 32px;
   font-weight: 700;
+  overflow: hidden;
+}
+
+.organization-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .organization-card h2 {
@@ -152,6 +159,14 @@
 
 .organization-modal textarea {
   resize: vertical;
+}
+
+.organization-avatar-preview {
+  width: 88px;
+  height: 88px;
+  margin-top: 8px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .organization-modal input:focus,

@@ -14,6 +14,7 @@ import {
   solicitarRecuperacion
 } from '../controllers/authController.js'
 import { requireAuth } from '../middleware/auth.js'
+import { recibirImagen } from '../middleware/subidaImagen.js'
 
 const router = Router()
 
@@ -21,7 +22,7 @@ router.post('/register', register)
 router.post('/login', login)
 router.post('/recuperar-password', solicitarRecuperacion)
 router.post('/restablecer-password', restablecerPassword)
-router.patch('/me', requireAuth, actualizarPerfil)
+router.patch('/me', requireAuth, recibirImagen, actualizarPerfil)
 router.get('/me', requireAuth, getPerfil)
 
 export default router

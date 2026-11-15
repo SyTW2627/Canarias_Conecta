@@ -12,6 +12,7 @@ export type Usuario = {
   email: string
   rol: 'voluntario' | 'ofertante'
   interesIds?: string[]
+  avatarUrl?: string
 }
 
 type LoginProps = {

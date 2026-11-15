@@ -42,9 +42,17 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
   const [passwordNueva, setPasswordNueva] = useState('')
   const [errorEditor, setErrorEditor] = useState<string | null>(null)
   const [guardandoEditor, setGuardandoEditor] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState(usuario.avatarUrl)
+  const [avatarArchivo, setAvatarArchivo] = useState<File | null>(null)
+  const [avatarPrevia, setAvatarPrevia] = useState<string | null>(null)
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [interesIds, setInteresIds] = useState<string[]>(usuario.interesIds ?? [])
   const [nombresIntereses, setNombresIntereses] = useState<Categoria[]>([])
+
+  useEffect(() => {
+    if (!avatarPrevia) return
+    return () => URL.revokeObjectURL(avatarPrevia)
+  }, [avatarPrevia])
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -80,6 +88,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
         const categoriasDisponibles = Array.isArray(categoriasData) ? categoriasData : []
         setCategorias(categoriasDisponibles)
         const intereses = perfilData.user?.intereses ?? []
+        setAvatarUrl(perfilData.user?.avatarUrl)
         setNombresIntereses(intereses)
         setInteresIds(intereses.map((interes: Categoria) => interes.id))
       })
@@ -128,23 +137,30 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
     setGuardandoEditor(true)
 
     try {
+      const datos = {
+        nombre,
+        email,
+        interesIds,
+        ...(passwordNueva && { passwordActual, passwordNueva }),
+      }
+      const formulario = new FormData()
+      formulario.append('datos', JSON.stringify(datos))
+      if (avatarArchivo) formulario.append('imagen', avatarArchivo)
+
       const res = await fetch('/api/auth/me', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
         },
-        body: JSON.stringify({
-          nombre,
-          email,
-          interesIds,
-          ...(passwordNueva && { passwordActual, passwordNueva }),
-        }),
+        body: formulario,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message ?? 'No se pudo actualizar el perfil')
 
       onUsuarioActualizado(data.user)
+      setAvatarUrl(data.user.avatarUrl)
+      setAvatarArchivo(null)
+      setAvatarPrevia(null)
       setNombresIntereses(categorias.filter((categoria) => interesIds.includes(categoria.id)))
       setPasswordActual('')
       setPasswordNueva('')
@@ -189,8 +205,12 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
         <div className="volunteer-profile-layout">
           <div className="volunteer-profile-sidebar">
             <section className="profile-card">
-              <div className="profile-avatar" aria-hidden="true">
-                {inicialesDe(usuario.nombre)}
+              <div className="profile-avatar">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={`Foto de perfil de ${usuario.nombre}`} />
+                ) : (
+                  <span aria-hidden="true">{inicialesDe(usuario.nombre)}</span>
+                )}
               </div>
               <h2>{usuario.nombre}</h2>
               <p className="profile-member-since">Voluntaria desde noviembre de 2026</p>
@@ -293,6 +313,32 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
               </button>
             </div>
             <form onSubmit={guardarPerfil}>
+              <label className="profile-field">
+                <span>Foto de perfil</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const archivo = event.target.files?.[0] ?? null
+                    if (!archivo) return
+                    if (archivo.size > 5 * 1024 * 1024) {
+                      setErrorEditor('La imagen no puede superar los 5 MB')
+                      event.target.value = ''
+                      return
+                    }
+                    setErrorEditor(null)
+                    setAvatarArchivo(archivo)
+                    setAvatarPrevia(URL.createObjectURL(archivo))
+                  }}
+                />
+                {(avatarPrevia || avatarUrl) && (
+                  <img
+                    className="profile-avatar-preview"
+                    src={avatarPrevia ?? avatarUrl}
+                    alt="Vista previa de la foto de perfil"
+                  />
+                )}
+              </label>
               <label className="profile-field">
                 <span>Nombre</span>
                 <input value={nombre} onChange={(event) => setNombre(event.target.value)} required />

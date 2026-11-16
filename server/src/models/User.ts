@@ -41,6 +41,15 @@ const franjaDisponibilidadSchema = new Schema(
   { _id: false }
 )
 
+const acreditacionSchema = new Schema(
+  {
+    nombre: { type: String, required: true, trim: true },
+    identificador: { type: String, trim: true },
+    fechaObtencion: { type: Date, required: true }
+  },
+  { _id: true }
+)
+
 const perfilVoluntarioSchema = new Schema(
   {
     fechaNacimiento: { type: Date },
@@ -51,6 +60,7 @@ const perfilVoluntarioSchema = new Schema(
     islasPreferidas: { type: [{ type: String, enum: ISLAS }], default: [] },
     disponibilidad: { type: [franjaDisponibilidadSchema], default: [] },
     favoritas: { type: [{ type: Schema.Types.ObjectId, ref: 'Oferta' }], default: [] },
+    acreditaciones: { type: [acreditacionSchema], default: [] },
     estadisticas: {
       horasTotales: { type: Number, default: 0 },
       colaboraciones: { type: Number, default: 0 },

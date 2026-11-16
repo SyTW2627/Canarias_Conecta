@@ -196,3 +196,77 @@
     flex-wrap: wrap;
   }
 }
+
+.candidato-rechazo input {
+  box-sizing: border-box;
+  width: 120px;
+  background: #fff;
+  color: var(--texto);
+  padding: 9px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  font: 15px 'DM Sans', sans-serif;
+}
+
+.candidato-estado-no_presentado {
+  background: #fdecea;
+  color: #a12a1f;
+}
+
+.candidato-estado-en_espera {
+  background: #e6eefc;
+  color: #2c4f8f;
+}
+
+.candidato-valoracion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borde);
+}
+
+.candidato-valoracion-titulo {
+  margin: 0;
+  color: var(--texto);
+  font-weight: 700;
+}
+
+.candidato-palmeras {
+  display: flex;
+  gap: 4px;
+}
+
+.palmera {
+  padding: 2px;
+  border: none;
+  background: none;
+  filter: grayscale(1);
+  font-size: 26px;
+  opacity: 0.45;
+  cursor: pointer;
+}
+
+.palmera.seleccionada,
+.palmera:hover,
+.palmera:focus-visible {
+  filter: none;
+  opacity: 1;
+}
+
+.candidato-valoracion textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  font: 15px 'DM Sans', sans-serif;
+  resize: vertical;
+}
+
+.candidato-valoracion-guardada {
+  color: #b57a00;
+  font-size: 18px;
+}

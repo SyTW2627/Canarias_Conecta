@@ -4,13 +4,15 @@
  * Funcion: Gestiona el registro y el inicio de sesion de los usuarios.
  */
 
-import { createHash, randomBytes } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { Request, Response } from 'express'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import { User, ROLES_REGISTRO, TIPOS_ENTIDAD } from '../models/User.js'
 import { ISLAS } from '../models/constantes.js'
 import { Categoria } from '../models/Categoria.js'
+import { Imagen } from '../models/Imagen.js'
+import { detectarTipoImagen } from '../middleware/subidaImagen.js'
 import { isObjectIdOrHexString } from 'mongoose'
 import { Token } from '../models/Token.js'
 import { enviarCorreo } from '../services/correo.js'
@@ -31,10 +33,34 @@ function esValorPermitido<T extends readonly string[]>(valor: string, opciones: 
   return (opciones as readonly string[]).includes(valor)
 }
 
+function esFechaObtencionValida(valor: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false
+  const fecha = new Date(`${valor}T00:00:00.000Z`)
+  return !Number.isNaN(fecha.getTime()) && fecha <= new Date() &&
+    fecha.toISOString().slice(0, 10) === valor
+}
+
+function leerCuerpoPerfil(req: Request): Record<string, unknown> | null {
+  if (!req.is('multipart/form-data')) return req.body ?? {}
+
+  try {
+    const datos = JSON.parse(req.body?.datos ?? '{}')
+    return datos && typeof datos === 'object' && !Array.isArray(datos) ? datos : null
+  } catch {
+    return null
+  }
+}
+
 // PATCH /api/auth/me -> actualiza los datos editables del usuario autenticado
 export async function actualizarPerfil(req: Request, res: Response): Promise<void> {
   if (!req.usuario) {
     res.status(401).json({ message: 'Debes iniciar sesión' })
+    return
+  }
+
+  const cuerpo = leerCuerpoPerfil(req)
+  if (!cuerpo) {
+    res.status(400).json({ message: 'Los datos del perfil no son válidos' })
     return
   }
 
@@ -44,6 +70,7 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     passwordActual,
     passwordNueva,
     interesIds,
+    acreditaciones,
     telefono,
     isla,
     municipio,
@@ -53,7 +80,12 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     personaContacto,
     cif,
     direccion,
-  } = req.body ?? {}
+  } = cuerpo
+  const tipoAvatar = req.file ? detectarTipoImagen(req.file.buffer) : undefined
+  if (tipoAvatar === null) {
+    res.status(400).json({ message: 'La imagen debe ser JPG, PNG o WebP' })
+    return
+  }
   if (
     (nombre !== undefined && (typeof nombre !== 'string' || !nombre.trim())) ||
     (email !== undefined && (typeof email !== 'string' || !EMAIL_REGEX.test(email.trim()))) ||
@@ -62,6 +94,22 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     || (interesIds !== undefined &&
       (!Array.isArray(interesIds) ||
         interesIds.some((id) => typeof id !== 'string' || !isObjectIdOrHexString(id)))) ||
+    (acreditaciones !== undefined && (
+      req.usuario.rol !== 'voluntario' ||
+      !Array.isArray(acreditaciones) ||
+      acreditaciones.some((acreditacion) =>
+        !acreditacion ||
+        typeof acreditacion !== 'object' ||
+        typeof (acreditacion as { nombre?: unknown }).nombre !== 'string' ||
+        !(acreditacion as { nombre: string }).nombre.trim() ||
+        (acreditacion as { nombre: string }).nombre.trim().length > 200 ||
+        typeof (acreditacion as { fechaObtencion?: unknown }).fechaObtencion !== 'string' ||
+        !esFechaObtencionValida((acreditacion as { fechaObtencion: string }).fechaObtencion) ||
+        ((acreditacion as { identificador?: unknown }).identificador !== undefined &&
+          (typeof (acreditacion as { identificador?: unknown }).identificador !== 'string' ||
+            (acreditacion as { identificador: string }).identificador.length > 200))
+      )
+    )) ||
     (telefono !== undefined && typeof telefono !== 'string') ||
     (isla !== undefined && (typeof isla !== 'string' || !esValorPermitido(isla, ISLAS))) ||
     (municipio !== undefined && (typeof municipio !== 'string' || !municipio.trim())) ||
@@ -82,6 +130,7 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     email === undefined &&
     passwordNueva === undefined &&
     interesIds === undefined &&
+    acreditaciones === undefined &&
     telefono === undefined &&
     isla === undefined &&
     municipio === undefined &&
@@ -91,6 +140,7 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
     personaContacto === undefined &&
     cif === undefined &&
     direccion === undefined
+    && !req.file
   ) {
     res.status(400).json({ message: 'No hay cambios que guardar' })
     return
@@ -127,6 +177,16 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
       }
       user.set('voluntario.interesIds', idsUnicos)
     }
+    if (acreditaciones !== undefined) {
+      user.set(
+        'voluntario.acreditaciones',
+        acreditaciones.map((acreditacion) => ({
+          nombre: acreditacion.nombre.trim(),
+          identificador: acreditacion.identificador?.trim() || undefined,
+          fechaObtencion: new Date(acreditacion.fechaObtencion),
+        })),
+      )
+    }
     if (req.usuario.rol === 'ofertante') {
       if (telefono !== undefined) user.telefono = telefono.trim() || undefined
       if (isla !== undefined) user.isla = isla || undefined
@@ -140,6 +200,14 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
       if (cif !== undefined) user.set('ofertante.cif', cif.trim() || undefined)
       if (direccion !== undefined) user.set('ofertante.direccion', direccion.trim() || undefined)
     }
+    if (req.file && tipoAvatar) {
+      const imagen = await Imagen.create({
+        nombre: `avatar-${randomUUID()}${tipoAvatar.extension}`,
+        contentType: tipoAvatar.contentType,
+        data: req.file.buffer,
+      })
+      user.avatarUrl = `/api/imagenes/${imagen.id}`
+    }
     await user.save()
 
     res.json({
@@ -148,7 +216,14 @@ export async function actualizarPerfil(req: Request, res: Response): Promise<voi
         nombre: user.nombre,
         email: user.email,
         rol: user.rol,
+        avatarUrl: user.avatarUrl,
         interesIds: user.voluntario?.interesIds?.map((id) => id.toString()) ?? [],
+        acreditaciones: user.voluntario?.acreditaciones?.map((acreditacion) => ({
+          id: acreditacion._id.toString(),
+          nombre: acreditacion.nombre,
+          identificador: acreditacion.identificador ?? null,
+          fechaObtencion: acreditacion.fechaObtencion.toISOString().slice(0, 10),
+        })) ?? [],
         telefono: user.telefono,
         isla: user.isla,
         municipio: user.municipio,
@@ -201,10 +276,17 @@ export async function getPerfil(req: Request, res: Response): Promise<void> {
         nombre: user.nombre,
         email: user.email,
         rol: user.rol,
+        avatarUrl: user.avatarUrl,
         intereses: intereses.map((interes) => ({
           id: interes.id,
           nombre: interes.nombre,
         })),
+        acreditaciones: user.voluntario?.acreditaciones?.map((acreditacion) => ({
+          id: acreditacion._id.toString(),
+          nombre: acreditacion.nombre,
+          identificador: acreditacion.identificador ?? null,
+          fechaObtencion: acreditacion.fechaObtencion.toISOString().slice(0, 10),
+        })) ?? [],
         telefono: user.telefono,
         isla: user.isla,
         municipio: user.municipio,
@@ -276,7 +358,13 @@ export async function register(req: Request, res: Response): Promise<void> {
 
     res.status(201).json({
       token,
-      user: { id: user.id, nombre: user.nombre, email: user.email, rol: user.rol }
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+        avatarUrl: user.avatarUrl,
+      }
     })
   } catch (error) {
     // 11000 = indice unico duplicado: ya existe un usuario con ese email

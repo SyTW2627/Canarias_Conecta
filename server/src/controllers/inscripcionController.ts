@@ -2,11 +2,12 @@
  * Gestiona las consultas de inscripciones del voluntario autenticado.
  */
 import type { Request, Response } from 'express'
-import { Inscripcion } from '../models/Inscripcion.js'
+import { ESTADOS_INSCRIPCION, Inscripcion } from '../models/Inscripcion.js'
 import { Oferta } from '../models/Oferta.js'
 import { User } from '../models/User.js'
 import { notificar } from '../services/notificaciones.js'
-import { isObjectIdOrHexString } from 'mongoose'
+import { liberarPlazas, promoverListaEspera, reservarPlazas } from '../services/plazas.js'
+import { isObjectIdOrHexString, Types } from 'mongoose'
 
 const MOTIVO_MAX = 500
 
@@ -30,6 +31,28 @@ function horasEntre(horaInicio: string, horaFin: string): number {
   return (finHoras * 60 + finMinutos - inicioHoras * 60 - inicioMinutos) / 60
 }
 
+// La fecha del turno es el dia a las 00:00 UTC y la hora va aparte
+function instante(fecha: Date, hora: string): Date {
+  const [horas, minutos] = hora.split(':').map(Number)
+  return new Date(fecha.getTime() + (horas * 60 + minutos) * 60 * 1000)
+}
+
+function finDelTurno(turno: Pick<Turno, 'fecha' | 'horaFin'>): Date {
+  return instante(turno.fecha, turno.horaFin)
+}
+
+// Inicio del primer turno: desde ahi se cuenta el plazo para cancelar
+function inicioDeTurnos(turnos: Array<Pick<Turno, 'fecha' | 'horaInicio'>>): Date | null {
+  return turnos.reduce<Date | null>((primero, turno) => {
+    const inicio = instante(turno.fecha, turno.horaInicio)
+    return !primero || inicio < primero ? inicio : primero
+  }, null)
+}
+
+// Antelacion minima para cancelar sin que quede como cancelacion tardia
+export const ANTELACION_CANCELAR_HORAS = 48
+const ESTADOS_CANCELABLES: Array<(typeof ESTADOS_INSCRIPCION)[number]> = ['pendiente', 'aceptada', 'en_espera']
+
 function fechaMasReciente(turnos: Turno[]): Date | null {
   return turnos.reduce<Date | null>(
     (reciente, turno) => (!reciente || turno.fecha > reciente ? turno.fecha : reciente),
@@ -45,6 +68,8 @@ export async function crearInscripcion(req: Request, res: Response): Promise<voi
   }
 
   const { ofertaId, turnoIds } = req.body ?? {}
+  // Si algun turno no tiene plaza, entra en la lista de espera en lugar de recibir un 409
+  const listaEspera = req.body?.listaEspera === true
   if (
     typeof ofertaId !== 'string' ||
     !isObjectIdOrHexString(ofertaId) ||
@@ -71,12 +96,13 @@ export async function crearInscripcion(req: Request, res: Response): Promise<voi
     const hoy = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`)
     if (
       turnos.length !== idsUnicos.length ||
-      turnos.some((turno) => turno.fecha < hoy || turno.plazasLibres < 1)
+      turnos.some((turno) => turno.fecha < hoy || (!listaEspera && turno.plazasLibres < 1))
     ) {
       res.status(409).json({ message: 'Alguno de los turnos ya no está disponible' })
       return
     }
 
+    // Se crea primero: el indice unico impide inscribirse dos veces antes de tocar las plazas
     const inscripcion = await Inscripcion.create({
       voluntarioId: req.usuario.id,
       ofertaId: oferta.id,
@@ -85,21 +111,19 @@ export async function crearInscripcion(req: Request, res: Response): Promise<voi
       estado: 'pendiente',
     })
 
-    const ofertaActualizada = await Oferta.findOneAndUpdate(
-      {
-        _id: oferta.id,
-        estado: 'publicada',
-        $and: idsUnicos.map((turnoId) => ({
-          turnos: { $elemMatch: { _id: turnoId, plazasLibres: { $gte: 1 } } },
-        })),
-      },
-      { $inc: { 'turnos.$[turno].plazasLibres': -1 } },
-      { arrayFilters: [{ 'turno._id': { $in: idsUnicos } }], returnDocument: 'after' },
-    )
+    if (!(await reservarPlazas(oferta.id, idsUnicos))) {
+      if (!listaEspera) {
+        await Inscripcion.findByIdAndDelete(inscripcion.id)
+        res.status(409).json({ message: 'Alguno de los turnos ya no está disponible' })
+        return
+      }
 
-    if (!ofertaActualizada) {
-      await Inscripcion.findByIdAndDelete(inscripcion.id)
-      res.status(409).json({ message: 'Alguno de los turnos ya no está disponible' })
+      inscripcion.estado = 'en_espera'
+      await inscripcion.save()
+      // Por si se libero una plaza mientras se creaba la inscripcion
+      await promoverListaEspera(oferta.id)
+      const actual = await Inscripcion.findById(inscripcion.id).select('estado')
+      res.status(201).json({ id: inscripcion.id, estado: actual?.estado ?? inscripcion.estado })
       return
     }
 
@@ -138,6 +162,18 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
         populate: { path: 'ofertanteId', select: 'nombre' },
       })
 
+    // Posicion en la cola: cuantas personas de la misma oferta llevan esperando mas tiempo
+    const posiciones = new Map<string, number>()
+    for (const inscripcion of inscripciones) {
+      if (inscripcion.estado !== 'en_espera' || !inscripcion.ofertaId) continue
+      const delante = await Inscripcion.countDocuments({
+        ofertaId: inscripcion.ofertaId.id,
+        estado: 'en_espera',
+        createdAt: { $lt: inscripcion.createdAt },
+      })
+      posiciones.set(inscripcion.id, delante + 1)
+    }
+
     const historial = inscripciones
       .filter((inscripcion) => inscripcion.ofertaId)
       .map((inscripcion) => {
@@ -146,6 +182,7 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
           inscripcion.turnoIds.some((turnoId) => turnoId.toString() === turno._id.toString()),
         )
         const fecha = fechaMasReciente(turnos)
+        const inicio = inicioDeTurnos(turnos)
         const horas = inscripcion.horasRealizadas ?? turnos.reduce(
           (total, turno) => total + horasEntre(turno.horaInicio, turno.horaFin),
           0,
@@ -159,6 +196,12 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
           fecha: fecha?.toISOString() ?? null,
           horas,
           estado: inscripcion.estado,
+          inicio: inicio?.toISOString() ?? null,
+          // Se puede cancelar mientras siga activa y no haya empezado su primer turno
+          puedeCancelar:
+            ESTADOS_CANCELABLES.includes(inscripcion.estado) && !!inicio && inicio > new Date(),
+          cancelacionTardia: inscripcion.cancelacionTardia ?? false,
+          posicionEspera: posiciones.get(inscripcion.id) ?? null,
           motivoRechazo: inscripcion.motivoRechazo ?? null,
           valoracion: inscripcion.valoracionAlVoluntario
             ? {
@@ -199,6 +242,10 @@ type VoluntarioPoblado = {
     }
   }
 }
+
+const PUNTUACION_MIN = 1
+const PUNTUACION_MAX = 5
+const COMENTARIO_VALORACION_MAX = 1000
 
 function edadDesde(fechaNacimiento?: Date): number | null {
   if (!fechaNacimiento) return null
@@ -241,10 +288,27 @@ export async function getCandidatosOferta(req: Request, res: Response): Promise<
         const perfil = voluntario.voluntario
         // El contacto solo se comparte con la entidad una vez aceptado el voluntario
         const compartirContacto = ['aceptada', 'completada'].includes(inscripcion.estado)
+        const turnos = oferta.turnos.filter((turno) =>
+          inscripcion.turnoIds.some((turnoId) => turnoId.toString() === turno._id.toString()),
+        )
 
         return {
           id: inscripcion.id,
           estado: inscripcion.estado,
+          // Solo se puede confirmar la asistencia cuando han terminado todos sus turnos
+          terminada: turnos.length > 0 && turnos.every((turno) => finDelTurno(turno) <= new Date()),
+          horasPrevistas: turnos.reduce(
+            (total, turno) => total + horasEntre(turno.horaInicio, turno.horaFin),
+            0,
+          ),
+          horasRealizadas: inscripcion.horasRealizadas ?? null,
+          valoracion: inscripcion.valoracionAlVoluntario
+            ? {
+                puntuacion: inscripcion.valoracionAlVoluntario.puntuacion,
+                comentario: inscripcion.valoracionAlVoluntario.comentario ?? null,
+              }
+            : null,
+          cancelacionTardia: inscripcion.cancelacionTardia ?? false,
           mensaje: inscripcion.mensaje ?? null,
           motivoRechazo: inscripcion.motivoRechazo ?? null,
           fechaSolicitud: inscripcion.createdAt,
@@ -271,12 +335,100 @@ export async function getCandidatosOferta(req: Request, res: Response): Promise<
             telefono: compartirContacto ? (voluntario.telefono ?? null) : null,
           },
         }
+
       })
 
     res.json(candidatos)
   } catch (error) {
     console.error('Error al obtener los candidatos de la oferta:', error)
     res.status(500).json({ message: 'No se pudieron cargar los candidatos' })
+  }
+}
+
+// PATCH /api/inscripciones/:id/valorar -> el ofertante valora a un voluntario tras completar la actividad
+export async function valorarVoluntario(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+  const { puntuacion, comentario } = req.body ?? {}
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: 'La inscripción no existe' })
+    return
+  }
+  if (
+    typeof puntuacion !== 'number' ||
+    !Number.isInteger(puntuacion) ||
+    puntuacion < PUNTUACION_MIN ||
+    puntuacion > PUNTUACION_MAX
+  ) {
+    res.status(400).json({ message: 'La valoración debe tener entre 1 y 5 palmeras' })
+    return
+  }
+  if (comentario !== undefined && comentario !== null && typeof comentario !== 'string') {
+    res.status(400).json({ message: 'El comentario no es válido' })
+    return
+  }
+  const comentarioLimpio = typeof comentario === 'string' && comentario.trim()
+    ? comentario.trim()
+    : undefined
+  if (comentarioLimpio && comentarioLimpio.length > COMENTARIO_VALORACION_MAX) {
+    res.status(400).json({ message: `El comentario no puede superar los ${COMENTARIO_VALORACION_MAX} caracteres` })
+    return
+  }
+
+  try {
+    const inscripcion = await Inscripcion.findOne({ _id: id, ofertanteId: req.usuario!.id })
+    if (!inscripcion) {
+      res.status(404).json({ message: 'La inscripción no existe' })
+      return
+    }
+    if (inscripcion.estado !== 'completada') {
+      res.status(409).json({ message: 'Solo puedes valorar colaboraciones completadas' })
+      return
+    }
+    if (inscripcion.valoracionAlVoluntario) {
+      res.status(409).json({ message: 'Esta colaboración ya tiene una valoración' })
+      return
+    }
+
+    inscripcion.valoracionAlVoluntario = {
+      autorId: new Types.ObjectId(req.usuario!.id),
+      puntuacion,
+      comentario: comentarioLimpio,
+      fecha: new Date(),
+    }
+    await inscripcion.save()
+
+    const voluntario = await User.findById(inscripcion.voluntarioId).select('voluntario')
+    const estadisticas = voluntario?.voluntario?.estadisticas
+    const valoracionesPrevias = estadisticas?.numValoraciones ?? 0
+    const mediaPrevia = estadisticas?.valoracionMedia ?? 0
+    const nuevaMedia = (mediaPrevia * valoracionesPrevias + puntuacion) / (valoracionesPrevias + 1)
+
+    await User.updateOne(
+      { _id: inscripcion.voluntarioId },
+      {
+        $set: {
+          'voluntario.estadisticas.valoracionMedia': nuevaMedia,
+          'voluntario.estadisticas.numValoraciones': valoracionesPrevias + 1,
+        },
+      },
+    )
+
+    await notificar({
+      usuarioId: inscripcion.voluntarioId,
+      tipo: 'valoracion_recibida',
+      titulo: 'Has recibido una valoración',
+      mensaje: `${req.usuario!.nombre} ha valorado tu colaboración con ${puntuacion} palmeras.`,
+      enlace: '/perfil',
+    })
+
+    res.json({
+      id: inscripcion.id,
+      valoracion: { puntuacion, comentario: comentarioLimpio ?? null },
+    })
+  } catch (error) {
+    console.error('Error al valorar al voluntario:', error)
+    res.status(500).json({ message: 'No se pudo guardar la valoración' })
   }
 }
 
@@ -326,11 +478,7 @@ async function resolverInscripcion(
 
     // Al rechazar, las plazas que reservo la solicitud vuelven a quedar libres
     if (decision === 'rechazada') {
-      await Oferta.updateOne(
-        { _id: inscripcion.ofertaId },
-        { $inc: { 'turnos.$[turno].plazasLibres': 1 } },
-        { arrayFilters: [{ 'turno._id': { $in: inscripcion.turnoIds } }] },
-      )
+      await liberarPlazas(inscripcion)
     }
 
     const oferta = await Oferta.findById(inscripcion.ofertaId).select('titulo')
@@ -360,4 +508,163 @@ export function aceptarInscripcion(req: Request, res: Response): Promise<void> {
 
 export function rechazarInscripcion(req: Request, res: Response): Promise<void> {
   return resolverInscripcion(req, res, 'rechazada')
+}
+
+const HORAS_MAX = 24 * 30
+
+// PATCH /api/inscripciones/:id/completar -> el ofertante confirma si el voluntario participo
+export async function completarInscripcion(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+  const { asistio, horas } = req.body ?? {}
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: 'La inscripción no existe' })
+    return
+  }
+  if (typeof asistio !== 'boolean') {
+    res.status(400).json({ message: 'Indica si el voluntario asistió' })
+    return
+  }
+  if (
+    horas !== undefined &&
+    (typeof horas !== 'number' || !Number.isFinite(horas) || horas <= 0 || horas > HORAS_MAX)
+  ) {
+    res.status(400).json({ message: 'Las horas realizadas no son válidas' })
+    return
+  }
+
+  try {
+    const inscripcion = await Inscripcion.findOne({
+      _id: id,
+      ofertanteId: req.usuario!.id,
+    })
+    if (!inscripcion) {
+      res.status(404).json({ message: 'La inscripción no existe' })
+      return
+    }
+    if (inscripcion.estado !== 'aceptada') {
+      res.status(409).json({ message: 'Solo se puede completar una inscripción aceptada' })
+      return
+    }
+
+    const oferta = await Oferta.findById(inscripcion.ofertaId).select('titulo turnos')
+    const turnos = (oferta?.turnos ?? []).filter((turno) =>
+      inscripcion.turnoIds.some((turnoId) => turnoId.toString() === turno._id.toString()),
+    )
+    if (turnos.length === 0 || turnos.some((turno) => finDelTurno(turno) > new Date())) {
+      res.status(409).json({ message: 'La actividad todavía no ha terminado' })
+      return
+    }
+
+    const horasRealizadasSinRedondear = asistio
+      ? (horas ?? turnos.reduce((total, turno) => total + horasEntre(turno.horaInicio, turno.horaFin), 0))
+      : 0
+    const horasRealizadas = Math.round(horasRealizadasSinRedondear * 100) / 100
+
+    // El filtro incluye el estado: si llegan dos peticiones a la vez, solo una suma las horas
+    const actualizada = await Inscripcion.findOneAndUpdate(
+      { _id: inscripcion._id, estado: 'aceptada' },
+      {
+        estado: asistio ? 'completada' : 'no_presentado',
+        horasRealizadas,
+      },
+      { returnDocument: 'after' },
+    )
+    if (!actualizada) {
+      res.status(409).json({ message: 'Esta inscripción ya se ha completado' })
+      return
+    }
+
+    if (asistio) {
+      await User.updateOne(
+        { _id: inscripcion.voluntarioId },
+        {
+          $inc: {
+            'voluntario.estadisticas.horasTotales': horasRealizadas,
+            'voluntario.estadisticas.colaboraciones': 1,
+          },
+        },
+      )
+      await notificar({
+        usuarioId: inscripcion.voluntarioId,
+        tipo: 'inscripcion_completada',
+        titulo: 'Colaboración completada',
+        mensaje: `${req.usuario!.nombre} ha confirmado tu participación en "${oferta?.titulo ?? 'una oferta'}". Se han sumado ${horasRealizadas} h a tu perfil.`,
+        enlace: '/mis_inscripciones',
+      })
+    }
+
+    res.json({ id: actualizada.id, estado: actualizada.estado, horasRealizadas })
+  } catch (error) {
+    console.error('Error al completar la inscripción:', error)
+    res.status(500).json({ message: 'No se pudo completar la inscripción' })
+  }
+}
+
+// PATCH /api/inscripciones/:id/cancelar -> el voluntario cancela su inscripcion antes de que empiece
+export async function cancelarInscripcion(req: Request, res: Response): Promise<void> {
+  const { id } = req.params
+
+  if (!isObjectIdOrHexString(id)) {
+    res.status(404).json({ message: 'La inscripción no existe' })
+    return
+  }
+
+  try {
+    const inscripcion = await Inscripcion.findOne({ _id: id, voluntarioId: req.usuario!.id })
+    if (!inscripcion) {
+      res.status(404).json({ message: 'La inscripción no existe' })
+      return
+    }
+    if (!ESTADOS_CANCELABLES.includes(inscripcion.estado)) {
+      res.status(409).json({ message: 'Esta inscripción ya no se puede cancelar' })
+      return
+    }
+
+    const oferta = await Oferta.findById(inscripcion.ofertaId).select('titulo ofertanteId turnos')
+    const turnos = (oferta?.turnos ?? []).filter((turno) =>
+      inscripcion.turnoIds.some((turnoId) => turnoId.toString() === turno._id.toString()),
+    )
+    const inicio = inicioDeTurnos(turnos)
+    const ahora = new Date()
+    if (inicio && inicio <= ahora) {
+      res.status(409).json({ message: 'La actividad ya ha empezado: no se puede cancelar' })
+      return
+    }
+
+    // Salir de la lista de espera no deja a nadie sin plaza: nunca es tardio
+    const teniaPlaza = inscripcion.estado !== 'en_espera'
+    const tardia =
+      teniaPlaza &&
+      !!inicio &&
+      inicio.getTime() - ahora.getTime() < ANTELACION_CANCELAR_HORAS * 60 * 60 * 1000
+
+    // El filtro incluye el estado: si llegan dos peticiones a la vez, solo una devuelve las plazas
+    const cancelada = await Inscripcion.findOneAndUpdate(
+      { _id: inscripcion._id, estado: inscripcion.estado },
+      { estado: 'cancelada', fechaCancelacion: ahora, cancelacionTardia: tardia },
+      { returnDocument: 'after' },
+    )
+    if (!cancelada) {
+      res.status(409).json({ message: 'Esta inscripción ha cambiado: vuelve a intentarlo' })
+      return
+    }
+
+    if (teniaPlaza) await liberarPlazas(cancelada)
+
+    if (teniaPlaza) await notificar({
+      usuarioId: cancelada.ofertanteId,
+      tipo: 'inscripcion_cancelada',
+      titulo: tardia ? 'Cancelación de última hora' : 'Inscripción cancelada',
+      mensaje:
+        `${req.usuario!.nombre} ha cancelado su inscripción en "${oferta?.titulo ?? 'una oferta'}".` +
+        (tardia ? ` Lo ha hecho con menos de ${ANTELACION_CANCELAR_HORAS} h de antelación.` : ''),
+      enlace: `/gestionar-ofertas/${cancelada.ofertaId}/candidatos`,
+    })
+
+    res.json({ id: cancelada.id, estado: cancelada.estado, cancelacionTardia: tardia })
+  } catch (error) {
+    console.error('Error al cancelar la inscripción:', error)
+    res.status(500).json({ message: 'No se pudo cancelar la inscripción' })
+  }
 }

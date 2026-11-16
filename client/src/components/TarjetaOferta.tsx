@@ -8,8 +8,11 @@ import {
   ISLAS,
   MODALIDADES,
   esTurnoProximo,
+  estaCompleta,
   formatearFecha,
   imagenDeOferta,
+  plazasDisponibles,
+  textoPlazas,
   type Oferta,
 } from '../ofertas.ts'
 
@@ -17,7 +20,7 @@ function TarjetaOferta({ oferta }: { oferta: Oferta }) {
   const turno = oferta.turnos
     .filter(esTurnoProximo)
     .sort((a, b) => a.fecha.localeCompare(b.fecha))[0]
-  const plazasLibres = oferta.turnos.reduce((total, t) => total + t.plazasLibres, 0)
+  const completa = estaCompleta(oferta)
 
   return (
     <article className="opportunity-card">
@@ -42,9 +45,11 @@ function TarjetaOferta({ oferta }: { oferta: Oferta }) {
           )}
         </dl>
         <div className="opportunity-footer">
-          <span>
-            {plazasLibres === 1 ? '1 plaza disponible' : `${plazasLibres} plazas disponibles`}
-          </span>
+          {completa ? (
+            <span className="opportunity-completa">Completa</span>
+          ) : (
+            <span>{textoPlazas(plazasDisponibles(oferta))}</span>
+          )}
           <a className="btn" href={`/ofertas/${oferta.id}`}>
             Ver detalles
           </a>

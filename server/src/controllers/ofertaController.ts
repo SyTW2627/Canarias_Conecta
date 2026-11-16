@@ -14,6 +14,7 @@ import { SolicitudAyuda } from '../models/SolicitudAyuda.js'
 import { HORA_REGEX, ISLAS } from '../models/constantes.js'
 import { detectarTipoImagen } from '../middleware/subidaImagen.js'
 import { notificar } from '../services/notificaciones.js'
+import { promoverListaEspera } from '../services/plazas.js'
 import {
   Oferta,
   construirTextoBusqueda,
@@ -412,7 +413,7 @@ export async function cerrarOferta(req: Request, res: Response): Promise<void> {
     // Avisa a quien seguia pendiente o aceptado: la oferta ya no aparecera en la web
     const afectados = await Inscripcion.find({
       ofertaId: oferta._id,
-      estado: { $in: ['pendiente', 'aceptada'] }
+      estado: { $in: ['pendiente', 'aceptada', 'en_espera'] }
     }).select('voluntarioId')
     await notificar(
       afectados.map((inscripcion) => ({
@@ -764,6 +765,11 @@ export async function editarOferta(req: Request, res: Response): Promise<void> {
         console.error('Error al borrar la imagen anterior de una oferta:', borrado)
       })
     }
+
+    // Si se han ampliado las plazas, entra quien estaba en la lista de espera
+    await promoverListaEspera(oferta._id).catch((errorCola) => {
+      console.error('Error al avanzar la lista de espera:', errorCola)
+    })
 
     res.json({ id: oferta.id, estado: oferta.estado })
   } catch (error) {

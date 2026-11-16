@@ -31,7 +31,8 @@ export async function prepararBaseDeDatos(): Promise<void> {
     Categoria.init(),
     Imagen.init(),
     Oferta.init(),
-    Inscripcion.init(),
+    // syncIndexes y no init: sustituye el indice unico si cambian los estados que bloquean
+    Inscripcion.syncIndexes(),
     SolicitudAyuda.init(),
     Notificacion.init(),
     Token.init()

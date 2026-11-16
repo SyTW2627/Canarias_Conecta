@@ -95,3 +95,20 @@ export function hoyIso(): string {
 export function esTurnoProximo(turno: Turno): boolean {
   return turno.fecha.slice(0, 10) >= hoyIso()
 }
+
+// Las plazas de turnos pasados ya no se pueden pedir: solo cuentan las de los proximos
+export function plazasDisponibles(oferta: Pick<Oferta, 'turnos'>): number {
+  return oferta.turnos
+    .filter(esTurnoProximo)
+    .reduce((total, turno) => total + turno.plazasLibres, 0)
+}
+
+// Completa: tiene turnos proximos, pero ninguno con plazas libres. No es un estado guardado
+export function estaCompleta(oferta: Pick<Oferta, 'turnos'>): boolean {
+  return oferta.turnos.some(esTurnoProximo) && plazasDisponibles(oferta) === 0
+}
+
+export function textoPlazas(plazasLibres: number): string {
+  if (plazasLibres === 0) return 'Sin plazas'
+  return plazasLibres === 1 ? '1 plaza disponible' : `${plazasLibres} plazas disponibles`
+}

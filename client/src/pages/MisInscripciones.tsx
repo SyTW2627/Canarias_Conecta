@@ -8,6 +8,7 @@ import Notificaciones from '../components/Notificaciones.tsx'
 
 type EstadoInscripcion =
   | 'pendiente'
+  | 'en_espera'
   | 'aceptada'
   | 'rechazada'
   | 'cancelada'
@@ -22,6 +23,10 @@ type Inscripcion = {
   fecha: string | null
   horas: number
   estado: EstadoInscripcion
+  inicio: string | null
+  puedeCancelar: boolean
+  cancelacionTardia: boolean
+  posicionEspera: number | null
   motivoRechazo: string | null
   valoracion: { puntuacion: number; comentario: string | null } | null
 }
@@ -33,11 +38,19 @@ type MisInscripcionesProps = {
 
 const ETIQUETAS_ESTADO: Record<EstadoInscripcion, string> = {
   pendiente: 'Pendiente',
+  en_espera: 'En lista de espera',
   aceptada: 'Aceptada',
   rechazada: 'Rechazada',
   cancelada: 'Cancelada',
   completada: 'Completada',
   no_presentado: 'No presentado',
+}
+
+// Debe coincidir con ANTELACION_CANCELAR_HORAS del servidor
+const ANTELACION_CANCELAR_HORAS = 48
+
+function esCancelacionTardia(inicio: string | null): boolean {
+  return !!inicio && new Date(inicio).getTime() - Date.now() < ANTELACION_CANCELAR_HORAS * 3600 * 1000
 }
 
 function formatearFecha(fecha: string | null): string {
@@ -76,6 +89,32 @@ function nombreMes(clave: string): string {
 function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
   const [inscripciones, setInscripciones] = useState<Inscripcion[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [recargas, setRecargas] = useState(0)
+  const [cancelando, setCancelando] = useState<string | null>(null)
+  const [enCurso, setEnCurso] = useState(false)
+  const [errorAccion, setErrorAccion] = useState<string | null>(null)
+
+  async function cancelar(inscripcion: Inscripcion) {
+    setEnCurso(true)
+    setErrorAccion(null)
+    try {
+      const res = await fetch(`/api/inscripciones/${encodeURIComponent(inscripcion.id)}/cancelar`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setErrorAccion(data.message ?? 'No se pudo cancelar la inscripción')
+      } else {
+        setCancelando(null)
+      }
+      setRecargas((n) => n + 1)
+    } catch {
+      setErrorAccion('No se pudo conectar con el servidor')
+    } finally {
+      setEnCurso(false)
+    }
+  }
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -94,7 +133,7 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
         }
       })
     return () => controlador.abort()
-  }, [])
+  }, [recargas])
 
   const grupos = useMemo(() => {
     const agrupadas = new Map<string, Inscripcion[]>()
@@ -136,6 +175,7 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
         <p className="inscriptions-intro">Consulta el estado de todas tus solicitudes de voluntariado.</p>
         {error && <p className="inscriptions-message inscriptions-error" role="alert">{error}</p>}
         {!error && inscripciones === null && <p className="inscriptions-message">Cargando inscripciones...</p>}
+        {errorAccion && <p className="inscriptions-message inscriptions-error" role="alert">{errorAccion}</p>}
         {!error && inscripciones?.length === 0 && (
           <section className="inscriptions-empty">
             <h2>Aún no tienes inscripciones</h2>
@@ -163,16 +203,63 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
                         </h3>
                         <p className="inscription-organizer">Organiza: {inscripcion.organizador}</p>
                         <p className="inscription-hours">{inscripcion.horas} horas previstas</p>
+                        {inscripcion.estado === 'en_espera' && inscripcion.posicionEspera !== null && (
+                          <p className="inscription-organizer">
+                            Puesto {inscripcion.posicionEspera} en la lista de espera. Si se libera una plaza, te avisaremos.
+                          </p>
+                        )}
                         {inscripcion.estado === 'rechazada' && inscripcion.motivoRechazo && (
                           <p className="inscription-organizer">
                             Motivo del rechazo: {inscripcion.motivoRechazo}
                           </p>
                         )}
+                        {cancelando === inscripcion.id && (
+                          <div className="inscription-cancel" role="alertdialog" aria-label="Confirmar cancelación">
+                            <p>
+                              {inscripcion.estado === 'en_espera'
+                                ? '¿Seguro que quieres salir de la lista de espera?'
+                                : esCancelacionTardia(inscripcion.inicio)
+                                ? `Quedan menos de ${ANTELACION_CANCELAR_HORAS} h para que empiece. Puedes cancelar, pero quedará registrada como cancelación tardía en tu historial.`
+                                : '¿Seguro que quieres cancelar? Tu plaza quedará libre para otra persona.'}
+                            </p>
+                            <div className="inscription-cancel-actions">
+                              <button
+                                type="button"
+                                className="btn inscription-cancel-confirm"
+                                onClick={() => cancelar(inscripcion)}
+                                disabled={enCurso}
+                              >
+                                {enCurso ? 'Cancelando...' : 'Sí, cancelar'}
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={() => setCancelando(null)}
+                                disabled={enCurso}
+                              >
+                                Volver
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <div className="inscription-card-status">
                         <span className={`inscription-status status-${inscripcion.estado}`}>
                           {ETIQUETAS_ESTADO[inscripcion.estado]}
+                          {inscripcion.estado === 'cancelada' && inscripcion.cancelacionTardia && ' (tardía)'}
                         </span>
+                        {inscripcion.puedeCancelar && cancelando !== inscripcion.id && (
+                          <button
+                            type="button"
+                            className="inscription-cancel-link"
+                            onClick={() => {
+                              setCancelando(inscripcion.id)
+                              setErrorAccion(null)
+                            }}
+                          >
+                            Cancelar inscripción
+                          </button>
+                        )}
                         {inscripcion.valoracion && (
                           <div className="inscription-rating">
                             <span aria-label={`${inscripcion.valoracion.puntuacion} de 5 estrellas`}>

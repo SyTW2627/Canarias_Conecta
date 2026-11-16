@@ -13,6 +13,7 @@ import { ISLAS, cabecerasConSesion, formatearFecha, type MiOferta } from '../ofe
 
 type EstadoInscripcion =
   | 'pendiente'
+  | 'en_espera'
   | 'aceptada'
   | 'rechazada'
   | 'cancelada'
@@ -22,11 +23,16 @@ type EstadoInscripcion =
 type Candidato = {
   id: string
   estado: EstadoInscripcion
+  terminada: boolean
+  horasPrevistas: number
+  horasRealizadas: number | null
+  cancelacionTardia: boolean
   mensaje: string | null
   motivoRechazo: string | null
   fechaSolicitud: string
   fechaResolucion: string | null
   turnoIds: string[]
+  valoracion: { puntuacion: number; comentario: string | null } | null
   voluntario: {
     id: string
     nombre: string
@@ -55,17 +61,20 @@ type CandidatosProps = {
   onCerrarSesion: () => void
 }
 
-type Filtro = 'pendiente' | 'aceptada' | 'rechazada' | 'todas'
+type Filtro = 'pendiente' | 'en_espera' | 'aceptada' | 'completada' | 'rechazada' | 'todas'
 
 const FILTROS: { valor: Filtro; texto: string }[] = [
   { valor: 'pendiente', texto: 'Pendientes' },
+  { valor: 'en_espera', texto: 'En espera' },
   { valor: 'aceptada', texto: 'Aceptados' },
+  { valor: 'completada', texto: 'Finalizados' },
   { valor: 'rechazada', texto: 'Rechazados' },
   { valor: 'todas', texto: 'Todos' },
 ]
 
 const ETIQUETAS_ESTADO: Record<EstadoInscripcion, string> = {
   pendiente: 'Pendiente',
+  en_espera: 'En espera',
   aceptada: 'Aceptado',
   rechazada: 'Rechazado',
   cancelada: 'Cancelada',
@@ -78,6 +87,12 @@ const FORMATO_SOLICITUD = new Intl.DateTimeFormat('es-ES', {
   month: 'long',
   year: 'numeric',
 })
+
+// "Finalizados" agrupa a quien participo y a quien no se presento
+function filtroDeEstado(estado: EstadoInscripcion): Filtro | null {
+  if (estado === 'no_presentado') return 'completada'
+  return estado === 'cancelada' ? null : estado
+}
 
 function iniciales(nombre: string): string {
   return nombre
@@ -98,6 +113,11 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
   const [rechazando, setRechazando] = useState<string | null>(null)
   const [motivo, setMotivo] = useState('')
   const [enCurso, setEnCurso] = useState<string | null>(null)
+  const [completando, setCompletando] = useState<string | null>(null)
+  const [horas, setHoras] = useState('')
+  const [valorando, setValorando] = useState<string | null>(null)
+  const [puntuacion, setPuntuacion] = useState(0)
+  const [comentarioValoracion, setComentarioValoracion] = useState('')
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -137,16 +157,24 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
   )
 
   const contadores = useMemo(() => {
-    const cuenta: Record<Filtro, number> = { pendiente: 0, aceptada: 0, rechazada: 0, todas: 0 }
+    const cuenta: Record<Filtro, number> = {
+      pendiente: 0,
+      en_espera: 0,
+      aceptada: 0,
+      completada: 0,
+      rechazada: 0,
+      todas: 0,
+    }
     for (const candidato of candidatos ?? []) {
       cuenta.todas++
-      if (candidato.estado in cuenta) cuenta[candidato.estado as Filtro]++
+      const grupo = filtroDeEstado(candidato.estado)
+      if (grupo) cuenta[grupo]++
     }
     return cuenta
   }, [candidatos])
 
   const visibles = (candidatos ?? []).filter(
-    (candidato) => filtro === 'todas' || candidato.estado === filtro,
+    (candidato) => filtro === 'todas' || filtroDeEstado(candidato.estado) === filtro,
   )
 
   async function resolver(candidato: Candidato, decision: 'aceptar' | 'rechazar') {
@@ -171,6 +199,68 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
         setMotivo('')
       }
       // Se recarga siempre: otra pestaña puede haber resuelto la solicitud
+      setRecargas((n) => n + 1)
+    } catch {
+      setErrorAccion('No se pudo conectar con el servidor')
+    } finally {
+      setEnCurso(null)
+    }
+  }
+
+  async function completar(candidato: Candidato, asistio: boolean) {
+    const horasNumero = Number(horas.replace(',', '.'))
+    if (asistio && !(horasNumero > 0)) {
+      setErrorAccion('Indica las horas realizadas')
+      return
+    }
+
+    setErrorAccion(null)
+    setEnCurso(candidato.id)
+
+    try {
+      const res = await fetch(`/api/inscripciones/${encodeURIComponent(candidato.id)}/completar`, {
+        method: 'PATCH',
+        headers: cabecerasConSesion(),
+        body: JSON.stringify(asistio ? { asistio, horas: horasNumero } : { asistio }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setErrorAccion(data.message ?? 'No se pudo completar la inscripción')
+      } else {
+        setCompletando(null)
+      }
+
+      setRecargas((n) => n + 1)
+    } catch {
+      setErrorAccion('No se pudo conectar con el servidor')
+    } finally {
+      setEnCurso(null)
+    }
+  }
+
+  async function valorar(candidato: Candidato) {
+    if (puntuacion < 1) {
+      setErrorAccion('Selecciona entre 1 y 5 palmeras')
+      return
+    }
+
+    setErrorAccion(null)
+    setEnCurso(candidato.id)
+    try {
+      const res = await fetch(`/api/inscripciones/${encodeURIComponent(candidato.id)}/valorar`, {
+        method: 'PATCH',
+        headers: { ...cabecerasConSesion(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ puntuacion, comentario: comentarioValoracion }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setErrorAccion(data.message ?? 'No se pudo guardar la valoración')
+      } else {
+        setValorando(null)
+        setPuntuacion(0)
+        setComentarioValoracion('')
+      }
       setRecargas((n) => n + 1)
     } catch {
       setErrorAccion('No se pudo conectar con el servidor')
@@ -370,6 +460,114 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                         <p className="gestion-ayuda">Motivo del rechazo: {candidato.motivoRechazo}</p>
                       )}
 
+                      {candidato.estado === 'completada' && candidato.horasRealizadas !== null && (
+                        <p className="gestion-ayuda">
+                          Participó: {candidato.horasRealizadas} h sumadas a su perfil.
+                        </p>
+                      )}
+
+                      {candidato.estado === 'completada' && candidato.valoracion === null && valorando === candidato.id && (
+                        <div className="candidato-valoracion">
+                          <p className="candidato-valoracion-titulo">Valora su colaboración</p>
+                          <div className="candidato-palmeras" role="radiogroup" aria-label="Valoración de 1 a 5 palmeras">
+                            {[1, 2, 3, 4, 5].map((valor) => (
+                              <button
+                                key={valor}
+                                type="button"
+                                className={valor <= puntuacion ? 'palmera seleccionada' : 'palmera'}
+                                role="radio"
+                                aria-checked={valor === puntuacion}
+                                aria-label={`${valor} palmera${valor === 1 ? '' : 's'}`}
+                                onClick={() => setPuntuacion(valor)}
+                              >
+                                🌴
+                              </button>
+                            ))}
+                          </div>
+                          <textarea
+                            rows={3}
+                            maxLength={1000}
+                            placeholder="Comentario opcional"
+                            value={comentarioValoracion}
+                            onChange={(evento) => setComentarioValoracion(evento.target.value)}
+                          />
+                        </div>
+                      )}
+
+                      {candidato.estado === 'completada' && candidato.valoracion && (
+                        <p className="gestion-ayuda candidato-valoracion-guardada">
+                          Valoración enviada: {'🌴'.repeat(candidato.valoracion.puntuacion)}
+                        </p>
+                      )}
+
+                      {candidato.estado === 'en_espera' && (
+                        <p className="gestion-ayuda">
+                          En lista de espera: pasará a pendiente en cuanto se libere una plaza en sus turnos.
+                        </p>
+                      )}
+
+                      {candidato.estado === 'cancelada' && candidato.cancelacionTardia && (
+                        <p className="gestion-ayuda">Canceló con menos de 48 h de antelación.</p>
+                      )}
+
+                      {candidato.estado === 'aceptada' && !candidato.terminada && (
+                        <p className="gestion-ayuda">
+                          Podrás confirmar su asistencia cuando terminen sus turnos.
+                        </p>
+                      )}
+
+                      {completando === candidato.id && (
+                        <div className="candidato-rechazo">
+                          <label htmlFor={`horas-${candidato.id}`}>
+                            Horas realizadas (se suman a su perfil)
+                          </label>
+                          <input
+                            id={`horas-${candidato.id}`}
+                            type="number"
+                            min="0.5"
+                            step="0.5"
+                            value={horas}
+                            onChange={(evento) => setHoras(evento.target.value)}
+                          />
+                        </div>
+                      )}
+
+                      {candidato.estado === 'completada' && candidato.valoracion === null && (
+                        valorando === candidato.id ? (
+                          <>
+                            <button
+                              type="button"
+                              className="gestion-accion candidato-aceptar"
+                              onClick={() => valorar(candidato)}
+                              disabled={enCurso !== null}
+                            >
+                              {enCurso === candidato.id ? 'Guardando...' : 'Guardar valoración'}
+                            </button>
+                            <button
+                              type="button"
+                              className="gestion-accion"
+                              onClick={() => setValorando(null)}
+                              disabled={enCurso !== null}
+                            >
+                              Cancelar
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="gestion-accion candidato-aceptar"
+                            onClick={() => {
+                              setValorando(candidato.id)
+                              setPuntuacion(0)
+                              setComentarioValoracion('')
+                            }}
+                            disabled={enCurso !== null}
+                          >
+                            Valorar con palmeras
+                          </button>
+                        )
+                      )}
+
                       {rechazando === candidato.id && (
                         <div className="candidato-rechazo">
                           <label htmlFor={`motivo-${candidato.id}`}>
@@ -416,6 +614,53 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                               disabled={enCurso !== null}
                             >
                               Rechazar
+                            </button>
+                          </>
+                        )}
+
+                        {candidato.estado === 'aceptada' &&
+                          candidato.terminada &&
+                          completando !== candidato.id && (
+                            <>
+                              <button
+                                type="button"
+                                className="gestion-accion candidato-aceptar"
+                                onClick={() => {
+                                  setCompletando(candidato.id)
+                                  setHoras(String(candidato.horasPrevistas))
+                                }}
+                                disabled={enCurso !== null}
+                              >
+                                Participó
+                              </button>
+                              <button
+                                type="button"
+                                className="gestion-accion gestion-accion-peligro"
+                                onClick={() => completar(candidato, false)}
+                                disabled={enCurso !== null}
+                              >
+                                {enCurso === candidato.id ? 'Guardando...' : 'No se presentó'}
+                              </button>
+                            </>
+                          )}
+
+                        {completando === candidato.id && (
+                          <>
+                            <button
+                              type="button"
+                              className="gestion-accion candidato-aceptar"
+                              onClick={() => completar(candidato, true)}
+                              disabled={enCurso !== null}
+                            >
+                              {enCurso === candidato.id ? 'Guardando...' : 'Confirmar participación'}
+                            </button>
+                            <button
+                              type="button"
+                              className="gestion-accion"
+                              onClick={() => setCompletando(null)}
+                              disabled={enCurso !== null}
+                            >
+                              Cancelar
                             </button>
                           </>
                         )}

@@ -66,6 +66,14 @@ function OrganizationProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: 
   const [passwordNueva, setPasswordNueva] = useState('')
   const [errorEditor, setErrorEditor] = useState<string | null>(null)
   const [guardandoEditor, setGuardandoEditor] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState(usuario.avatarUrl)
+  const [avatarArchivo, setAvatarArchivo] = useState<File | null>(null)
+  const [avatarPrevia, setAvatarPrevia] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!avatarPrevia) return
+    return () => URL.revokeObjectURL(avatarPrevia)
+  }, [avatarPrevia])
 
   useEffect(() => {
     const token = localStorage.getItem('token') ?? ''
@@ -83,6 +91,7 @@ function OrganizationProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: 
         setPerfil(perfilData.user)
         setOfertas(ofertasData)
         const datosPerfil = perfilData.user
+        setAvatarUrl(datosPerfil.avatarUrl)
         setNombre(datosPerfil.nombre)
         setEmail(datosPerfil.email)
         setTelefono(datosPerfil.telefono ?? '')
@@ -103,26 +112,30 @@ function OrganizationProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: 
     setErrorEditor(null)
     setGuardandoEditor(true)
     try {
+      const datos = {
+        nombre,
+        email,
+        telefono,
+        isla,
+        municipio,
+        tipoEntidad,
+        descripcion,
+        web,
+        personaContacto,
+        cif,
+        direccion,
+        ...(passwordNueva && { passwordActual, passwordNueva }),
+      }
+      const formulario = new FormData()
+      formulario.append('datos', JSON.stringify(datos))
+      if (avatarArchivo) formulario.append('imagen', avatarArchivo)
+
       const res = await fetch('/api/auth/me', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
         },
-        body: JSON.stringify({
-          nombre,
-          email,
-          telefono,
-          isla,
-          municipio,
-          tipoEntidad,
-          descripcion,
-          web,
-          personaContacto,
-          cif,
-          direccion,
-          ...(passwordNueva && { passwordActual, passwordNueva }),
-        }),
+        body: formulario,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message ?? 'No se pudo actualizar el perfil')
@@ -145,6 +158,9 @@ function OrganizationProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: 
       }
       setPerfil(nuevoPerfil)
       onUsuarioActualizado(data.user)
+      setAvatarUrl(data.user.avatarUrl)
+      setAvatarArchivo(null)
+      setAvatarPrevia(null)
       setPasswordActual('')
       setPasswordNueva('')
       setMostrarEditor(false)
@@ -189,7 +205,13 @@ function OrganizationProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: 
 
         <div className="organization-profile-grid">
           <section className="organization-card organization-main-card">
-            <div className="organization-avatar" aria-hidden="true">{inicialesDe(perfil.nombre)}</div>
+            <div className="organization-avatar">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={`Logo de ${perfil.nombre}`} />
+              ) : (
+                <span aria-hidden="true">{inicialesDe(perfil.nombre)}</span>
+              )}
+            </div>
             <h2>{perfil.nombre}</h2>
             <p className="organization-type">
               {TIPOS_ENTIDAD[datos?.tipoEntidad ?? ''] ?? 'Organización'}
@@ -265,6 +287,32 @@ function OrganizationProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: 
               <button type="button" className="organization-modal-close" onClick={() => setMostrarEditor(false)} aria-label="Cerrar">×</button>
             </div>
             <form onSubmit={guardarPerfil}>
+              <label>
+                <span>Imagen de perfil</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const archivo = event.target.files?.[0] ?? null
+                    if (!archivo) return
+                    if (archivo.size > 5 * 1024 * 1024) {
+                      setErrorEditor('La imagen no puede superar los 5 MB')
+                      event.target.value = ''
+                      return
+                    }
+                    setErrorEditor(null)
+                    setAvatarArchivo(archivo)
+                    setAvatarPrevia(URL.createObjectURL(archivo))
+                  }}
+                />
+                {(avatarPrevia || avatarUrl) && (
+                  <img
+                    className="organization-avatar-preview"
+                    src={avatarPrevia ?? avatarUrl}
+                    alt="Vista previa de la imagen de perfil"
+                  />
+                )}
+              </label>
               <div className="organization-form-grid">
                 <label><span>Nombre</span><input value={nombre} onChange={(event) => setNombre(event.target.value)} required /></label>
                 <label><span>Email</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>

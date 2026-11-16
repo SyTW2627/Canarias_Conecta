@@ -13,6 +13,12 @@ type VolunteerProfileProps = {
 }
 
 type Categoria = { id: string; nombre: string }
+type Acreditacion = {
+  id: string
+  nombre: string
+  identificador: string | null
+  fechaObtencion: string
+}
 
 type HistorialItem = {
   id: string
@@ -20,7 +26,7 @@ type HistorialItem = {
   organizador: string
   fecha: string | null
   horas: number
-  estado: 'pendiente' | 'aceptada' | 'rechazada' | 'cancelada' | 'completada' | 'no_presentado'
+  estado: 'pendiente' | 'en_espera' | 'aceptada' | 'rechazada' | 'cancelada' | 'completada' | 'no_presentado'
   valoracion: { puntuacion: number; comentario: string | null } | null
 }
 
@@ -30,6 +36,12 @@ function inicialesDe(nombre: string): string {
     return `${palabras[0][0]}${palabras[1][0]}`.toUpperCase()
   }
   return nombre.slice(0, 2).toUpperCase()
+}
+
+function formatearHoras(horas: number): string {
+  return Number(horas.toFixed(2)).toLocaleString('es-ES', {
+    maximumFractionDigits: 2,
+  })
 }
 
 function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: VolunteerProfileProps) {
@@ -42,9 +54,23 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
   const [passwordNueva, setPasswordNueva] = useState('')
   const [errorEditor, setErrorEditor] = useState<string | null>(null)
   const [guardandoEditor, setGuardandoEditor] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState(usuario.avatarUrl)
+  const [avatarArchivo, setAvatarArchivo] = useState<File | null>(null)
+  const [avatarPrevia, setAvatarPrevia] = useState<string | null>(null)
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [interesIds, setInteresIds] = useState<string[]>(usuario.interesIds ?? [])
   const [nombresIntereses, setNombresIntereses] = useState<Categoria[]>([])
+  const [acreditaciones, setAcreditaciones] = useState<Acreditacion[]>([])
+  const [mostrarAcreditacion, setMostrarAcreditacion] = useState(false)
+  const [nombreAcreditacion, setNombreAcreditacion] = useState('')
+  const [identificadorAcreditacion, setIdentificadorAcreditacion] = useState('')
+  const [fechaAcreditacion, setFechaAcreditacion] = useState('')
+  const [guardandoAcreditacion, setGuardandoAcreditacion] = useState(false)
+
+  useEffect(() => {
+    if (!avatarPrevia) return
+    return () => URL.revokeObjectURL(avatarPrevia)
+  }, [avatarPrevia])
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -80,8 +106,10 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
         const categoriasDisponibles = Array.isArray(categoriasData) ? categoriasData : []
         setCategorias(categoriasDisponibles)
         const intereses = perfilData.user?.intereses ?? []
+        setAvatarUrl(perfilData.user?.avatarUrl)
         setNombresIntereses(intereses)
         setInteresIds(intereses.map((interes: Categoria) => interes.id))
+        setAcreditaciones(perfilData.user?.acreditaciones ?? [])
       })
       .catch(() => {
         setCategorias([])
@@ -113,6 +141,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
   function etiquetaEstado(estado: HistorialItem['estado']): string {
     return {
       pendiente: 'Pendiente',
+      en_espera: 'En lista de espera',
       aceptada: 'Aceptada',
       rechazada: 'Rechazada',
       cancelada: 'Cancelada',
@@ -127,23 +156,30 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
     setGuardandoEditor(true)
 
     try {
+      const datos = {
+        nombre,
+        email,
+        interesIds,
+        ...(passwordNueva && { passwordActual, passwordNueva }),
+      }
+      const formulario = new FormData()
+      formulario.append('datos', JSON.stringify(datos))
+      if (avatarArchivo) formulario.append('imagen', avatarArchivo)
+
       const res = await fetch('/api/auth/me', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
         },
-        body: JSON.stringify({
-          nombre,
-          email,
-          interesIds,
-          ...(passwordNueva && { passwordActual, passwordNueva }),
-        }),
+        body: formulario,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message ?? 'No se pudo actualizar el perfil')
 
       onUsuarioActualizado(data.user)
+      setAvatarUrl(data.user.avatarUrl)
+      setAvatarArchivo(null)
+      setAvatarPrevia(null)
       setNombresIntereses(categorias.filter((categoria) => interesIds.includes(categoria.id)))
       setPasswordActual('')
       setPasswordNueva('')
@@ -152,6 +188,64 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
       setErrorEditor(error instanceof Error ? error.message : 'No se pudo actualizar el perfil')
     } finally {
       setGuardandoEditor(false)
+    }
+  }
+
+  async function guardarAcreditacion(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault()
+    setErrorEditor(null)
+    setGuardandoAcreditacion(true)
+    try {
+      const formulario = new FormData()
+      formulario.append('datos', JSON.stringify({
+        acreditaciones: [
+          ...acreditaciones,
+          {
+            nombre: nombreAcreditacion,
+            identificador: identificadorAcreditacion,
+            fechaObtencion: fechaAcreditacion,
+          },
+        ],
+      }))
+      const res = await fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+        body: formulario,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message ?? 'No se pudo guardar la acreditación')
+      setAcreditaciones(data.user.acreditaciones ?? [])
+      setNombreAcreditacion('')
+      setIdentificadorAcreditacion('')
+      setFechaAcreditacion('')
+      setMostrarAcreditacion(false)
+    } catch (reason) {
+      setErrorEditor(reason instanceof Error ? reason.message : 'No se pudo guardar la acreditación')
+    } finally {
+      setGuardandoAcreditacion(false)
+    }
+  }
+
+  async function eliminarAcreditacion(id: string) {
+    setErrorEditor(null)
+    setGuardandoAcreditacion(true)
+    try {
+      const formulario = new FormData()
+      formulario.append('datos', JSON.stringify({
+        acreditaciones: acreditaciones.filter((acreditacion) => acreditacion.id !== id),
+      }))
+      const res = await fetch('/api/auth/me', {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` },
+        body: formulario,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message ?? 'No se pudo eliminar la acreditación')
+      setAcreditaciones(data.user.acreditaciones ?? [])
+    } catch (reason) {
+      setErrorEditor(reason instanceof Error ? reason.message : 'No se pudo eliminar la acreditación')
+    } finally {
+      setGuardandoAcreditacion(false)
     }
   }
 
@@ -188,8 +282,12 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
         <div className="volunteer-profile-layout">
           <div className="volunteer-profile-sidebar">
             <section className="profile-card">
-              <div className="profile-avatar" aria-hidden="true">
-                {inicialesDe(usuario.nombre)}
+              <div className="profile-avatar">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={`Foto de perfil de ${usuario.nombre}`} />
+                ) : (
+                  <span aria-hidden="true">{inicialesDe(usuario.nombre)}</span>
+                )}
               </div>
               <h2>{usuario.nombre}</h2>
               <p className="profile-member-since">Voluntaria desde noviembre de 2026</p>
@@ -213,8 +311,46 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
             </section>
 
             <section className="profile-card accreditation-card">
-              <h2>Mis acreditaciones</h2>
-              <p>Aquí aparecerán las acreditaciones que obtengas.</p>
+              <div className="accreditation-heading">
+                <h2>Mis acreditaciones</h2>
+                <button type="button" className="text-link" onClick={() => setMostrarAcreditacion((actual) => !actual)}>
+                  {mostrarAcreditacion ? 'Cancelar' : 'Añadir'}
+                </button>
+              </div>
+              {acreditaciones.length === 0 && !mostrarAcreditacion && (
+                <p>Aquí aparecerán las acreditaciones que obtengas.</p>
+              )}
+              {acreditaciones.length > 0 && (
+                <ul className="accreditation-list">
+                  {acreditaciones.map((acreditacion) => (
+                    <li key={acreditacion.id}>
+                      <div>
+                        <strong>{acreditacion.nombre}</strong>
+                        <span>Obtenida el {formatearFecha(acreditacion.fechaObtencion)}</span>
+                        {acreditacion.identificador && <span>ID: {acreditacion.identificador}</span>}
+                      </div>
+                      <button
+                        type="button"
+                        className="accreditation-delete"
+                        onClick={() => eliminarAcreditacion(acreditacion.id)}
+                        disabled={guardandoAcreditacion}
+                      >
+                        Eliminar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {mostrarAcreditacion && (
+                <form className="accreditation-form" onSubmit={guardarAcreditacion}>
+                  <label><span>Nombre de la acreditación</span><input value={nombreAcreditacion} onChange={(event) => setNombreAcreditacion(event.target.value)} required /></label>
+                  <label><span>ID o número (opcional)</span><input value={identificadorAcreditacion} onChange={(event) => setIdentificadorAcreditacion(event.target.value)} /></label>
+                  <label><span>Fecha de obtención</span><input type="date" value={fechaAcreditacion} onChange={(event) => setFechaAcreditacion(event.target.value)} required /></label>
+                  <button type="submit" className="btn" disabled={guardandoAcreditacion}>
+                    {guardandoAcreditacion ? 'Guardando...' : 'Guardar acreditación'}
+                  </button>
+                </form>
+              )}
             </section>
           </div>
 
@@ -225,7 +361,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
                 <span>Colaboraciones</span>
               </article>
               <article>
-                <strong>{horasDedicadas}</strong>
+                <strong>{formatearHoras(horasDedicadas)}</strong>
                 <span>Horas dedicadas</span>
               </article>
               <article>
@@ -262,10 +398,10 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
                       </div>
                       {item.valoracion && (
                         <div className="history-review">
-                          <span aria-label={`${item.valoracion.puntuacion} de 5 estrellas`}>
-                            {'★'.repeat(item.valoracion.puntuacion)}
+                          <span aria-label={`${item.valoracion.puntuacion} de 5 palmeras`}>
+                            {'🌴'.repeat(item.valoracion.puntuacion)}
                             <span className="history-empty-stars">
-                              {'★'.repeat(5 - item.valoracion.puntuacion)}
+                              {'🌴'.repeat(5 - item.valoracion.puntuacion)}
                             </span>
                           </span>
                           {item.valoracion.comentario && <p>“{item.valoracion.comentario}”</p>}
@@ -292,6 +428,32 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
               </button>
             </div>
             <form onSubmit={guardarPerfil}>
+              <label className="profile-field">
+                <span>Foto de perfil</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const archivo = event.target.files?.[0] ?? null
+                    if (!archivo) return
+                    if (archivo.size > 5 * 1024 * 1024) {
+                      setErrorEditor('La imagen no puede superar los 5 MB')
+                      event.target.value = ''
+                      return
+                    }
+                    setErrorEditor(null)
+                    setAvatarArchivo(archivo)
+                    setAvatarPrevia(URL.createObjectURL(archivo))
+                  }}
+                />
+                {(avatarPrevia || avatarUrl) && (
+                  <img
+                    className="profile-avatar-preview"
+                    src={avatarPrevia ?? avatarUrl}
+                    alt="Vista previa de la foto de perfil"
+                  />
+                )}
+              </label>
               <label className="profile-field">
                 <span>Nombre</span>
                 <input value={nombre} onChange={(event) => setNombre(event.target.value)} required />

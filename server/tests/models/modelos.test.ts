@@ -180,9 +180,9 @@ describe('Modelo Inscripcion', () => {
       { voluntarioId: 1, ofertaId: 1 },
       {
         unique: true,
-        // Quien cancelo o fue rechazado puede volver a inscribirse
+        // Quien cancelo o fue rechazado puede volver a inscribirse; quien esta en lista de espera no
         partialFilterExpression: {
-          estado: { $in: ['pendiente', 'aceptada', 'completada', 'no_presentado'] }
+          estado: { $in: ['pendiente', 'en_espera', 'aceptada', 'completada', 'no_presentado'] }
         }
       }
     ])
@@ -193,7 +193,8 @@ describe('Modelo Inscripcion', () => {
 
     expect(claves).toEqual(
       expect.arrayContaining([
-        { ofertaId: 1, estado: 1 },
+        // createdAt ordena la lista de espera por orden de llegada
+        { ofertaId: 1, estado: 1, createdAt: 1 },
         { ofertanteId: 1, estado: 1 },
         { voluntarioId: 1, estado: 1 }
       ])

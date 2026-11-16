@@ -51,7 +51,8 @@ describe('Rutas de autenticacion (/api/auth)', () => {
       'POST /login: login',
       'POST /recuperar-password: solicitarRecuperacion',
       'POST /restablecer-password: restablecerPassword',
-      'PATCH /me: requireAuth > actualizarPerfil',
+      // El avatar se lee despues de comprobar la sesion
+      'PATCH /me: requireAuth > recibirImagen > actualizarPerfil',
       'GET /me: requireAuth > getPerfil'
     ])
   })
@@ -88,13 +89,16 @@ describe('Rutas de ofertas (/api/ofertas)', () => {
 })
 
 describe('Rutas de inscripciones (/api/inscripciones)', () => {
-  it('inscribirse y el historial son de voluntarios; los candidatos y las decisiones, de ofertantes', () => {
+  it('inscribirse, cancelar y el historial son de voluntarios; los candidatos y las decisiones, de ofertantes', () => {
     expect(tabla(rutas.inscripciones)).toEqual([
       'POST /: requireAuth > requireRol(voluntario) > crearInscripcion',
       'GET /mias: requireAuth > requireRol(voluntario) > getMisInscripciones',
+      'PATCH /:id/cancelar: requireAuth > requireRol(voluntario) > cancelarInscripcion',
       'GET /oferta/:ofertaId: requireAuth > requireRol(ofertante) > getCandidatosOferta',
       'PATCH /:id/aceptar: requireAuth > requireRol(ofertante) > aceptarInscripcion',
-      'PATCH /:id/rechazar: requireAuth > requireRol(ofertante) > rechazarInscripcion'
+      'PATCH /:id/rechazar: requireAuth > requireRol(ofertante) > rechazarInscripcion',
+      'PATCH /:id/completar: requireAuth > requireRol(ofertante) > completarInscripcion',
+      'PATCH /:id/valorar: requireAuth > requireRol(ofertante) > valorarVoluntario'
     ])
   })
 })

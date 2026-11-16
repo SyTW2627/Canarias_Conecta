@@ -775,7 +775,7 @@ describe('cerrarOferta', () => {
 
     await cerrar(_id.toString())
 
-    expect(buscar).toHaveBeenCalledWith({ ofertaId: _id, estado: { $in: ['pendiente', 'aceptada'] } })
+    expect(buscar).toHaveBeenCalledWith({ ofertaId: _id, estado: { $in: ['pendiente', 'aceptada', 'en_espera'] } })
     expect(q.select).toHaveBeenCalledWith('voluntarioId')
     const aviso = {
       tipo: 'oferta_cerrada',

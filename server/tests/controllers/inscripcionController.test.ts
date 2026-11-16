@@ -282,6 +282,12 @@ describe('getMisInscripciones', () => {
         fecha: tarde.fecha.toISOString(),
         horas: 3.5,
         estado: 'completada',
+        // Inicio del primer turno elegido (el de la mañana a las 09:00)
+        inicio: new Date(manana.fecha.getTime() + 9 * 60 * 60 * 1000).toISOString(),
+        // Ya completada: no se puede cancelar
+        puedeCancelar: false,
+        cancelacionTardia: false,
+        posicionEspera: null,
         motivoRechazo: null,
         valoracion: { puntuacion: 5, comentario: 'Genial' }
       }
@@ -353,10 +359,12 @@ describe('getCandidatosOferta', () => {
     }
   }
 
-  function simular(oferta: { id: string } | null, inscripciones: unknown[] | Error = []) {
+  function simular(oferta: { id: string; turnos?: unknown[] } | null, inscripciones: unknown[] | Error = []) {
     const q = consulta(inscripciones)
+    // El controlador recorre los turnos de la oferta para calcular horas y si ha terminado
+    const ofertaConTurnos = oferta && { turnos: [], ...oferta }
     return {
-      buscarOferta: vi.spyOn(Oferta, 'findOne').mockReturnValue(consulta(oferta) as never),
+      buscarOferta: vi.spyOn(Oferta, 'findOne').mockReturnValue(consulta(ofertaConTurnos) as never),
       buscar: vi.spyOn(Inscripcion, 'find').mockReturnValue(q as never),
       q
     }
@@ -412,6 +420,12 @@ describe('getCandidatosOferta', () => {
       {
         id: inscripcion.id,
         estado: 'pendiente',
+        // La oferta simulada no tiene turnos: ni ha terminado ni suma horas
+        terminada: false,
+        horasPrevistas: 0,
+        horasRealizadas: null,
+        valoracion: null,
+        cancelacionTardia: false,
         mensaje: 'Tengo experiencia',
         motivoRechazo: null,
         fechaSolicitud: inscripcion.createdAt,

@@ -14,10 +14,12 @@ vi.mock('../../src/config/imagenes.js', () => imagenes)
 const { prepararBaseDeDatos } = await import('../../src/config/catalogo.js')
 const { Categoria } = await import('../../src/models/Categoria.js')
 
-const MODELOS = ['User', 'Categoria', 'Imagen', 'Oferta', 'Inscripcion', 'SolicitudAyuda', 'Notificacion', 'Token']
+const MODELOS = ['User', 'Categoria', 'Imagen', 'Oferta', 'SolicitudAyuda', 'Notificacion', 'Token']
 
 function simularTodo() {
   const inits = MODELOS.map((nombre) => vi.spyOn(mongoose.model(nombre), 'init').mockResolvedValue(undefined as never))
+  // Inscripcion usa syncIndexes para sustituir el indice unico si cambian los estados que bloquean
+  inits.push(vi.spyOn(mongoose.model('Inscripcion'), 'syncIndexes').mockResolvedValue([] as never))
   const upsert = vi.spyOn(Categoria, 'updateOne').mockResolvedValue({} as never)
   const ids = new Map<string, ReturnType<typeof nuevoId>>()
   imagenes.cargarImagen.mockImplementation(async (nombre: string) => {

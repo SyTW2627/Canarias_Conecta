@@ -266,16 +266,14 @@ function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
                             {ofertaEnCurso === oferta.id ? 'Cerrando...' : 'Cerrar oferta'}
                           </button>
                         )}
-                        {oferta.terminada && (
-                          <button
-                            type="button"
-                            className="gestion-accion gestion-accion-peligro"
-                            onClick={() => ejecutarAccion(oferta, 'eliminar')}
-                            disabled={ofertaEnCurso !== null}
-                          >
-                            {ofertaEnCurso === oferta.id ? 'Eliminando...' : 'Eliminar'}
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="gestion-accion gestion-accion-peligro"
+                          onClick={() => ejecutarAccion(oferta, 'eliminar')}
+                          disabled={ofertaEnCurso !== null}
+                        >
+                          {ofertaEnCurso === oferta.id ? 'Eliminando...' : 'Eliminar'}
+                        </button>
                       </div>
                     </li>
                   )

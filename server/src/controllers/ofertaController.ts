@@ -432,7 +432,7 @@ export async function cerrarOferta(req: Request, res: Response): Promise<void> {
   }
 }
 
-// DELETE /api/ofertas/:id -> borra una oferta propia cuyos turnos ya han pasado
+// DELETE /api/ofertas/:id -> borra una oferta propia
 export async function eliminarOferta(req: Request, res: Response): Promise<void> {
   const { id } = req.params
 
@@ -450,19 +450,10 @@ export async function eliminarOferta(req: Request, res: Response): Promise<void>
       return
     }
 
-    if (!estaTerminada(oferta.turnos)) {
-      res.status(409).json({ message: 'Solo se pueden eliminar las ofertas que ya han terminado' })
-      return
-    }
-
-    // Se repite la condicion de fecha por si alguien anadiera un turno entre las dos consultas
-    const { deletedCount } = await Oferta.deleteOne({
-      ...filtro,
-      turnos: { $not: { $elemMatch: { fecha: { $gte: hoyEnUtc() } } } }
-    })
+    const { deletedCount } = await Oferta.deleteOne(filtro)
 
     if (deletedCount === 0) {
-      res.status(409).json({ message: 'Solo se pueden eliminar las ofertas que ya han terminado' })
+      res.status(404).json({ message: MENSAJE_NO_EXISTE })
       return
     }
 

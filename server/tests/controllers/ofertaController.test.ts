@@ -858,12 +858,7 @@ describe('eliminarOferta', () => {
     const res = await eliminar(id)
 
     expect(buscar).toHaveBeenCalledWith({ _id: id, ofertanteId: sesion.id })
-    // Se repite la condicion de fecha por si alguien añadio un turno entre las dos consultas
-    expect(borrar).toHaveBeenCalledWith({
-      _id: id,
-      ofertanteId: sesion.id,
-      turnos: { $not: { $elemMatch: { fecha: { $gte: fechaUtc(0) } } } }
-    })
+    expect(borrar).toHaveBeenCalledWith({ _id: id, ofertanteId: sesion.id })
     expect(borrarInscripciones).toHaveBeenCalledWith({ ofertaId: id })
     // Las solicitudes de ayuda se conservan, solo pierden el enlace
     expect(desvincular).toHaveBeenCalledWith({ ofertaId: id }, { $unset: { ofertaId: 1 } })
@@ -878,23 +873,14 @@ describe('eliminarOferta', () => {
     expect((await eliminar(nuevoId().toString())).statusCode).toBe(204)
   })
 
-  it('responde 409 si la oferta aun tiene turnos de hoy en adelante', async () => {
+  it('permite eliminar una oferta aunque aun tenga turnos', async () => {
     const { borrar } = simular({ turnos: [turno(-3), turno(0)] })
+    const id = nuevoId().toString()
 
-    const res = await eliminar(nuevoId().toString())
+    const res = await eliminar(id)
 
-    expect(res.statusCode).toBe(409)
-    expect(res.body).toEqual({ message: 'Solo se pueden eliminar las ofertas que ya han terminado' })
-    expect(borrar).not.toHaveBeenCalled()
-  })
-
-  it('responde 409 sin borrar nada mas si entre medias se añadio un turno', async () => {
-    const { borrarInscripciones } = simular({ turnos: [turno(-1)] }, 0)
-
-    const res = await eliminar(nuevoId().toString())
-
-    expect(res.statusCode).toBe(409)
-    expect(borrarInscripciones).not.toHaveBeenCalled()
+    expect(res.statusCode).toBe(204)
+    expect(borrar).toHaveBeenCalledWith({ _id: id, ofertanteId: sesion.id })
   })
 
   it('responde 404 si el id no es valido o la oferta no es propia', async () => {

@@ -744,7 +744,7 @@ export async function editarOferta(req: Request, res: Response): Promise<void> {
     // Una inscripcion o un cierre a la vez cambian updatedAt: asi no se pisan las plazas reservadas
     const { matchedCount } = await Oferta.updateOne(
       { _id: oferta._id, estado: 'publicada', updatedAt: oferta.updatedAt },
-      oferta.getChanges()
+      oferta.$getChanges()
     )
 
     if (matchedCount === 0) {

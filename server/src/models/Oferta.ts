@@ -102,8 +102,9 @@ export function normalizarTexto(texto: string): string {
   return texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 }
 
+// Une las partes con un solo espacio: el texto recibido puede traer espacios sobrantes
 export function construirTextoBusqueda(partes: Array<string | undefined>): string {
-  return normalizarTexto(partes.filter(Boolean).join(' '))
+  return normalizarTexto(partes.filter(Boolean).join(' ')).replace(/\s+/g, ' ').trim()
 }
 
 export type OfertaDoc = InferSchemaType<typeof ofertaSchema>

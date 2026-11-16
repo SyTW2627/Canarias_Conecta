@@ -122,6 +122,49 @@ p {
   margin-top: 8px;
 }
 
+.help-banner {
+  position: relative;
+  width: min(620px, 100%);
+  margin-top: 8px;
+  padding: 22px 48px 22px 24px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgb(27 42 42 / 12%);
+}
+
+.help-banner h2 {
+  margin-bottom: 8px;
+  font-size: 20px;
+}
+
+.help-banner p {
+  max-width: none;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.help-banner-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.help-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 /* Cómo funciona */
 .steps {
   max-width: 1100px;

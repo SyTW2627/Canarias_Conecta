@@ -1,42 +1,96 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, VOLUNTARIO, iniciarSesion, menu } from './fixtures';
+import { inscripcionFalsa, ofertaFalsa } from './datos-falsos';
 
+/*
+ * El inicio de sesión es real, pero las categorías, el catálogo, la oferta y la
+ * inscripción se SIMULAN. Así el test funciona con cualquier base de datos
+ * (tenga las ofertas que tenga) y no ocupa ninguna plaza real.
+ */
 test('Un voluntario puede filtrar oportunidades, ver detalles e inscribirse', async ({ page }) => {
-  const emailUnico = `voluntario_${Date.now()}_${Math.floor(Math.random() * 10000)}@gmail.com`;
+  const oferta = ofertaFalsa();
+  const categorias = [
+    { id: 'cat-edu', nombre: 'Educación', slug: 'educacion' },
+    { id: 'cat-com', nombre: 'Comunidad', slug: 'comunidad' },
+  ];
 
-  // 1. Registrar un usuario nuevo
-  await page.goto('http://localhost:5173/');
-  await page.getByRole('button', { name: 'Registrarse' }).click();
-  await page.getByRole('radio', { name: 'Voluntario Quiero colaborar' }).check();
-  await page.getByRole('textbox', { name: 'Nombre completo' }).fill('Voluntario Prueba');
-  await page.getByRole('textbox', { name: 'Email' }).fill(emailUnico);
-  await page.getByRole('textbox', { name: 'Contraseña Mostrar contraseña' }).fill('123456789');
-  await page.getByRole('textbox', { name: 'Repetir contraseña' }).fill('123456789');
-  await page.getByRole('button', { name: 'Crear cuenta' }).click();
+  // Filtros que la web ha pedido al catálogo
+  const consultas: URLSearchParams[] = [];
+  let inscripcionEnviada: { ofertaId: string; turnoIds: string[]; listaEspera: boolean } | null = null;
 
-  await expect(page.getByRole('link', { name: 'Oportunidades' })).toBeVisible();
+  await page.route('**/api/categorias', (route) => route.fulfill({ json: categorias }));
 
-  // 2. Ir a Oportunidades y probar los filtros
-  await page.getByRole('link', { name: 'Oportunidades' }).click();
-  await page.getByLabel(/Categoría/i).selectOption('educacion');
-  await page.getByLabel(/Isla/i).selectOption('tenerife');
+  // Catálogo: GET /api/ofertas?...
+  await page.route(
+    (url) => url.pathname === '/api/ofertas',
+    (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      const filtros = new URL(route.request().url()).searchParams;
+      consultas.push(filtros);
+      // Con el filtro de Tenerife + Educación no hay resultados; sin filtros sale nuestra oferta
+      const conFiltros = filtros.has('isla') || filtros.has('categoria');
+      return route.fulfill({ json: conFiltros ? [] : [oferta] });
+    },
+  );
 
-  // Comprobamos que el filtro aplica correctamente (el select mantiene el valor)
-  await expect(page.getByLabel(/Isla/i)).toHaveValue('tenerife');
+  // Detalle: GET /api/ofertas/oferta-falsa-1
+  await page.route(`**/api/ofertas/${oferta.id}`, (route) => route.fulfill({ json: oferta }));
 
-  // 3. Limpiamos filtros (o seleccionamos Gran Canaria) para entrar a una oferta con plazas libres
-  await page.getByLabel(/Categoría/i).selectOption('');
-  await page.getByLabel(/Isla/i).selectOption('gran_canaria');
+  // Inscripción: POST /api/inscripciones
+  await page.route('**/api/inscripciones', (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    inscripcionEnviada = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: { id: 'inscripcion-e2e', estado: 'pendiente' } });
+  });
 
+  // Mis inscripciones: vacía hasta que se inscribe, luego con la inscripción simulada
+  await page.route('**/api/inscripciones/mias', (route) =>
+    route.fulfill({
+      json: inscripcionEnviada
+        ? [inscripcionFalsa({ id: 'inscripcion-e2e', ofertaId: oferta.id, titulo: oferta.titulo, estado: 'pendiente', puedeCancelar: true })]
+        : [],
+    }),
+  );
+
+  // 1. Iniciar sesión como voluntario
+  await iniciarSesion(page, VOLUNTARIO);
+
+  // 2. Ir a Oportunidades: aparece la oferta
+  await page.goto('/oportunidades');
+  await expect(menu(page).getByRole('link', { name: 'Oportunidades' })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { name: oferta.titulo })).toBeVisible();
+  await expect(page.getByText('1 oportunidad')).toBeVisible();
+
+  // 3. Probar los filtros: se envían a la API y, sin resultados, sale el mensaje
+  await page.getByLabel('Categoría').selectOption('educacion');
+  await page.getByLabel('Isla').selectOption('tenerife');
+  await expect(page.getByLabel('Categoría')).toHaveValue('educacion');
+  await expect(page.getByLabel('Isla')).toHaveValue('tenerife');
+  await expect(page.getByText('No hemos encontrado oportunidades con esos filtros.')).toBeVisible();
+  expect(consultas.some((c) => c.get('categoria') === 'educacion' && c.get('isla') === 'tenerife')).toBe(true);
+
+  // 4. Limpiar filtros: vuelve a salir la oferta
+  await page.getByRole('button', { name: 'Limpiar filtros' }).click();
+  await expect(page.getByLabel('Isla')).toHaveValue('');
+  await expect(page.getByLabel('Categoría')).toHaveValue('');
+  await expect(page.getByRole('heading', { name: oferta.titulo })).toBeVisible();
+
+  // 5. Ver detalles de la oferta
   await page.getByRole('link', { name: 'Ver detalles' }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/ofertas/${oferta.id}$`));
+  await expect(page.getByRole('heading', { level: 1, name: oferta.titulo })).toBeVisible();
 
-  // 4. Seleccionar turno si existe checkbox e inscribirse
-  const checkbox = page.getByRole('checkbox', { name: 'Seleccionar' });
-  if (await checkbox.isVisible()) {
-    await checkbox.check();
-  }
+  // 6. El turno con plazas viene marcado: inscribirse
+  await expect(page.getByRole('checkbox', { name: 'Seleccionar' })).toBeChecked();
   await page.getByRole('button', { name: 'Inscribirme' }).click();
+  await expect(page.getByText('Solicitud enviada correctamente')).toBeVisible();
 
-  // 5. Comprobación: verificar que la inscripción aparece en "Mis inscripciones"
-  await page.getByRole('link', { name: 'Mis inscripciones' }).click();
-  await expect(page).toHaveURL(/inscripciones/i);
+  // La web envió la oferta y el turno correctos
+  expect(inscripcionEnviada).toEqual({ ofertaId: oferta.id, turnoIds: ['turno-1'], listaEspera: false });
+
+  // 7. Comprobación: la inscripción aparece en "Mis inscripciones"
+  // (Se entra por URL: el enlace del menú en el detalle está roto, ver enlaces-menu.spec.ts)
+  await page.goto('/mis_inscripciones');
+  await expect(page.getByRole('heading', { level: 1, name: 'Mis inscripciones' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: oferta.titulo })).toBeVisible();
+  await expect(page.locator('.inscription-status')).toHaveText('Pendiente');
 });

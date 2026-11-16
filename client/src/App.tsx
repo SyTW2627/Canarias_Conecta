@@ -101,6 +101,7 @@ function App() {
     usuario ? 'autenticada' : 'publica',
   )
   const [experienciaActual, setExperienciaActual] = useState(0)
+  const [mostrarAyuda, setMostrarAyuda] = useState(false)
   const [ruta, setRuta] = useState(rutaActual)
 
   useEffect(() => {
@@ -347,10 +348,54 @@ function App() {
             decide cuándo, cuánto y en qué participar.
           </p>
           <div className="hero-actions">
-            <button type="button" className="btn btn-outline">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => setMostrarAyuda(true)}
+            >
               Necesito ayuda
             </button>
           </div>
+          {mostrarAyuda && (
+            <aside className="help-banner" role="dialog" aria-labelledby="help-banner-title">
+              <button
+                type="button"
+                className="help-banner-close"
+                aria-label="Cerrar ayuda"
+                onClick={() => setMostrarAyuda(false)}
+              >
+                ×
+              </button>
+              <h2 id="help-banner-title">¿Necesitas ayuda?</h2>
+              <p>
+                Para solicitar ayuda a través de Canarias Conecta, primero debes crear una
+                cuenta o iniciar sesión. Así podremos ponerte en contacto con la organización
+                adecuada y mantenerte informado sobre tu solicitud.
+              </p>
+              <div className="help-banner-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setMostrarAyuda(false)
+                    setPantalla('registro')
+                  }}
+                >
+                  Crear una cuenta
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setMostrarAyuda(false)
+                    setPantalla('login')
+                  }}
+                >
+                  Iniciar sesión
+                </button>
+              </div>
+            </aside>
+          )}
         </section>
 
         <section className="steps">

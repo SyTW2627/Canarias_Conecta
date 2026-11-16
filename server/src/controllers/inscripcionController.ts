@@ -197,6 +197,13 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
           horas,
           estado: inscripcion.estado,
           inicio: inicio?.toISOString() ?? null,
+          // Turnos elegidos, para colocar la inscripcion en su dia y su hora (inicio de la app)
+          turnos: turnos.map((turno) => ({
+            id: turno._id.toString(),
+            fecha: turno.fecha.toISOString(),
+            horaInicio: turno.horaInicio,
+            horaFin: turno.horaFin,
+          })),
           // Se puede cancelar mientras siga activa y no haya empezado su primer turno
           puedeCancelar:
             ESTADOS_CANCELABLES.includes(inscripcion.estado) && !!inicio && inicio > new Date(),

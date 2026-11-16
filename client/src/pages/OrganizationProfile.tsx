@@ -187,8 +187,8 @@ function OrganizationProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: 
         </a>
         <nav className="authenticated-links" aria-label="Navegación principal">
           <a href="/">Inicio</a>
-          <a href="/gestionar-ofertas">Gestionar ofertas</a>
           <a href="/perfil" aria-current="page">Mi perfil</a>
+          <a href="/gestionar-ofertas">Gestionar ofertas</a>
         </nav>
         <div className="authenticated-user">
           <Notificaciones />

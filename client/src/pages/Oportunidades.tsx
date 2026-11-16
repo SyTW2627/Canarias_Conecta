@@ -36,9 +36,15 @@ function useValorRetrasado(valor: string): string {
 }
 
 function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
-  const [busqueda, setBusqueda] = useState('')
+  // El buscador y el mapa del inicio llegan con ?q= e ?isla= en la URL
+  const [busqueda, setBusqueda] = useState(
+    () => new URLSearchParams(window.location.search).get('q')?.slice(0, BUSQUEDA_MAX) ?? '',
+  )
   const [categoria, setCategoria] = useState('')
-  const [isla, setIsla] = useState('')
+  const [isla, setIsla] = useState(() => {
+    const deUrl = new URLSearchParams(window.location.search).get('isla') ?? ''
+    return deUrl in ISLAS ? deUrl : ''
+  })
   const [municipio, setMunicipio] = useState('')
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')

@@ -284,6 +284,13 @@ describe('getMisInscripciones', () => {
         estado: 'completada',
         // Inicio del primer turno elegido (el de la mañana a las 09:00)
         inicio: new Date(manana.fecha.getTime() + 9 * 60 * 60 * 1000).toISOString(),
+        // Solo los turnos elegidos, en el orden de la oferta
+        turnos: [tarde, manana].map((t) => ({
+          id: t._id.toString(),
+          fecha: t.fecha.toISOString(),
+          horaInicio: t.horaInicio,
+          horaFin: t.horaFin
+        })),
         // Ya completada: no se puede cancelar
         puedeCancelar: false,
         cancelacionTardia: false,

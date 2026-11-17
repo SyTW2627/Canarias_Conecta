@@ -82,10 +82,36 @@ npm run test:watch   # se repiten al guardar
 | `OfertaDetalle.test.tsx` | Preselección de turnos con plaza, inscripción, lista de espera y errores |
 | `MisInscripciones.test.tsx` | Puesto en la lista de espera, cancelación con confirmación y aviso de 48 h |
 | `Candidatos.test.tsx` | Pestañas por estado y confirmar asistencia o ausencia |
+| `FormularioOferta.test.tsx` | Validaciones, datos enviados, foto de presentación y edición sin bajar de las plazas ocupadas |
+| `GestionarOfertas.test.tsx` | Estado visible (*Completa*, *Finalizada*…), plazas ocupadas, cerrar, eliminar y publicar |
+| `Notificaciones.test.tsx` | Contador de no leídas, panel, marcar como leídas y recarga al volver a la pestaña |
+| `Acceso.test.tsx` | Inicio de sesión y registro: validaciones, errores del servidor y sesión guardada |
+| `useOfertasPublicadas.test.ts` | Filtros enviados, estado de carga, cancelación de peticiones y errores |
+
+Vitest solo ejecuta `src/**/*.test.{ts,tsx}`: los specs de `e2e/` son de Playwright y se lanzan aparte.
 
 Para probar una pantalla nueva: `simularApi({ 'GET /api/ruta': { body: datos } })` antes de
 `render()`, y comprobar lo que ve el usuario con `screen.findByRole`/`findByText`. `simularApi`
 devuelve las llamadas hechas, para verificar el cuerpo que se envió.
+
+### Tests del servidor
+
+Unitarios con Vitest: los modelos de Mongoose se simulan, así que tampoco necesitan MongoDB.
+
+```bash
+cd server
+npm test                # una pasada
+npm run test:coverage   # con informe de cobertura en server/coverage
+```
+
+Los plazos (48 h para cancelar, fin del turno) se prueban con el reloj fijado con
+`vi.setSystemTime`, para que el resultado no dependa del día en que se ejecuten. Entre otros:
+
+| Fichero | Qué comprueba |
+|---|---|
+| `controllers/inscripcionAcciones.test.ts` | Completar (horas, no presentado), cancelar (tardía, lista de espera), valorar y entrar en la lista de espera |
+| `services/plazas.test.ts` | Reserva atómica de plazas, orden de la lista de espera y plaza devuelta si alguien cancela a la vez |
+| `controllers/perfilAcreditaciones.test.ts` | Acreditaciones del voluntario, perfil enviado como formulario y foto de perfil |
 
 ## Producción
 

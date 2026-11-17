@@ -20,6 +20,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Los tests end-to-end de e2e/ los ejecuta Playwright, no Vitest
+    include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test/setup.ts'],
     // Cada test empieza con mocks y localStorage limpios
     restoreMocks: true,

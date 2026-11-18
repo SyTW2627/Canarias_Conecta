@@ -35,6 +35,21 @@ function abrir() {
 }
 
 describe('MisInscripciones', () => {
+  it('muestra la valoración recibida con palmeras', async () => {
+    simularApi({
+      'GET /api/inscripciones/mias': {
+        body: [inscripcion({
+          estado: 'completada',
+          valoracion: { puntuacion: 4, comentario: 'Gran voluntario' },
+        })],
+      },
+    })
+    abrir()
+
+    expect(await screen.findByLabelText('4 de 5 palmeras')).toBeInTheDocument()
+    expect(screen.getByText('“Gran voluntario”')).toBeInTheDocument()
+  })
+
   it('invita a buscar oportunidades si no hay inscripciones', async () => {
     simularApi({ 'GET /api/inscripciones/mias': { body: [] } })
     abrir()

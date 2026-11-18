@@ -262,10 +262,10 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
                         )}
                         {inscripcion.valoracion && (
                           <div className="inscription-rating">
-                            <span aria-label={`${inscripcion.valoracion.puntuacion} de 5 estrellas`}>
-                              {'★'.repeat(inscripcion.valoracion.puntuacion)}
-                              <span className="inscription-empty-stars">
-                                {'★'.repeat(5 - inscripcion.valoracion.puntuacion)}
+                            <span aria-label={`${inscripcion.valoracion.puntuacion} de 5 palmeras`}>
+                              {'🌴'.repeat(inscripcion.valoracion.puntuacion)}
+                              <span className="inscription-empty-palmeras">
+                                {'🌴'.repeat(5 - inscripcion.valoracion.puntuacion)}
                               </span>
                             </span>
                             {inscripcion.valoracion.comentario && <p>“{inscripcion.valoracion.comentario}”</p>}

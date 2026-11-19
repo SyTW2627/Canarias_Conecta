@@ -55,5 +55,29 @@ jobs:
       - run: npm run build
       - run: npm run test
       # - run: npm run test:coverage
+    e2e:
+    name: E2E
+    needs: [server, client]
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      MONGODB_URI: mongodb://localhost:27017/canarias_conecta_ci
+      JWT_SECRET: secreto-ci
+      CLIENT_URL: http://localhost:5173
+      NODE_ENV: test
+    steps:
+      # checkout + setup-node (con cache-dependency-path con las DOS rutas de lock, una por línea)
+      # 1. Instalar server:      npm ci        (working-directory: server)
+      # 2. Cargar datos:         npm run seed  (working-directory: server)
+      # 3. Arrancar server:      npm run build && (npm start &) en segundo plano
+      # 4. Esperar a que esté:   npx wait-on http://localhost:3000/api/health
+      # 5. Instalar cliente:     npm ci        (working-directory: client)
+      # 6. Navegadores:          npx playwright install --with-deps chromium
+      # 7. Ejecutar:             npx playwright test --project=chromium
+      # 8. Subir client/playwright-report con upload-artifact e if: always()
 
   

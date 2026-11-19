@@ -55,7 +55,7 @@ jobs:
       - run: npm run build
       - run: npm run test
       # - run: npm run test:coverage
-    e2e:
+  e2e:
     name: E2E
     needs: [server, client]
     runs-on: ubuntu-latest

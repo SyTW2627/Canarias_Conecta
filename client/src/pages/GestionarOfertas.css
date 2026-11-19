@@ -1,0 +1,367 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la pantalla de gestion de ofertas del ofertante.
+ */
+.gestion {
+  text-align: left;
+}
+
+.gestion .welcome-section {
+  margin-bottom: 32px;
+}
+
+.gestion-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  align-items: start;
+  gap: 20px;
+}
+
+.gestion-bloque {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+}
+
+.gestion-bloque h2 {
+  margin: 0 0 16px;
+  color: var(--verde-oscuro);
+  font-size: clamp(20px, 2.5vw, 24px);
+}
+
+/* Formulario */
+.gestion-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gestion-formulario label,
+.gestion-formulario legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--texto);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.gestion-formulario input:not([type='checkbox']),
+.gestion-formulario select,
+.gestion-formulario textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--texto);
+  font: 15px 'DM Sans', sans-serif;
+}
+
+.gestion-formulario textarea {
+  resize: vertical;
+}
+
+.gestion-formulario input:focus,
+.gestion-formulario select:focus,
+.gestion-formulario textarea:focus {
+  outline: none;
+  border-color: var(--verde);
+  box-shadow: 0 0 0 3px var(--verde-claro);
+}
+
+.gestion-formulario fieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.gestion-formulario legend {
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.gestion-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.gestion-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gestion-formulario .gestion-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 999px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.gestion-formulario .gestion-check:has(input:checked) {
+  border-color: var(--verde);
+  background: var(--verde-claro);
+}
+
+.gestion-check input {
+  accent-color: var(--verde);
+}
+
+.gestion-turno {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 0.8fr auto;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.gestion-formulario .gestion-turno label {
+  font-weight: 500;
+}
+
+.gestion-quitar {
+  width: 42px;
+  height: 42px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--texto-suave);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.gestion-quitar:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.gestion-anadir {
+  align-self: flex-start;
+}
+
+.gestion-formulario button[type='submit'] {
+  align-self: flex-start;
+}
+
+.gestion-formulario button[type='submit']:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.gestion-error,
+.gestion-exito {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.gestion-error {
+  background: #fdecea;
+  color: #a12a1f;
+}
+
+.gestion-exito {
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+}
+
+.gestion-ayuda {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+/* Foto de presentacion */
+.gestion-imagen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gestion-formulario input[type='file'] {
+  cursor: pointer;
+}
+
+.gestion-imagen-previa {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gestion-imagen-previa img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+}
+
+.gestion-formulario .gestion-turno-aviso {
+  margin: -4px 0 10px;
+  font-size: 13px;
+}
+
+/* Edicion de una oferta */
+.gestion-edicion {
+  max-width: 760px;
+}
+
+.gestion-pasados {
+  margin-bottom: 20px;
+}
+
+.gestion-turnos-pasados {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+/* Listado de ofertas propias */
+.gestion-lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gestion-lista li {
+  padding: 16px 0;
+  border-top: 1px solid var(--borde);
+}
+
+.gestion-lista li:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.gestion-lista-cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gestion-lista h3 {
+  margin: 0 0 4px;
+  color: var(--texto);
+  font-size: 17px;
+}
+
+.gestion-lista p {
+  margin: 2px 0;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+/* Acciones de cada oferta: ver, cerrar y eliminar */
+.gestion-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+
+.gestion-acciones:empty {
+  display: none;
+}
+
+.gestion-lista .text-link {
+  font-size: 14px;
+}
+
+.gestion-accion {
+  padding: 5px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--texto);
+  font: 600 14px 'DM Sans', sans-serif;
+  cursor: pointer;
+}
+
+a.gestion-accion {
+  text-decoration: none;
+}
+
+.gestion-accion:hover:not(:disabled) {
+  border-color: var(--verde);
+  color: var(--verde-oscuro);
+}
+
+.gestion-accion-peligro {
+  color: #a12a1f;
+}
+
+.gestion-accion-peligro:hover:not(:disabled) {
+  border-color: #a12a1f;
+  background: #fdecea;
+  color: #a12a1f;
+}
+
+.gestion-accion:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.gestion-bloque > .gestion-error {
+  margin-bottom: 16px;
+}
+
+.gestion-estado {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #eceff0;
+  color: var(--texto-suave);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gestion-estado-publicada {
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+}
+
+/* Numero de candidatos pendientes junto al enlace */
+.gestion-pendientes {
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #fff4dc;
+  color: #8a5a00;
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .gestion-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .gestion-fila {
+    grid-template-columns: 1fr;
+  }
+
+  .gestion-turno {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.gestion-estado-completa {
+  background: #fdecea;
+  color: #a12a1f;
+}

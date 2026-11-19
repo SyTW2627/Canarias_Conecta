@@ -1,0 +1,11 @@
+// Proyecto: Canarias Conecta
+// Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+// Funcion: Configuracion de TypeScript para comprobar los tipos de los tests (no genera ficheros).
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true
+  },
+  "include": ["**/*.ts", "../src/**/*.ts", "../vitest.config.ts"]
+}

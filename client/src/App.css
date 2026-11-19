@@ -4,7 +4,7 @@
   --verde: #0f766e;
   --verde-oscuro: #0b5a53;
   --verde-claro: #ddefea;
-  --fondo: #f6f7f3;
+  --fondo: #a8cdc2;
   --texto: #1b2a2a;
   --texto-suave: #4a5a58;
   --borde: #dde3dc;
@@ -97,7 +97,7 @@ p {
   text-align: center;
   gap: 16px;
   padding: 56px 24px 40px;
-  background: #fff;
+  background: var(--verde-claro);
   border-bottom: 1px solid var(--borde);
 }
 
@@ -122,6 +122,49 @@ p {
   margin-top: 8px;
 }
 
+.help-banner {
+  position: relative;
+  width: min(620px, 100%);
+  margin-top: 8px;
+  padding: 22px 48px 22px 24px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgb(27 42 42 / 12%);
+}
+
+.help-banner h2 {
+  margin-bottom: 8px;
+  font-size: 20px;
+}
+
+.help-banner p {
+  max-width: none;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.help-banner-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--texto-suave);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.help-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 /* Cómo funciona */
 .steps {
   max-width: 1100px;
@@ -130,9 +173,7 @@ p {
 }
 
 .steps h2 {
-  font-size: 22px;
   margin-bottom: 16px;
-  color: #1b2a2a;
 }
 
 .steps-grid {
@@ -169,15 +210,6 @@ p {
   font-weight: 600;
 }
 
-/* Quiénes somos */
-.about,
-.gallery {
-  width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 24px 48px;
-  text-align: left;
-}
 
 .about h2,
 .gallery h2 {
@@ -186,12 +218,6 @@ p {
   color: #1b2a2a;
 }
 
-.about-box {
-  background: #fff;
-  border: 1px solid var(--borde);
-  border-radius: 12px;
-  padding: 24px;
-}
 
 .about-box p {
   font-size: 16px;
@@ -199,15 +225,6 @@ p {
   color: var(--texto-suave);
 }
 
-/* Carrusel de imágenes */
-.carousel {
-  position: relative;
-  overflow: hidden;
-  aspect-ratio: 16 / 9;
-  background: #fff;
-  border: 1px solid var(--borde);
-  border-radius: 12px;
-}
 
 .carousel-empty {
   display: flex;
@@ -217,27 +234,7 @@ p {
   font-size: 14px;
 }
 
-.carousel-img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
 
-.carousel-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border: 1.5px solid var(--verde);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--verde);
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-}
 
 .carousel-btn:hover {
   background: var(--verde-claro);
@@ -252,55 +249,326 @@ p {
   right: 12px;
 }
 
-.carousel-dots {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: #fff;
-  opacity: 0.7;
-  cursor: pointer;
-}
 
 .dot-active {
   background: var(--verde);
   opacity: 1;
 }
 
-/* Botón de comprobación de la API (esquina inferior derecha) */
-.api-check {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
+
+/* Estilos de quienes somos y fotos */
+.info-sections {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+}
+
+.info-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 40px;
+  margin-bottom: 48px;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  text-align: justify;
+}
+
+.info-section-reverse {
+  direction: rtl;
+}
+
+.info-section-reverse > div {
+  direction: ltr;
+}
+
+.info-section img {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.info-section h2 {
+  margin-bottom: 12px;
+  color: var(--texto);
+}
+
+.info-section p {
+  color: var(--texto-suave);
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .info-section,
+  .info-section-reverse {
+    grid-template-columns: 1fr;
+    direction: ltr;
+    gap: 20px;
+  }
+
+  .info-section img {
+    height: 220px;
+  }
+}
+
+/* Estilos de la sección del logo en el banner superior */
+.brand {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+}
+
+.brand img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.brand .logo {
+  margin-right: 0;
+}
+
+/* Estilos para el footer */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 48px;
+  padding: 48px max(24px, calc((100% - 1100px) / 2));
+  margin-top: auto;
+  border-top: 4px solid var(--verde);
+  background: var(--verde-oscuro);
+  color: #fff;
+}
+
+.footer-brand {
   max-width: 320px;
 }
 
-.api-check .btn {
-  min-height: 36px;
-  padding: 6px 12px;
-  font-size: 13px;
+.footer-brand img {
+  width: 240px;
+  max-height: 160px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 16px;
 }
 
-.api-check p {
-  margin: 0;
-  padding: 6px 10px;
+.footer-brand p {
+  line-height: 1.5;
+  color: var(--verde-claro);
+}
+
+.footer-links {
+  display: flex;
+  gap: 80px;
+}
+
+.footer-links div {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer h3 {
+  margin-bottom: 6px;
+  font-size: 17px;
+}
+
+.footer a {
+  color: var(--verde-claro);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+  .footer {
+    flex-direction: column;
+    padding: 36px 24px;
+  }
+
+  .footer-links {
+    flex-direction: column;
+    gap: 28px;
+  }
+}
+
+/* Estilos para carrusel, experiencias y testimonios */
+.experiencias,
+.testimonios {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 48px;
+  text-align: center;
+}
+
+.section-title {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 12px;
+  color: var(--verde-oscuro);
+  font-size: clamp(26px, 4vw, 36px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  right: 18%;
+  bottom: 0;
+  left: 18%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--verde);
+}
+
+.experiencias-carrusel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+}
+
+.experiencias-carrusel img {
+  display: block;
+  width: 100%;
+  height: 380px;
+  object-fit: cover;
+  opacity: 0.8;
+}
+
+.experiencias-texto {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: clamp(24px, 4vw, 40px);
+  font-weight: 700;
+  text-shadow: 0 2px 6px #000;
+}
+
+.experiencias-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.experiencias-prev {
+  left: 16px;
+}
+
+.experiencias-next {
+  right: 16px;
+}
+
+.experiencias-puntos {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.punto {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--borde);
+  cursor: pointer;
+}
+
+.punto.activo {
+  background: var(--verde);
+}
+
+.estadisticas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 24px 72px;
+  text-align: center;
+}
+
+.estadisticas .section-title {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.testimonios {
+  margin-bottom: 32px;
+}
+
+.estadisticas article {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 16px;
+  border-radius: 16px;
+  background: var(--verde-claro);
+}
+
+.estadisticas strong {
+  color: var(--verde);
+  font-size: clamp(56px, 8vw, 76px);
+  line-height: 1;
+  font-weight: 700;
+}
+
+.estadisticas span {
+  color: var(--texto-suave);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.testimonios-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.testimonios article {
+  padding: 24px;
   background: #fff;
   border: 1px solid var(--borde);
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.testimonios p {
+  margin-bottom: 16px;
   color: var(--texto-suave);
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .experiencias-carrusel img {
+    height: 260px;
+  }
+
+  .estadisticas,
+  .testimonios-grid {
+    grid-template-columns: 1fr;
+  }
 }

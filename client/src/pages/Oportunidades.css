@@ -1,0 +1,75 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos del catalogo de oportunidades.
+ */
+
+/* Mas ancho que el inicio para que quepan cuatro tarjetas por fila */
+.authenticated-main.catalogo {
+  width: min(1280px, 100%);
+}
+
+.catalogo-total {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.catalogo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+/* En tarjetas estrechas, el boton baja bajo las plazas en vez de apretarse */
+.catalogo-grid .opportunity-footer {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1100px) {
+  .catalogo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .catalogo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .catalogo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Los filtros de la API: busqueda, categoria, isla, municipio y rango de fechas */
+.search-controls.catalogo-filtros {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+}
+
+.catalogo-filtros .filtro-limpiar {
+  min-height: 44px;
+  justify-self: start;
+}
+
+/* Mientras llega la nueva busqueda se muestran atenuados los resultados anteriores */
+.catalogo-cargando {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+@media (max-width: 820px) {
+  .search-controls.catalogo-filtros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .search-controls.catalogo-filtros {
+    grid-template-columns: 1fr;
+  }
+}

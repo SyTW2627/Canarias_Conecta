@@ -17,6 +17,12 @@ test.afterEach(async ({ escriturasBloqueadas }) => {
 });
 
 test.describe('Validaciones del formulario de nueva oferta', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.getByRole('link', { name: /Publicar voluntariado/ }).click();
+    await expect(page).toHaveURL(/\/gestionar-ofertas\/nueva$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Publicar voluntariado' })).toBeVisible();
+  });
+
   test('Sin título ni descripción', async ({ page }) => {
     await page.getByRole('button', { name: 'Publicar oferta' }).click();
     await expect(page.getByRole('alert')).toHaveText('El título y la descripción son obligatorios');
@@ -85,6 +91,7 @@ test('Si el servidor rechaza la publicación se muestra su mensaje', async ({ pa
       : route.fallback(),
   );
 
+  await page.getByRole('link', { name: /Publicar voluntariado/ }).click();
   await page.getByRole('textbox', { name: 'Título *' }).fill('Oferta de prueba');
   await page.getByRole('textbox', { name: 'Descripción *' }).fill('Descripción de prueba');
   await page.getByRole('checkbox', { name: 'Comunidad' }).check();
@@ -99,6 +106,14 @@ test('Si el servidor rechaza la publicación se muestra su mensaje', async ({ pa
   await expect(page.getByRole('alert')).toHaveText('Error simulado del servidor');
   // Los datos no se pierden para poder corregirlos
   await expect(page.getByRole('textbox', { name: 'Título *' })).toHaveValue('Oferta de prueba');
+  await expect(page).toHaveURL(/\/gestionar-ofertas\/nueva$/);
+});
+
+test('Cancelar vuelve al listado sin publicar', async ({ page }) => {
+  await page.getByRole('link', { name: /Publicar voluntariado/ }).click();
+  await page.getByRole('link', { name: 'Cancelar' }).click();
+  await expect(page).toHaveURL(/\/gestionar-ofertas$/);
+  await expect(page.getByRole('heading', { name: 'Mis ofertas' })).toBeVisible();
 });
 
 test('El listado "Mis ofertas" muestra las ofertas de la organización', async ({ page }) => {

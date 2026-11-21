@@ -296,14 +296,11 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
       </header>
 
       <main className="authenticated-main gestion">
-        <section className="welcome-section">
-          <p className="eyebrow">Panel del ofertante</p>
-          <h1>Candidatos{oferta ? `: ${oferta.titulo}` : ''}</h1>
-          <p>
-            Revisa el perfil de cada voluntario y acepta o rechaza su solicitud. Al rechazar, sus
-            plazas vuelven a quedar libres.{' '}
-            <a className="text-link" href="/gestionar-ofertas">Volver a mis ofertas</a>
-          </p>
+        <section className="gestion-cabecera">
+          <div>
+            <a className="gestion-volver" href="/gestionar-ofertas"><span aria-hidden="true">←</span> Volver a mis ofertas</a>
+            <h1 className="section-title gestion-titulo">Candidatos{oferta ? `: ${oferta.titulo}` : ''}</h1>
+          </div>
         </section>
 
         <div className="candidatos">

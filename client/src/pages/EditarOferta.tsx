@@ -105,13 +105,11 @@ function EditarOferta({ ofertaId, usuario, onCerrarSesion }: EditarOfertaProps) 
       </header>
 
       <main className="authenticated-main gestion">
-        <section className="welcome-section">
-          <p className="eyebrow">Panel del ofertante</p>
-          <h1>Editar oferta</h1>
-          <p>
-            Cambia cualquier dato de la oferta. Los voluntarios verán los cambios en cuanto los
-            guardes. <a className="text-link" href="/gestionar-ofertas">Volver a mis ofertas</a>
-          </p>
+        <section className="gestion-cabecera">
+          <div>
+            <a className="gestion-volver" href="/gestionar-ofertas"><span aria-hidden="true">←</span> Volver a mis ofertas</a>
+            <h1 className="section-title gestion-titulo">Editar oferta</h1>
+          </div>
         </section>
 
         <div className="gestion-edicion">

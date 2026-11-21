@@ -3,7 +3,7 @@
  * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
  * Funcion: Formulario de los datos de una oferta, compartido al publicarla y al editarla.
  */
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import '../pages/GestionarOfertas.css'
 import {
   DURACIONES,
@@ -55,7 +55,8 @@ type FormularioOfertaProps = {
   textoEnviando: string
   // Al editar: la oferta de la que parten los valores
   oferta?: Oferta
-  mensajeExito?: string | null
+  // Si se indica, se muestra un enlace para salir sin guardar
+  urlCancelar?: string
   // Devuelve el mensaje de error, o null si todo ha ido bien
   onEnviar: (envio: EnvioOferta) => Promise<string | null>
 }
@@ -143,9 +144,10 @@ function FormularioOferta({
   textoBoton,
   textoEnviando,
   oferta,
-  mensajeExito,
+  urlCancelar,
   onEnviar,
 }: FormularioOfertaProps) {
+  const idFoto = useId()
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [datos, setDatos] = useState(() => (oferta ? datosDeOferta(oferta) : FORMULARIO_VACIO))
   const [categoriaIds, setCategoriaIds] = useState<string[]>(
@@ -273,236 +275,309 @@ function FormularioOferta({
     if (errorEnvio) setErrorFormulario(errorEnvio)
   }
 
+  const fotoVisible = imagen?.vistaPrevia ?? imagenActual
+
   return (
     <form className="gestion-bloque gestion-formulario" onSubmit={enviar} noValidate>
-      <h2>{titulo}</h2>
-
-      <label>
-        <span>Título *</span>
-        <input
-          value={datos.titulo}
-          maxLength={120}
-          onChange={(e) => cambiarDato('titulo', e.target.value)}
-          placeholder="Ej. Limpieza de la playa de Las Teresitas"
-        />
-      </label>
-
-      <label>
-        <span>Descripción *</span>
-        <textarea
-          value={datos.descripcion}
-          maxLength={5000}
-          rows={5}
-          onChange={(e) => cambiarDato('descripcion', e.target.value)}
-          placeholder="Qué harán los voluntarios, a quién ayuda la actividad..."
-        />
-      </label>
-
-      <div className="gestion-imagen">
-        <label>
-          <span>{imagenActual ? 'Cambiar foto de presentación' : 'Foto de presentación'}</span>
-          <input
-            ref={inputImagen}
-            type="file"
-            accept={TIPOS_IMAGEN.join(',')}
-            onChange={elegirImagen}
-          />
-        </label>
-        <p className="gestion-ayuda">
-          Opcional. JPG, PNG o WebP de hasta 5 MB. Si no subes ninguna, se usará la de la
-          categoría.
-        </p>
-        {imagen ? (
-          <div className="gestion-imagen-previa">
-            <img src={imagen.vistaPrevia} alt="Vista previa de la foto de la oferta" />
-            <button type="button" className="gestion-accion" onClick={() => cambiarImagen(null)}>
-              {imagenActual ? 'Mantener la foto actual' : 'Quitar foto'}
-            </button>
-          </div>
-        ) : (
-          imagenActual && (
-            <div className="gestion-imagen-previa">
-              <img src={imagenActual} alt="Foto actual de la oferta" />
-              <button type="button" className="gestion-accion" onClick={() => setImagenActual(null)}>
-                Quitar foto
-              </button>
-            </div>
-          )
-        )}
+      <div className="formulario-cabecera">
+        <h2>{titulo}</h2>
+        <p className="gestion-ayuda">Los campos marcados con * son obligatorios.</p>
       </div>
 
-      <fieldset>
-        <legend>Categorías *</legend>
-        {categorias.length === 0 ? (
-          <p className="gestion-ayuda">No se pudieron cargar las categorías.</p>
-        ) : (
-          <div className="gestion-categorias">
-            {categorias.map((categoria) => (
-              <label key={categoria.id} className="gestion-check">
-                <input
-                  type="checkbox"
-                  checked={categoriaIds.includes(categoria.id)}
-                  onChange={() => alternarCategoria(categoria.id)}
-                />
-                {categoria.nombre}
-              </label>
-            ))}
+      <section className="formulario-seccion">
+        <div className="formulario-seccion-info">
+          <span className="formulario-paso" aria-hidden="true">1</span>
+          <div>
+            <h3>Información básica</h3>
+            <p>Lo primero que verán los voluntarios al encontrar tu oferta.</p>
           </div>
-        )}
-      </fieldset>
+        </div>
 
-      <div className="gestion-fila">
-        <label>
-          <span>Modalidad *</span>
-          <select value={datos.modalidad} onChange={(e) => cambiarDato('modalidad', e.target.value)}>
-            {Object.entries(MODALIDADES).map(([valor, nombre]) => (
-              <option key={valor} value={valor}>{nombre}</option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          <span>Duración *</span>
-          <select
-            value={datos.tipoDuracion}
-            onChange={(e) => cambiarDato('tipoDuracion', e.target.value)}
-          >
-            {Object.entries(DURACIONES).map(([valor, nombre]) => (
-              <option key={valor} value={valor}>{nombre}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {datos.modalidad !== 'online' && (
-        <>
-          <div className="gestion-fila">
+        <div className="formulario-basica">
+          <div className="formulario-campos">
             <label>
-              <span>Isla *</span>
-              <select value={datos.isla} onChange={(e) => cambiarDato('isla', e.target.value)}>
-                <option value="">Elige una isla</option>
-                {Object.entries(ISLAS).map(([valor, nombre]) => (
+              <span>Título *</span>
+              <input
+                value={datos.titulo}
+                maxLength={120}
+                onChange={(e) => cambiarDato('titulo', e.target.value)}
+                placeholder="Ej. Limpieza de la playa de Las Teresitas"
+              />
+            </label>
+
+            <label>
+              <span>Descripción *</span>
+              <textarea
+                value={datos.descripcion}
+                maxLength={5000}
+                rows={6}
+                onChange={(e) => cambiarDato('descripcion', e.target.value)}
+                placeholder="Qué harán los voluntarios, a quién ayuda la actividad..."
+              />
+            </label>
+          </div>
+
+          <div className="gestion-imagen">
+            <label className="formulario-etiqueta" htmlFor={idFoto}>
+              {imagenActual ? 'Cambiar foto de presentación' : 'Foto de presentación'}
+            </label>
+            <input
+              id={idFoto}
+              ref={inputImagen}
+              className="formulario-foto-input"
+              type="file"
+              accept={TIPOS_IMAGEN.join(',')}
+              onChange={elegirImagen}
+            />
+            {fotoVisible ? (
+              <div className="gestion-imagen-previa">
+                {imagen ? (
+                  <img src={imagen.vistaPrevia} alt="Vista previa de la foto de la oferta" />
+                ) : (
+                  <img src={fotoVisible} alt="Foto actual de la oferta" />
+                )}
+                <div className="gestion-imagen-botones">
+                  <label htmlFor={idFoto} className="gestion-accion" aria-hidden="true">
+                    Elegir otra
+                  </label>
+                  <button
+                    type="button"
+                    className="gestion-accion"
+                    onClick={() => (imagen ? cambiarImagen(null) : setImagenActual(null))}
+                  >
+                    {imagen && imagenActual ? 'Mantener la foto actual' : 'Quitar foto'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label htmlFor={idFoto} className="formulario-foto-zona" aria-hidden="true">
+                <span className="formulario-foto-icono">📷</span>
+                <strong>Haz clic para subir una foto</strong>
+                <span>JPG, PNG o WebP de hasta 5 MB</span>
+              </label>
+            )}
+            <p className="gestion-ayuda">
+              Opcional. Si no subes ninguna, se usará la de la categoría.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="formulario-seccion">
+        <div className="formulario-seccion-info">
+          <span className="formulario-paso" aria-hidden="true">2</span>
+          <div>
+            <h3>Categoría y lugar</h3>
+            <p>Ayuda a que la oferta aparezca a quien le interesa.</p>
+          </div>
+        </div>
+
+        <div className="formulario-campos">
+          <fieldset>
+            <legend>Categorías *</legend>
+            {categorias.length === 0 ? (
+              <p className="gestion-ayuda">No se pudieron cargar las categorías.</p>
+            ) : (
+              <div className="gestion-categorias">
+                {categorias.map((categoria) => (
+                  <label key={categoria.id} className="gestion-check">
+                    <input
+                      type="checkbox"
+                      checked={categoriaIds.includes(categoria.id)}
+                      onChange={() => alternarCategoria(categoria.id)}
+                    />
+                    {categoria.nombre}
+                  </label>
+                ))}
+              </div>
+            )}
+          </fieldset>
+
+          <div className="gestion-fila gestion-fila-4">
+            <label>
+              <span>Modalidad *</span>
+              <select value={datos.modalidad} onChange={(e) => cambiarDato('modalidad', e.target.value)}>
+                {Object.entries(MODALIDADES).map(([valor, nombre]) => (
                   <option key={valor} value={valor}>{nombre}</option>
                 ))}
               </select>
             </label>
 
             <label>
-              <span>Municipio *</span>
-              <input
-                value={datos.municipio}
-                onChange={(e) => cambiarDato('municipio', e.target.value)}
-                placeholder="Ej. Santa Cruz de Tenerife"
-              />
-            </label>
-          </div>
-
-          <label>
-            <span>Dirección</span>
-            <input
-              value={datos.direccion}
-              onChange={(e) => cambiarDato('direccion', e.target.value)}
-              placeholder="Opcional. No se muestra en la oferta pública"
-            />
-          </label>
-        </>
-      )}
-
-      <div className="gestion-fila">
-        <label>
-          <span>Requisitos</span>
-          <input
-            value={datos.requisitos}
-            maxLength={2000}
-            onChange={(e) => cambiarDato('requisitos', e.target.value)}
-            placeholder="Ej. Ropa cómoda y protección solar"
-          />
-        </label>
-
-        <label>
-          <span>Edad mínima</span>
-          <input
-            type="number"
-            min={0}
-            value={datos.edadMinima}
-            onChange={(e) => cambiarDato('edadMinima', e.target.value)}
-          />
-        </label>
-      </div>
-
-      <fieldset>
-        <legend>Turnos *</legend>
-        {turnos.map((turno, indice) => (
-          <div key={turno.clave}>
-            <div className="gestion-turno">
-              <label>
-                <span>Fecha</span>
-                <input
-                  type="date"
-                  min={hoyIso()}
-                  value={turno.fecha}
-                  onChange={(e) => cambiarTurno(turno.clave, 'fecha', e.target.value)}
-                />
-              </label>
-              <label>
-                <span>Inicio</span>
-                <input
-                  type="time"
-                  value={turno.horaInicio}
-                  onChange={(e) => cambiarTurno(turno.clave, 'horaInicio', e.target.value)}
-                />
-              </label>
-              <label>
-                <span>Fin</span>
-                <input
-                  type="time"
-                  value={turno.horaFin}
-                  onChange={(e) => cambiarTurno(turno.clave, 'horaFin', e.target.value)}
-                />
-              </label>
-              <label>
-                <span>Plazas</span>
-                <input
-                  type="number"
-                  min={Math.max(1, turno.ocupadas)}
-                  value={turno.plazas}
-                  onChange={(e) => cambiarTurno(turno.clave, 'plazas', e.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                className="gestion-quitar"
-                onClick={() => setTurnos((anteriores) => anteriores.filter((t) => t.clave !== turno.clave))}
-                disabled={turnos.length === 1 || turno.ocupadas > 0}
-                title={turno.ocupadas > 0 ? 'Este turno ya tiene voluntarios inscritos' : undefined}
-                aria-label={`Quitar el turno ${indice + 1}`}
+              <span>Duración *</span>
+              <select
+                value={datos.tipoDuracion}
+                onChange={(e) => cambiarDato('tipoDuracion', e.target.value)}
               >
-                ×
-              </button>
-            </div>
-            {turno.ocupadas > 0 && (
-              <p className="gestion-ayuda gestion-turno-aviso">
-                {turno.ocupadas} {turno.ocupadas === 1 ? 'plaza ocupada' : 'plazas ocupadas'}: avisa a
-                los voluntarios inscritos si cambias la fecha o el horario.
-              </p>
+                {Object.entries(DURACIONES).map(([valor, nombre]) => (
+                  <option key={valor} value={valor}>{nombre}</option>
+                ))}
+              </select>
+            </label>
+
+            {datos.modalidad !== 'online' && (
+              <>
+                <label>
+                  <span>Isla *</span>
+                  <select value={datos.isla} onChange={(e) => cambiarDato('isla', e.target.value)}>
+                    <option value="">Elige una isla</option>
+                    {Object.entries(ISLAS).map(([valor, nombre]) => (
+                      <option key={valor} value={valor}>{nombre}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Municipio *</span>
+                  <input
+                    value={datos.municipio}
+                    onChange={(e) => cambiarDato('municipio', e.target.value)}
+                    placeholder="Ej. Santa Cruz de Tenerife"
+                  />
+                </label>
+              </>
             )}
           </div>
-        ))}
-        <button
-          type="button"
-          className="btn btn-outline gestion-anadir"
-          onClick={() => setTurnos((anteriores) => [...anteriores, turnoVacio()])}
-        >
-          Añadir turno
-        </button>
-      </fieldset>
 
-      {errorFormulario && <p className="gestion-error" role="alert">{errorFormulario}</p>}
-      {mensajeExito && <p className="gestion-exito" role="status">{mensajeExito}</p>}
+          {datos.modalidad !== 'online' && (
+            <label>
+              <span>Dirección</span>
+              <input
+                value={datos.direccion}
+                onChange={(e) => cambiarDato('direccion', e.target.value)}
+                placeholder="Opcional. No se muestra en la oferta pública"
+              />
+            </label>
+          )}
+        </div>
+      </section>
 
-      <button type="submit" className="btn" disabled={enviando}>
-        {enviando ? textoEnviando : textoBoton}
-      </button>
+      <section className="formulario-seccion">
+        <div className="formulario-seccion-info">
+          <span className="formulario-paso" aria-hidden="true">3</span>
+          <div>
+            <h3>Requisitos</h3>
+            <p>Qué deben saber o llevar los voluntarios antes de apuntarse.</p>
+          </div>
+        </div>
+
+        <div className="gestion-fila gestion-fila-requisitos">
+          <label>
+            <span>Requisitos</span>
+            <input
+              value={datos.requisitos}
+              maxLength={2000}
+              onChange={(e) => cambiarDato('requisitos', e.target.value)}
+              placeholder="Ej. Ropa cómoda y protección solar"
+            />
+          </label>
+
+          <label>
+            <span>Edad mínima</span>
+            <input
+              type="number"
+              min={0}
+              value={datos.edadMinima}
+              onChange={(e) => cambiarDato('edadMinima', e.target.value)}
+              placeholder="Ej. 16"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="formulario-seccion">
+        <div className="formulario-seccion-info">
+          <span className="formulario-paso" aria-hidden="true">4</span>
+          <div>
+            <h3>Turnos *</h3>
+            <p>Cada día y horario en el que se realiza la actividad, con sus plazas.</p>
+          </div>
+        </div>
+
+        <fieldset className="formulario-turnos">
+          <legend className="formulario-oculto">Turnos</legend>
+          {turnos.map((turno, indice) => (
+            <div key={turno.clave} className="gestion-turno-tarjeta">
+              <div className="gestion-turno">
+                <span className="gestion-turno-numero" aria-hidden="true">
+                  Turno {indice + 1}
+                </span>
+                <label>
+                  <span>Fecha</span>
+                  <input
+                    type="date"
+                    min={hoyIso()}
+                    value={turno.fecha}
+                    onChange={(e) => cambiarTurno(turno.clave, 'fecha', e.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Inicio</span>
+                  <input
+                    type="time"
+                    value={turno.horaInicio}
+                    onChange={(e) => cambiarTurno(turno.clave, 'horaInicio', e.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Fin</span>
+                  <input
+                    type="time"
+                    value={turno.horaFin}
+                    onChange={(e) => cambiarTurno(turno.clave, 'horaFin', e.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>Plazas</span>
+                  <input
+                    type="number"
+                    min={Math.max(1, turno.ocupadas)}
+                    value={turno.plazas}
+                    onChange={(e) => cambiarTurno(turno.clave, 'plazas', e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="gestion-quitar"
+                  onClick={() => setTurnos((anteriores) => anteriores.filter((t) => t.clave !== turno.clave))}
+                  disabled={turnos.length === 1 || turno.ocupadas > 0}
+                  title={turno.ocupadas > 0 ? 'Este turno ya tiene voluntarios inscritos' : 'Quitar turno'}
+                  aria-label={`Quitar el turno ${indice + 1}`}
+                >
+                  ×
+                </button>
+              </div>
+              {turno.ocupadas > 0 && (
+                <p className="gestion-ayuda gestion-turno-aviso">
+                  {turno.ocupadas} {turno.ocupadas === 1 ? 'plaza ocupada' : 'plazas ocupadas'}: avisa a
+                  los voluntarios inscritos si cambias la fecha o el horario.
+                </p>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            className="gestion-anadir"
+            onClick={() => setTurnos((anteriores) => [...anteriores, turnoVacio()])}
+          >
+            <span aria-hidden="true">+</span> Añadir turno
+          </button>
+        </fieldset>
+      </section>
+
+      <div className="formulario-pie">
+        {errorFormulario && <p className="gestion-error" role="alert">{errorFormulario}</p>}
+        <div className="formulario-botones">
+          {urlCancelar && (
+            <a className="btn btn-outline" href={urlCancelar}>
+              Cancelar
+            </a>
+          )}
+          <button type="submit" className="btn" disabled={enviando}>
+            {enviando ? textoEnviando : textoBoton}
+          </button>
+        </div>
+      </div>
     </form>
   )
 }

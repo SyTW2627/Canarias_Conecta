@@ -52,6 +52,8 @@ test('Una organización puede publicar una oferta y gestionar sus candidatos', a
 
   // 2. Ir al panel de gestión y rellenar el formulario de nueva oferta
   await menu(page).getByRole('link', { name: 'Gestionar ofertas' }).click();
+  await page.getByRole('link', { name: /Publicar voluntariado/ }).click();
+  await expect(page).toHaveURL(/\/gestionar-ofertas\/nueva$/);
   await page.getByRole('textbox', { name: 'Título *' }).fill(tituloOferta);
   await page.getByRole('textbox', { name: 'Descripción *' }).fill('Ayuda en la limpieza de un hogar de una persona mayor');
 
@@ -68,13 +70,11 @@ test('Una organización puede publicar una oferta y gestionar sus candidatos', a
   await page.getByRole('textbox', { name: 'Fin' }).fill('13:30');
   await page.getByRole('spinbutton', { name: 'Plazas' }).fill('2');
 
-  // 3. Publicar la oferta (simulado) y comprobar que la web lo refleja
+  // 3. Publicar la oferta (simulado) y comprobar que se vuelve al listado con la oferta
   await page.getByRole('button', { name: 'Publicar oferta' }).click();
-  await expect(page.getByRole('status')).toHaveText('Oferta publicada. Los voluntarios ya pueden verla.');
+  await expect(page).toHaveURL(/\/gestionar-ofertas$/);
+  await expect(page.getByRole('status')).toContainText('Oferta publicada. Los voluntarios ya pueden verla.');
   await expect(page.getByRole('heading', { name: tituloOferta })).toBeVisible();
-
-  // El formulario se vacía tras publicar
-  await expect(page.getByRole('textbox', { name: 'Título *' })).toHaveValue('');
 
   // Lo que se envió al servidor es lo que se rellenó
   expect(datosEnviados).toMatchObject({

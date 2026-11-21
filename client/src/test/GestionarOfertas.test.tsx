@@ -1,11 +1,11 @@
 /**
  * Proyecto: Canarias Conecta
  * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
- * Funcion: Tests del panel del ofertante: estados de sus ofertas, plazas, cerrar, eliminar y publicar.
+ * Funcion: Tests del panel del ofertante: estados de sus ofertas, plazas, cerrar, eliminar y acceso a publicar.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi, type Mock } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import GestionarOfertas from '../pages/GestionarOfertas.tsx'
 import type { MiOferta, Turno } from '../ofertas.ts'
 import { OFERTANTE, oferta, simularApi, turno } from './api.ts'
@@ -162,62 +162,24 @@ describe('GestionarOfertas', () => {
     expect(llamadas.find((l) => l.metodo === 'DELETE')?.ruta).toBe('/api/ofertas/a')
   })
 
-  it('publica la oferta como multipart con estado publicada y la añade al listado', async () => {
-    let publicada = false
-    simularApi({
-      'GET /api/categorias': { body: [{ id: 'c1', nombre: 'Medio ambiente', slug: 'm' }] },
-      'GET /api/ofertas/mias': () => ({
-        body: publicada ? [miOferta('n', 'Nueva oferta', [turno('t1', 3, 2)])] : [],
-      }),
-      'POST /api/ofertas': () => {
-        publicada = true
-        return { status: 201, body: { id: 'n' } }
-      },
-    })
-    localStorage.setItem('token', 'tok')
+  it('enlaza a la pantalla de publicar un voluntariado', async () => {
+    simularApi({ 'GET /api/ofertas/mias': { body: [] } })
     abrir()
 
-    await userEvent.type(screen.getByLabelText('Título *'), 'Nueva oferta')
-    await userEvent.type(screen.getByLabelText('Descripción *'), 'Algo útil')
-    await userEvent.click(await screen.findByLabelText('Medio ambiente'))
-    await userEvent.selectOptions(screen.getByLabelText('Modalidad *'), 'online')
-    const manana = new Date(Date.now() + 864e5).toISOString().slice(0, 10)
-    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: manana } })
-    fireEvent.change(screen.getByLabelText('Inicio'), { target: { value: '10:00' } })
-    fireEvent.change(screen.getByLabelText('Fin'), { target: { value: '12:00' } })
-    fireEvent.change(screen.getByLabelText('Plazas'), { target: { value: '2' } })
-    await userEvent.click(screen.getByRole('button', { name: 'Publicar oferta' }))
-
-    expect(await screen.findByRole('status')).toHaveTextContent('Oferta publicada')
-    expect(await fila('Nueva oferta')).toBeInTheDocument()
-    // El formulario se vacía tras publicar
-    expect(screen.getByLabelText('Título *')).toHaveValue('')
-
-    const [, opciones] = (fetch as Mock).mock.calls.find(([url, o]) => url === '/api/ofertas' && o?.method === 'POST')!
-    expect(opciones.headers).toEqual({ Authorization: 'Bearer tok' })
-    const datos = JSON.parse((opciones.body as FormData).get('datos') as string)
-    expect(datos).toMatchObject({ titulo: 'Nueva oferta', estado: 'publicada', modalidad: 'online' })
+    expect(screen.getByRole('link', { name: /Publicar voluntariado/ })).toHaveAttribute('href', '/gestionar-ofertas/nueva')
+    expect(await screen.findByRole('link', { name: 'Publicar mi primer voluntariado' })).toHaveAttribute('href', '/gestionar-ofertas/nueva')
   })
 
-  it('si falla la publicación muestra el error en el formulario', async () => {
-    simularApi({
-      'GET /api/categorias': { body: [{ id: 'c1', nombre: 'Medio ambiente', slug: 'm' }] },
-      'GET /api/ofertas/mias': { body: [] },
-      'POST /api/ofertas': { status: 400, body: { message: 'Datos no válidos' } },
-    })
+  it('muestra el aviso de oferta publicada al volver de publicar', async () => {
+    simularApi({ 'GET /api/ofertas/mias': { body: [] } })
+    window.history.pushState({ mensajeExito: 'Oferta publicada. Los voluntarios ya pueden verla.' }, '', '/gestionar-ofertas')
     abrir()
 
-    await userEvent.type(screen.getByLabelText('Título *'), 'X')
-    await userEvent.type(screen.getByLabelText('Descripción *'), 'Y')
-    await userEvent.click(await screen.findByLabelText('Medio ambiente'))
-    await userEvent.selectOptions(screen.getByLabelText('Modalidad *'), 'online')
-    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: new Date(Date.now() + 864e5).toISOString().slice(0, 10) } })
-    fireEvent.change(screen.getByLabelText('Inicio'), { target: { value: '10:00' } })
-    fireEvent.change(screen.getByLabelText('Fin'), { target: { value: '12:00' } })
-    fireEvent.change(screen.getByLabelText('Plazas'), { target: { value: '2' } })
-    await userEvent.click(screen.getByRole('button', { name: 'Publicar oferta' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Oferta publicada')
+    // No vuelve a salir al recargar
+    expect(window.history.state).toBeNull()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Datos no válidos')
-    expect(screen.getByLabelText('Título *')).toHaveValue('X')
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar aviso' }))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

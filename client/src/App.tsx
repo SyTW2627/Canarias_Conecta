@@ -17,6 +17,7 @@ import OrganizationProfile from './pages/OrganizationProfile.tsx'
 import Oportunidades from './pages/Oportunidades.tsx'
 import MisInscripciones from './pages/MisInscripciones.tsx'
 import EditarOferta from './pages/EditarOferta.tsx'
+import PublicarOferta from './pages/PublicarOferta.tsx'
 import Candidatos from './pages/Candidatos.tsx'
 
 const PASOS = [
@@ -70,6 +71,7 @@ type Ruta =
   | { pagina: 'oportunidades' }
   | { pagina: 'oferta'; id: string }
   | { pagina: 'gestion' }
+  | { pagina: 'nuevaOferta' }
   | { pagina: 'editarOferta'; id: string }
   | { pagina: 'candidatos'; id: string }
   | { pagina: 'inscripciones' }
@@ -84,6 +86,7 @@ function rutaDe(pathname: string): Ruta {
   const idCandidatos = pathname.match(/^\/gestionar-ofertas\/([^/]+)\/candidatos\/?$/)?.[1]
   if (idCandidatos) return { pagina: 'candidatos', id: idCandidatos }
   if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
+  if (/^\/gestionar-ofertas\/nueva\/?$/.test(pathname)) return { pagina: 'nuevaOferta' }
   if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
   if (/^\/mis_inscripciones\/?$/.test(pathname)) return { pagina: 'inscripciones' }
   if (/^\/perfil\/?$/.test(pathname)) return { pagina: 'perfil' }
@@ -257,6 +260,10 @@ function App() {
     // Un voluntario que llegue a /gestionar-ofertas ve el inicio
     if (ruta.pagina === 'gestion' && usuario.rol === 'ofertante') {
       return <GestionarOfertas usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    if (ruta.pagina === 'nuevaOferta' && usuario.rol === 'ofertante') {
+      return <PublicarOferta usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
 
     if (ruta.pagina === 'editarOferta' && usuario.rol === 'ofertante') {

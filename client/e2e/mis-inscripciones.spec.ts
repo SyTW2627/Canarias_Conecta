@@ -75,12 +75,12 @@ test('Una cancelación tardía se marca como "(tardía)"', async ({ page }) => {
   await expect(page.locator('.inscription-status')).toHaveText('Cancelada (tardía)');
 });
 
-test('Una inscripción valorada muestra las estrellas', async ({ page }) => {
+test('Una inscripción valorada muestra las palmeras', async ({ page }) => {
   await simularInscripciones(page, [
     inscripcionFalsa({ estado: 'completada', puedeCancelar: false, valoracion: { puntuacion: 4, comentario: '¡Genial!' } }),
   ]);
   await page.goto('/mis_inscripciones');
-  await expect(page.getByLabel('4 de 5 estrellas')).toBeVisible();
+  await expect(page.getByLabel('4 de 5 palmeras')).toBeVisible();
 });
 
 test('Si no se puede cancelar no aparece el botón', async ({ page }) => {

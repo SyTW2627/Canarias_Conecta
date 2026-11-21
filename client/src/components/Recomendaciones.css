@@ -1,0 +1,163 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la seccion "Recomendado para ti" del inicio del voluntario.
+ */
+
+.reco {
+  margin-top: 48px;
+  text-align: left;
+}
+
+.reco-sobretitulo {
+  margin: 0 0 6px;
+  color: var(--verde);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.reco-segun {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  color: var(--verde-oscuro);
+  font-size: 15px;
+}
+
+.reco-interes {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #dceee8;
+  color: var(--verde-oscuro);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Tarjetas recomendadas */
+.reco-lista {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reco-tarjeta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.reco-tarjeta:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.1);
+}
+
+.reco-imagen {
+  position: relative;
+  height: 150px;
+}
+
+.reco-imagen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reco-afinidad {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--verde-oscuro);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.reco-afinidad-alta {
+  background: var(--verde);
+  color: #fff;
+}
+
+.reco-cuerpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 16px 18px 18px;
+}
+
+.reco-org {
+  margin: 0;
+  color: #6b7a74;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.reco-cuerpo h3 {
+  margin: 4px 0 6px;
+  color: var(--verde-oscuro);
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.reco-dato {
+  margin: 0;
+  color: #55635d;
+  font-size: 14px;
+}
+
+.reco-barra {
+  height: 6px;
+  margin: 12px 0 4px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #e6efeb;
+}
+
+.reco-barra > div {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--verde);
+}
+
+.reco-porque {
+  margin: 10px 0 6px;
+  color: var(--verde-oscuro);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reco-motivos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  color: #34433d;
+  font-size: 14px;
+}
+
+.reco-ver {
+  margin-top: auto;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .reco-lista {
+    grid-template-columns: 1fr;
+  }
+}

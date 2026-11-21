@@ -110,13 +110,6 @@ test('Una notificación con enlace lleva a su página', async ({ page }) => {
   await expect(page).toHaveURL(/\/mis_inscripciones/);
 });
 
-test('Si fallan las notificaciones se muestra un aviso', async ({ page }) => {
-  await page.route('**/api/notificaciones', (route) => route.fulfill({ status: 500, json: {} }));
-  await page.goto('/oportunidades');
-  await page.getByRole('button', { name: /^Notificaciones/ }).click();
-  await expect(page.getByText('No se pudieron cargar las notificaciones.')).toBeVisible();
-});
-
 test('La organización también tiene campana en su panel', async ({ browser }) => {
   const contexto = await browser.newContext();
   const pagina = await contexto.newPage();

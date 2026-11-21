@@ -71,6 +71,7 @@ describe('Rutas de ofertas (/api/ofertas)', () => {
       'GET /: buscarOfertas',
       // La imagen se lee despues de comprobar la sesion
       'POST /: requireAuth > requireRol(ofertante) > recibirImagen > crearOferta',
+      'GET /recomendadas: requireAuth > requireRol(voluntario) > getRecomendaciones',
       'GET /mias: requireAuth > requireRol(ofertante) > getMisOfertas',
       'GET /mias/:id: requireAuth > requireRol(ofertante) > getMiOferta',
       'GET /:id: getOferta',

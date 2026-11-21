@@ -14,6 +14,7 @@ import { useEffect, useState, type FormEvent, type MouseEvent } from 'react'
 import './HomePage.css'
 import type { Usuario } from './Login.tsx'
 import Notificaciones from '../components/Notificaciones.tsx'
+import Recomendaciones from '../components/Recomendaciones.tsx'
 import { useOfertasPublicadas } from '../useOfertasPublicadas.ts'
 import {
   ISLAS,
@@ -717,6 +718,9 @@ function InicioVoluntario({ usuario }: { usuario: Usuario }) {
             </p>
           </div>
         )}
+
+        {/* Sistema de recomendacion: ofertas segun los intereses de su perfil, su isla e historial */}
+        <Recomendaciones usuario={usuario} />
 
         {/* Les faltan manos */}
         {faltanManos.length > 0 && (

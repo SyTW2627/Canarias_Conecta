@@ -129,7 +129,7 @@ describe('buscarEmpleos', () => {
       crearRes()
     )
 
-    const filtro = buscar.mock.calls[0][0] as Record<string, unknown>
+    const filtro = buscar.mock.calls[0][0] as unknown as Record<string, unknown>
     expect(filtro).toMatchObject({
       'ubicacion.isla': 'gran_canaria',
       tipoContrato: 'practicas',
@@ -337,7 +337,7 @@ describe('getMisEmpleos', () => {
     expect(buscar).toHaveBeenCalledWith({ ofertanteId: ofertante.id })
     expect(q.sort).toHaveBeenCalledWith({ createdAt: -1 })
     // Las retiradas no cuentan
-    const etapas = agregar.mock.calls[0][0] as Array<{ $match?: Record<string, unknown> }>
+    const etapas = agregar.mock.calls[0][0] as unknown as Array<{ $match?: Record<string, unknown> }>
     expect(etapas[0].$match).toMatchObject({ estado: { $ne: 'retirada' } })
     expect(res.body).toMatchObject([
       { id: conCandidaturas.id, estado: 'publicada', candidaturas: 3, candidaturasPendientes: 1 },

@@ -574,7 +574,8 @@ const TRANSICIONES: Record<'preseleccionada' | 'descartada', EstadoCandidatura[]
 // PATCH /api/empleo/candidaturas/:id -> la entidad preselecciona o descarta una candidatura
 export async function resolverCandidatura(req: Request, res: Response): Promise<void> {
   const { id } = req.params
-  const estado = req.body?.estado
+  // unknown y no any: la comprobacion de abajo lo estrecha a 'preseleccionada' | 'descartada'
+  const estado: unknown = req.body?.estado
 
   if (!isObjectIdOrHexString(id)) {
     res.status(404).json({ message: MENSAJE_CANDIDATURA_NO_EXISTE })

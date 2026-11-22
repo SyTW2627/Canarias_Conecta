@@ -20,7 +20,8 @@ const rutas = {
   ofertas: (await import('../../src/routes/ofertaRoutes.js')).default,
   inscripciones: (await import('../../src/routes/inscripcionRoutes.js')).default,
   notificaciones: (await import('../../src/routes/notificacionRoutes.js')).default,
-  empleo: (await import('../../src/routes/empleoRoutes.js')).default
+  empleo: (await import('../../src/routes/empleoRoutes.js')).default,
+  gamificacion: (await import('../../src/routes/gamificacionRoutes.js')).default
 }
 
 type Manejador = { name: string; roles?: string[] }
@@ -129,6 +130,17 @@ describe('Rutas de empleo (/api/empleo)', () => {
       'PATCH /:id/cerrar: requireAuth > requireRol(ofertante) > cerrarEmpleo',
       'POST /:id/candidaturas: requireAuth > requireRol(voluntario) > crearCandidatura',
       'GET /:id/candidaturas: requireAuth > requireRol(ofertante) > getCandidaturasEmpleo'
+    ])
+  })
+})
+
+describe('Rutas de gamificacion (/api/gamificacion)', () => {
+  it('todas exigen sesion de voluntario', () => {
+    expect(tabla(rutas.gamificacion)).toEqual([
+      'USE: requireAuth',
+      'USE: requireRol(voluntario)',
+      'GET /logros: getMisLogros',
+      'GET /ranking: getRanking'
     ])
   })
 })

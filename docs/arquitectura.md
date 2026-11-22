@@ -37,10 +37,25 @@ en `index.ts` y se documenta en [`API.md`](API.md).
 `login`, `registro` o `autenticada`. Cada pantalla tiene su `.tsx` y su `.css` en `pages/`
 (`Login`, `Register`, `HomePage` y `OfertaDetalle`). Las imágenes están en `public/fotos/`.
 
-El detalle de una oferta tiene URL propia, `/ofertas/<id>`. `App.tsx` la lee de la ruta y captura los
-clics en esos enlaces para cambiar la URL sin recargar. Para enlazar una oferta basta con
-`<a href={`/ofertas/${oferta.id}`}>`. Las demás secciones todavía son anclas de `HomePage`
-(`/#perfil`, `/#inscripciones`) y tendrán su ruta cuando existan sus pantallas.
+Con sesión iniciada, cada pantalla tiene su URL. `rutaDe()` en `App.tsx` la traduce a una página y
+captura los clics en los enlaces para cambiar la URL sin recargar, así que para navegar basta con un
+`<a href="...">` normal.
+
+| Ruta | Pantalla | Rol |
+|---|---|---|
+| `/` | `HomePage` | Los dos |
+| `/oportunidades`, `/ofertas/<id>` | `Oportunidades`, `OfertaDetalle` | Voluntario |
+| `/mis_inscripciones` | `MisInscripciones` | Voluntario |
+| `/gestionar-ofertas`, `/gestionar-ofertas/nueva` | `GestionarOfertas`, `PublicarOferta` | Ofertante |
+| `/gestionar-ofertas/<id>/editar`, `/gestionar-ofertas/<id>/candidatos` | `EditarOferta`, `Candidatos` | Ofertante |
+| `/empleo` | `Empleo`: catálogo y candidaturas (voluntario) o sus ofertas de empleo (ofertante) | Los dos |
+| `/empleo/<id>` | `OfertaEmpleoDetalle`: postularse (voluntario) o revisar candidaturas (ofertante) | Los dos |
+| `/perfil` | `VolunteerProfile` u `OrganizationProfile` | Los dos |
+
+Las pantallas de empleo usan `components/MarcoAutenticado.tsx`, que pinta la cabecera con la
+navegación (según el rol y con la sección actual marcada) y el pie. Las pantallas anteriores aún
+repiten ese código; al tocarlas conviene pasarlas al marco. Los tipos y textos compartidos de las
+ofertas están en `ofertas.ts`, y los de empleo en `empleo.ts`.
 
 ## Autenticación
 

@@ -141,6 +141,46 @@ class tokens <<coleccion>> {
   idx TTL: {expiraEn:1} expireAfterSeconds 0
 }
 
+class ofertas_empleo <<coleccion>> {
+  _id : ObjectId
+  ofertanteId : ObjectId -> users
+  titulo : String
+  descripcion : String
+  categoriaIds : ObjectId[] -> categorias <i>(sector, opcional)</i>
+  tipoContrato : TipoContrato
+  jornada : String {completa | parcial}
+  modalidad : String {presencial | online | mixta}
+  ubicacion : {isla, municipio}? <i>(obligatoria salvo online)</i>
+  salario : String? <i>(texto libre)</i>
+  requisitos : String?
+  vacantes : Number {1..100}
+  fechaLimite : Date? <i>(ultimo dia incluido)</i>
+  textoBusqueda : String <i>(sin tildes, en minúsculas)</i>
+  estado : String {publicada | cerrada}
+  fechaPublicacion : Date
+  createdAt, updatedAt : Date
+  ..
+  idx: {estado:1, "ubicacion.isla":1, fechaPublicacion:-1}
+  idx: {ofertanteId:1, estado:1}
+}
+
+class candidaturas <<coleccion>> {
+  _id : ObjectId
+  ofertaEmpleoId : ObjectId -> ofertas_empleo
+  candidatoId : ObjectId -> users <i>(voluntario)</i>
+  ofertanteId : ObjectId -> users <i>(copiado de la oferta)</i>
+  mensaje : String? <i>(carta de presentación)</i>
+  estado : EstadoCandidatura
+  fechaResolucion : Date?
+  createdAt, updatedAt : Date
+  ..
+  idx: {candidatoId:1, ofertaEmpleoId:1} unique parcial
+  <i>solo estados pendiente, preseleccionada, descartada</i>
+  idx: {ofertaEmpleoId:1, estado:1, createdAt:1}
+  idx: {ofertanteId:1, estado:1}
+  idx: {candidatoId:1, createdAt:-1}
+}
+
 ' ================= Subdocumentos embebidos =================
 
 class PerfilVoluntario <<embebido>> {
@@ -236,6 +276,21 @@ enum TipoEntidad <<enum>> {
   particular
 }
 
+enum TipoContrato <<enum>> {
+  indefinido
+  temporal
+  practicas
+  formacion
+  autonomo
+}
+
+enum EstadoCandidatura <<enum>> {
+  pendiente
+  preseleccionada
+  descartada
+  retirada
+}
+
 enum Isla <<enum>> {
   tenerife
   gran_canaria
@@ -265,6 +320,10 @@ users "0..1" <.. "0..*" solicitudes_ayuda : usuarioId
 ofertas "0..1" <.. "0..1" solicitudes_ayuda : ofertaId
 users "1" <.. "0..*" notificaciones : usuarioId
 users "1" <.. "0..*" tokens : usuarioId
+users "1" <.. "0..*" ofertas_empleo : ofertanteId
+categorias "0..*" <.. "0..*" ofertas_empleo : categoriaIds
+users "1" <.. "0..*" candidaturas : candidatoId
+ofertas_empleo "1" <.. "0..*" candidaturas : ofertaEmpleoId
 
 legend bottom left
   Blanco = colección   |   Azul = subdocumento embebido   |   Amarillo = enumerado

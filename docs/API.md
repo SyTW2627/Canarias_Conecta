@@ -44,6 +44,16 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 | `GET` | `/api/categorias` | No | Lista las categorías activas |
 | `PATCH` | `/api/inscripciones/:id/completar` | Ofertante | Confirma si el voluntario participó en la actividad |
 | `PATCH` | `/api/inscripciones/:id/cancelar` | Voluntario | Cancela una inscripción propia antes de que empiece |
+| `GET` | `/api/empleo` | No | Busca ofertas de empleo que admiten candidaturas |
+| `POST` | `/api/empleo` | Ofertante | Publica una oferta de empleo |
+| `GET` | `/api/empleo/mias` | Ofertante | Ofertas de empleo propias con su número de candidaturas |
+| `GET` | `/api/empleo/:id` | No | Devuelve una oferta de empleo publicada |
+| `PATCH` | `/api/empleo/:id/cerrar` | Ofertante | Cierra una oferta de empleo propia |
+| `POST` | `/api/empleo/:id/candidaturas` | Voluntario | Se postula a una oferta de empleo |
+| `GET` | `/api/empleo/:id/candidaturas` | Ofertante | Oferta propia con sus candidaturas y el perfil de cada candidato |
+| `PATCH` | `/api/empleo/candidaturas/:id` | Ofertante | Preselecciona o descarta una candidatura |
+| `PATCH` | `/api/empleo/candidaturas/:id/retirar` | Voluntario | Retira una candidatura propia |
+| `GET` | `/api/empleo/candidaturas/mias` | Voluntario | Candidaturas del voluntario |
 
 ### `GET /api/health`
 
@@ -298,6 +308,260 @@ El cuerpo admite `listaEspera: true`. Si alguno de los turnos elegidos no tiene 
 Si hay plazas, `listaEspera` no cambia nada: la inscripción queda `pendiente`. Cuando se libera una
 plaza, la primera inscripción de la cola que quepa pasa sola a `pendiente`, y el voluntario recibe la
 notificación `lista_espera_plaza`.
+
+## Empleo
+
+Las entidades (rol `ofertante`) publican ofertas de empleo y los voluntarios se postulan. No hay
+turnos ni plazas: la entidad revisa cada candidatura y su perfil de voluntariado hace de currículum.
+Todas las rutas cuelgan de `/api/empleo` (`server/src/routes/empleoRoutes.ts`).
+
+### `GET /api/empleo`
+
+Ofertas en estado `publicada` sin fecha límite o con una de hoy en adelante, las más recientes
+primero. Todos los parámetros son opcionales y se combinan entre sí.
+
+| Parámetro | Reglas |
+|---|---|
+| `q` | Como en `GET /api/ofertas`: título, descripción, entidad y municipio, sin tildes ni mayúsculas. Máximo 100 caracteres |
+| `isla` | Mismos valores que en `GET /api/ofertas` |
+| `tipoContrato` | `indefinido`, `temporal`, `practicas`, `formacion` o `autonomo` |
+| `jornada` | `completa` o `parcial` |
+| `modalidad` | `presencial`, `online` o `mixta` |
+
+```json
+GET /api/empleo?isla=tenerife
+
+200 OK
+[
+  {
+    "id": "6b01...",
+    "titulo": "Técnico/a de logística en almacén solidario",
+    "descripcion": "Coordinación de la recepción, clasificación y reparto...",
+    "organizacion": "Banco de Alimentos Tenerife",
+    "categorias": [{ "id": "6aeb...", "nombre": "Alimentación", "slug": "alimentacion" }],
+    "tipoContrato": "indefinido",
+    "jornada": "completa",
+    "modalidad": "presencial",
+    "ubicacion": { "isla": "tenerife", "municipio": "Santa Cruz de Tenerife" },
+    "salario": "19.000 € brutos/año",
+    "requisitos": "Carné de conducir B.",
+    "vacantes": 1,
+    "fechaLimite": "2026-12-22T00:00:00.000Z",
+    "fechaPublicacion": "2026-11-22T10:00:00.000Z",
+    "abierta": true
+  }
+]
+```
+
+- `abierta` indica si todavía admite candidaturas (publicada y dentro de plazo).
+- `fechaLimite` es el último día incluido, a las 00:00 UTC (`null` si no tiene plazo): se muestra con `timeZone: 'UTC'`.
+- `salario` y `requisitos` son `null` si la entidad no los indicó. `ubicacion` falta en las ofertas `online`.
+
+| Error | Mensaje |
+|---|---|
+| `400` | `La búsqueda no puede superar los 100 caracteres` · `La isla no es válida` · `El tipo de contrato no es válido` · `La jornada no es válida` · `La modalidad no es válida` |
+| `500` | `Error al buscar las ofertas de empleo` |
+
+### `GET /api/empleo/:id`
+
+Una oferta `publicada` (aunque haya pasado su plazo, con `abierta: false`), con el mismo formato.
+
+| Error | Mensaje |
+|---|---|
+| `404` | `La oferta de empleo no existe o ya no está disponible` (también si el id no es válido o está cerrada) |
+| `500` | `Error al obtener la oferta de empleo` |
+
+### `POST /api/empleo`
+
+```json
+{
+  "titulo": "Auxiliar de acompañamiento a personas mayores",
+  "descripcion": "Acompañamiento a domicilio y en centro de día.",
+  "categoriaIds": ["6aeb..."],
+  "tipoContrato": "temporal",
+  "jornada": "parcial",
+  "modalidad": "presencial",
+  "ubicacion": { "isla": "gran_canaria", "municipio": "Telde" },
+  "salario": "9,50 €/hora",
+  "requisitos": "Certificado de atención sociosanitaria",
+  "vacantes": 3,
+  "fechaLimite": "2026-12-15"
+}
+```
+
+| Campo | Reglas |
+|---|---|
+| `titulo` | Obligatorio, máximo 120 caracteres |
+| `descripcion` | Obligatoria, máximo 5000 caracteres |
+| `categoriaIds` | Opcional. Ids de `GET /api/categorias` (sector del puesto) |
+| `tipoContrato` | Obligatorio: `indefinido`, `temporal`, `practicas`, `formacion` o `autonomo` |
+| `jornada` | Obligatoria: `completa` o `parcial` |
+| `modalidad` | Obligatoria: `presencial`, `online` o `mixta` |
+| `ubicacion` | `isla` y `municipio`. Obligatoria salvo `online`. No tiene `direccion` |
+| `salario` | Opcional, texto libre de hasta 100 caracteres |
+| `requisitos` | Opcional, máximo 2000 caracteres |
+| `vacantes` | Entero entre 1 y 100. Por defecto, 1 |
+| `fechaLimite` | Opcional, `AAAA-MM-DD`, no pasada. Sin ella admite candidaturas hasta que se cierre |
+
+Se publica directamente (no hay borradores). El ofertante sale del token y se ignora cualquier otro campo.
+
+```json
+201 Created
+{ "id": "6b01...", "estado": "publicada" }
+```
+
+| Error | Mensaje |
+|---|---|
+| `400` | `El título y la descripción son obligatorios` · `El tipo de contrato no es válido` · `La jornada no es válida` · `La modalidad no es válida` · `Las vacantes deben ser un número entre 1 y 100` · `Las categorías no son válidas` · `El salario no es válido` · `El salario no puede superar los 100 caracteres` · `La fecha límite debe tener el formato AAAA-MM-DD` · `La fecha límite no puede ser pasada` · `La oferta necesita una ubicación` · `La isla no es válida` · `El municipio es obligatorio` · `Los datos de la oferta de empleo no son válidos` |
+| `401` / `403` | Igual que en `POST /api/ofertas` |
+| `500` | `Error al crear la oferta de empleo` |
+
+### `GET /api/empleo/mias`
+
+Todas las ofertas de empleo del ofertante, en cualquier estado y las más nuevas primero. Cada una
+añade `estado` (`publicada` o `cerrada`), `candidaturas` (sin contar las retiradas) y
+`candidaturasPendientes` (las que aún no ha revisado).
+
+| Error | Mensaje |
+|---|---|
+| `500` | `Error al obtener tus ofertas de empleo` |
+
+### `PATCH /api/empleo/:id/cerrar`
+
+Deja de mostrar la oferta y de admitir candidaturas. Avisa (`oferta_cerrada`) a los candidatos
+`pendiente` o `preseleccionada`. No se puede volver a abrir.
+
+```json
+200 OK
+{ "id": "6b01...", "estado": "cerrada" }
+```
+
+| Error | Mensaje |
+|---|---|
+| `404` | `La oferta de empleo no existe o no es tuya` |
+| `409` | `La oferta de empleo ya está cerrada` |
+| `500` | `Error al cerrar la oferta de empleo` |
+
+### `POST /api/empleo/:id/candidaturas`
+
+El voluntario se postula. El cuerpo es opcional: `{ "mensaje": "..." }`, una carta de presentación de
+hasta 2000 caracteres. Avisa a la entidad (`candidatura_nueva`).
+
+```json
+201 Created
+{ "id": "6b02...", "estado": "pendiente" }
+```
+
+| Error | Mensaje |
+|---|---|
+| `400` | `El mensaje no es válido` · `El mensaje no puede superar los 2000 caracteres` |
+| `404` | `La oferta de empleo no existe o ya no está disponible` |
+| `409` | `El plazo para presentar candidaturas ha terminado` · `Ya te has postulado a esta oferta` |
+| `500` | `No se pudo enviar la candidatura` |
+
+### `GET /api/empleo/:id/candidaturas`
+
+Solo para la entidad que publicó la oferta. Devuelve la oferta (con su `estado`) y sus candidaturas
+por orden de llegada, sin las retiradas.
+
+```json
+200 OK
+{
+  "oferta": { "id": "6b01...", "titulo": "...", "estado": "publicada", "abierta": true },
+  "candidaturas": [
+    {
+      "id": "6b02...",
+      "estado": "pendiente",
+      "mensaje": "Llevo dos años colaborando con mayores...",
+      "fechaCandidatura": "2026-11-22T11:00:00.000Z",
+      "fechaResolucion": null,
+      "candidato": {
+        "id": "665f...",
+        "nombre": "Laura Pérez",
+        "avatarUrl": null,
+        "isla": "tenerife",
+        "municipio": "La Laguna",
+        "biografia": "...",
+        "intereses": [{ "id": "6aeb...", "nombre": "Personas mayores" }],
+        "habilidades": ["Primeros auxilios"],
+        "idiomas": ["Inglés"],
+        "acreditaciones": [{ "nombre": "Manipulador de alimentos", "fechaObtencion": "2025-03-01T00:00:00.000Z" }],
+        "estadisticas": { "horasTotales": 42, "colaboraciones": 9, "valoracionMedia": 4.8, "numValoraciones": 6 },
+        "email": null,
+        "telefono": null
+      }
+    }
+  ]
+}
+```
+
+`email` y `telefono` solo se envían cuando la candidatura está `preseleccionada`.
+
+| Error | Mensaje |
+|---|---|
+| `404` | `La oferta de empleo no existe o no es tuya` |
+| `500` | `No se pudieron cargar las candidaturas` |
+
+### `PATCH /api/empleo/candidaturas/:id`
+
+La entidad decide sobre una candidatura de sus ofertas: `{ "estado": "preseleccionada" }` o
+`{ "estado": "descartada" }`. Avisa al candidato (`candidatura_preseleccionada` o
+`candidatura_descartada`).
+
+| Estado pedido | Desde |
+|---|---|
+| `preseleccionada` | `pendiente` |
+| `descartada` | `pendiente` o `preseleccionada` |
+
+```json
+200 OK
+{ "id": "6b02...", "estado": "preseleccionada" }
+```
+
+| Error | Mensaje |
+|---|---|
+| `400` | `El estado no es válido` |
+| `404` | `La candidatura no existe` (también si es de otra entidad) |
+| `409` | `Esta candidatura ya no se puede cambiar a ese estado` |
+| `500` | `No se pudo actualizar la candidatura` |
+
+### `PATCH /api/empleo/candidaturas/:id/retirar`
+
+El voluntario retira una candidatura suya `pendiente` o `preseleccionada`. Sin cuerpo. Después puede
+volver a postularse a la misma oferta.
+
+| Error | Mensaje |
+|---|---|
+| `404` | `La candidatura no existe` (también si es de otro voluntario) |
+| `409` | `Esta candidatura ya no se puede retirar` |
+| `500` | `No se pudo retirar la candidatura` |
+
+### `GET /api/empleo/candidaturas/mias`
+
+Candidaturas del voluntario, las más recientes primero, en cualquier estado:
+
+```json
+200 OK
+[
+  {
+    "id": "6b02...",
+    "estado": "pendiente",
+    "fechaCandidatura": "2026-11-22T11:00:00.000Z",
+    "ofertaId": "6b01...",
+    "titulo": "Técnico/a de logística en almacén solidario",
+    "organizacion": "Banco de Alimentos Tenerife",
+    "tipoContrato": "indefinido",
+    "jornada": "completa",
+    "modalidad": "presencial",
+    "ubicacion": { "isla": "tenerife", "municipio": "Santa Cruz de Tenerife" },
+    "ofertaAbierta": true
+  }
+]
+```
+
+| Error | Mensaje |
+|---|---|
+| `500` | `No se pudieron cargar tus candidaturas` |
 
 ## Pendiente
 

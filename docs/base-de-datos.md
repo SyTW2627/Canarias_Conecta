@@ -22,6 +22,10 @@ plazas). Un **voluntario** se **inscribe**. El ofertante acepta o rechaza la ins
 terminar, confirma la asistencia. Cada colaboración completada queda en el perfil del voluntario con
 su **valoración**.
 
+Además, el ofertante puede publicar **ofertas de empleo**. El voluntario se **postula** con una
+**candidatura** y la entidad la revisa junto a su trayectoria de voluntariado (horas, colaboraciones,
+valoraciones y acreditaciones), que hace de currículum.
+
 ## Colecciones
 
 | Colección | Qué guarda |
@@ -33,11 +37,19 @@ su **valoración**.
 | `solicitudes_ayuda` | Peticiones del botón *Necesito ayuda* |
 | `notificaciones` | Avisos al usuario |
 | `tokens` | Verificación de email y recuperación de contraseña (caducan solos) |
+| `ofertas_empleo` | Oferta de empleo: contrato, jornada, ubicación, salario, vacantes y fecha límite |
+| `candidaturas` | Voluntario + oferta de empleo, estado y carta de presentación |
 
 **Estados de una inscripción:** `pendiente` → `aceptada` o `rechazada`. Una aceptada termina como
 `completada` o `no_presentado`. Si no quedan plazas, la solicitud entra como `en_espera` y pasa a
 `pendiente` cuando se libera una. Se puede `cancelar` (desde `pendiente`, `en_espera` o `aceptada`)
 mientras no haya empezado.
+
+**Estados de una oferta de empleo:** `publicada` → `cerrada`. Que haya pasado su fecha límite no
+cambia el estado: se calcula al consultarla (`abierta` en la API).
+
+**Estados de una candidatura:** `pendiente` → `preseleccionada` o `descartada`, y una preseleccionada
+también puede acabar `descartada`. El voluntario la `retira` desde `pendiente` o `preseleccionada`.
 
 ## Decisiones
 
@@ -92,6 +104,19 @@ mientras no haya empezado.
   (`estaCompleta` en `client/src/ofertas.ts`), y como **Finalizada** cuando ya no le quedan turnos
   próximos. Las plazas disponibles que se muestran suman solo los turnos próximos: las de un turno
   pasado ya no se pueden pedir.
+- **Empleo en colecciones propias.** Una oferta de empleo no tiene turnos ni plazas, y una
+  candidatura no reserva nada ni suma horas. Meterlas en `ofertas` e `inscripciones` habría llenado
+  esos modelos de campos opcionales y de excepciones en la búsqueda, las recomendaciones y las
+  estadísticas. Sí se reutilizan las categorías (sector del puesto), las islas y las modalidades.
+- **El perfil de voluntariado como currículum.** La entidad no recibe un CV aparte: ve las
+  estadísticas, habilidades, idiomas, intereses y acreditaciones que el voluntario ya tiene en su
+  perfil, más una carta opcional. Así el voluntariado aporta algo tangible al buscar trabajo.
+- **Contacto solo al preseleccionar.** Igual que en las inscripciones, el email y el teléfono del
+  candidato no se envían a la entidad hasta que lo preselecciona.
+- **Salario como texto libre.** Cada entidad lo expresa a su manera ("18.000 € brutos/año",
+  "9,50 €/hora", "A convenir"); un rango numérico obligaría a elegir unidad y periodo.
+- **Fecha límite calculada, no estado.** Como con las ofertas finalizadas, ningún proceso cerraría
+  la oferta al llegar la fecha: se compara con hoy al buscar y al postularse.
 
 ## Reglas
 
@@ -113,6 +138,15 @@ mientras no haya empezado.
   sea `online`. Un borrador puede no tener nada de esto.
 - Los usuarios empiezan como `activo`. `pendiente_verificacion` se usará cuando se envíen emails.
 - Se guarda qué versión de los términos y la política de privacidad aceptó cada usuario (RGPD).
+- Solo los voluntarios se postulan a ofertas de empleo, y solo mientras la oferta esté `publicada`
+  y no haya pasado su fecha límite (incluida).
+- Un voluntario solo puede tener una candidatura activa (`pendiente`, `preseleccionada` o
+  `descartada`) en cada oferta de empleo. Si la retiró, puede volver a postularse; si se la
+  descartaron, no. Lo garantiza un índice único parcial (`candidatoId` + `ofertaEmpleoId`).
+- Solo la entidad que publicó la oferta ve sus candidaturas y decide sobre ellas. Las retiradas no
+  se le muestran.
+- Una oferta de empleo cerrada no se puede volver a abrir. Al cerrarla se avisa a los candidatos que
+  seguían en el proceso (`oferta_cerrada`).
 
 ## Notas de implementación
 

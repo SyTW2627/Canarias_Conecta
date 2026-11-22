@@ -148,6 +148,44 @@ note right of Valoracion
   Solo si la inscripción está COMPLETADA.
 end note
 
+' ---------- Empleo ----------
+
+class OfertaEmpleo {
+  titulo
+  descripcion
+  tipoContrato
+  jornada
+  modalidad
+  isla
+  municipio
+  salario
+  requisitos
+  vacantes
+  fechaLimite
+  estado
+  fechaPublicacion
+  /abierta
+}
+
+class Candidatura {
+  estado
+  mensaje
+  fechaCandidatura
+  fechaResolucion
+}
+
+Ofertante "1" -- "0..*" OfertaEmpleo : publica >
+OfertaEmpleo "0..*" -- "0..*" Categoria : del sector >
+Voluntario "1" -- "0..*" Candidatura : presenta >
+Candidatura "0..*" -- "1" OfertaEmpleo : a >
+
+note right of Candidatura
+  La entidad ve el perfil de voluntariado
+  del candidato (horas, valoraciones,
+  acreditaciones) como currículum.
+  Contacto solo si está PRESELECCIONADA.
+end note
+
 ' ---------- "Necesito ayuda" ----------
 
 class SolicitudAyuda {

@@ -87,6 +87,8 @@ npm run test:watch   # se repiten al guardar
 | `Notificaciones.test.tsx` | Contador de no leídas, panel, marcar como leídas y recarga al volver a la pestaña |
 | `Acceso.test.tsx` | Inicio de sesión y registro: validaciones, errores del servidor y sesión guardada |
 | `useOfertasPublicadas.test.ts` | Filtros enviados, estado de carga, cancelación de peticiones y errores |
+| `Empleo.test.tsx` | Catálogo de empleo y filtros enviados, mis candidaturas y retirar; ofertas de la entidad, publicar y cerrar |
+| `OfertaEmpleoDetalle.test.tsx` | Postularse con mensaje, estado si ya se postuló, fuera de plazo; candidaturas con trayectoria, contacto solo preseleccionado |
 
 Vitest solo ejecuta `src/**/*.test.{ts,tsx}`: los specs de `e2e/` son de Playwright y se lanzan aparte.
 
@@ -112,6 +114,7 @@ Los plazos (48 h para cancelar, fin del turno) se prueban con el reloj fijado co
 | `controllers/inscripcionAcciones.test.ts` | Completar (horas, no presentado), cancelar (tardía, lista de espera), valorar y entrar en la lista de espera |
 | `services/plazas.test.ts` | Reserva atómica de plazas, orden de la lista de espera y plaza devuelta si alguien cancela a la vez |
 | `controllers/perfilAcreditaciones.test.ts` | Acreditaciones del voluntario, perfil enviado como formulario y foto de perfil |
+| `controllers/empleoController.test.ts` | Búsqueda y plazo de las ofertas de empleo, publicación, candidaturas duplicadas, transiciones de estado, permisos y contacto del candidato |
 
 ## Producción
 

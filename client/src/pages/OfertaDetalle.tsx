@@ -114,6 +114,7 @@ function OfertaDetalle({ ofertaId, usuario, onCerrarSesion }: OfertaDetalleProps
           <a href="/oportunidades">Oportunidades</a>
           <a href="/#inscripciones">Mis inscripciones</a>
           <a href="/empleo">Empleo</a>
+          {usuario.rol === 'voluntario' && <a href="/retos">Retos</a>}
           <a href="/#perfil">Mi perfil</a>
           {usuario.rol === 'ofertante' && <a href="/gestionar-ofertas">Gestionar ofertas</a>}
         </nav>

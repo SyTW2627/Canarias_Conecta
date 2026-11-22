@@ -25,6 +25,8 @@ export const TIPOS_NOTIFICACION = [
   // Para el voluntario: la oferta en la que estaba inscrito se ha cerrado
   // (tambien una oferta de empleo a la que se habia postulado)
   'oferta_cerrada',
+  // Para el voluntario: ha conseguido un reto (gamificacion)
+  'logro_conseguido',
   // Para el ofertante: alguien se ha postulado a una de sus ofertas de empleo
   'candidatura_nueva',
   // Para el candidato: la entidad ha resuelto su candidatura

@@ -8,7 +8,7 @@ import '../pages/HomePage.css'
 import type { Usuario } from '../pages/Login.tsx'
 import Notificaciones from './Notificaciones.tsx'
 
-type Seccion = 'inicio' | 'oportunidades' | 'inscripciones' | 'empleo' | 'perfil' | 'gestion'
+type Seccion = 'inicio' | 'oportunidades' | 'inscripciones' | 'empleo' | 'retos' | 'perfil' | 'gestion'
 
 type MarcoAutenticadoProps = {
   usuario: Usuario
@@ -39,6 +39,7 @@ function MarcoAutenticado({ usuario, onCerrarSesion, activa, claseMain, children
             <a href="/mis_inscripciones" aria-current={actual('inscripciones')}>Mis inscripciones</a>
           )}
           <a href="/empleo" aria-current={actual('empleo')}>Empleo</a>
+          {esVoluntario && <a href="/retos" aria-current={actual('retos')}>Retos</a>}
           <a href="/perfil" aria-current={actual('perfil')}>Mi perfil</a>
           {!esVoluntario && (
             <a href="/gestionar-ofertas" aria-current={actual('gestion')}>Gestionar ofertas</a>

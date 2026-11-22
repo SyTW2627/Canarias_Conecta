@@ -162,6 +162,7 @@ function MisInscripciones({ usuario, onCerrarSesion }: MisInscripcionesProps) {
           <a href="/oportunidades">Oportunidades</a>
           <a href="/mis_inscripciones" aria-current="page">Mis inscripciones</a>
           <a href="/empleo">Empleo</a>
+          <a href="/retos">Retos</a>
           <a href="/perfil">Mi perfil</a>
         </nav>
         <div className="authenticated-user">

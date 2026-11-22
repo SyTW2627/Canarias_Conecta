@@ -21,6 +21,7 @@ import PublicarOferta from './pages/PublicarOferta.tsx'
 import Candidatos from './pages/Candidatos.tsx'
 import Empleo from './pages/Empleo.tsx'
 import OfertaEmpleoDetalle from './pages/OfertaEmpleoDetalle.tsx'
+import Retos from './pages/Retos.tsx'
 
 const PASOS = [
   {
@@ -78,6 +79,7 @@ type Ruta =
   | { pagina: 'candidatos'; id: string }
   | { pagina: 'inscripciones' }
   | { pagina: 'empleo' }
+  | { pagina: 'retos' }
   | { pagina: 'ofertaEmpleo'; id: string }
   | { pagina: 'perfil' }
   | { pagina: 'restablecer' }
@@ -93,6 +95,7 @@ function rutaDe(pathname: string): Ruta {
   if (/^\/gestionar-ofertas\/nueva\/?$/.test(pathname)) return { pagina: 'nuevaOferta' }
   if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
   if (/^\/empleo\/?$/.test(pathname)) return { pagina: 'empleo' }
+  if (/^\/retos\/?$/.test(pathname)) return { pagina: 'retos' }
   const idEmpleo = pathname.match(/^\/empleo\/([^/]+)\/?$/)?.[1]
   if (idEmpleo) return { pagina: 'ofertaEmpleo', id: idEmpleo }
   if (/^\/mis_inscripciones\/?$/.test(pathname)) return { pagina: 'inscripciones' }
@@ -258,6 +261,11 @@ function App() {
 
     if (ruta.pagina === 'oportunidades') {
       return <Oportunidades usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    // Los retos y el ranking son solo de los voluntarios
+    if (ruta.pagina === 'retos' && usuario.rol === 'voluntario') {
+      return <Retos usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
 
     // Los dos roles: el voluntario busca empleo y la entidad publica sus ofertas

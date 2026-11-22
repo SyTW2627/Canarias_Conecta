@@ -50,6 +50,15 @@ const acreditacionSchema = new Schema(
   { _id: true }
 )
 
+// Reto conseguido: el progreso se calcula, pero se guarda cuando se logro para avisar una sola vez
+const logroSchema = new Schema(
+  {
+    id: { type: String, required: true },
+    fecha: { type: Date, required: true }
+  },
+  { _id: false }
+)
+
 const perfilVoluntarioSchema = new Schema(
   {
     fechaNacimiento: { type: Date },
@@ -61,6 +70,7 @@ const perfilVoluntarioSchema = new Schema(
     disponibilidad: { type: [franjaDisponibilidadSchema], default: [] },
     favoritas: { type: [{ type: Schema.Types.ObjectId, ref: 'Oferta' }], default: [] },
     acreditaciones: { type: [acreditacionSchema], default: [] },
+    logros: { type: [logroSchema], default: [] },
     estadisticas: {
       horasTotales: { type: Number, default: 0 },
       colaboraciones: { type: Number, default: 0 },

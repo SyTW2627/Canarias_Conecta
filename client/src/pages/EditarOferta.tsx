@@ -91,6 +91,7 @@ function EditarOferta({ ofertaId, usuario, onCerrarSesion }: EditarOfertaProps) 
 
         <nav className="authenticated-links" aria-label="Navegación principal">
           <a href="/#inicio">Inicio</a>
+          <a href="/empleo">Empleo</a>
           <a href="/#perfil">Mi perfil</a>
           <a href="/gestionar-ofertas" aria-current="page">Gestionar ofertas</a>
         </nav>

@@ -32,16 +32,16 @@ const TURNOS_MAX = 50
 const ESTADOS_AL_CREAR = ['borrador', 'publicada']
 
 // Los parametros repetidos (?isla=a&isla=b) llegan como array y se ignoran
-function leerParametro(valor: unknown): string | undefined {
+export function leerParametro(valor: unknown): string | undefined {
   return typeof valor === 'string' && valor.trim() ? valor.trim() : undefined
 }
 
-function esIslaValida(isla: string): isla is (typeof ISLAS)[number] {
+export function esIslaValida(isla: string): isla is (typeof ISLAS)[number] {
   return (ISLAS as readonly string[]).includes(isla)
 }
 
 // Devuelve la fecha a las 00:00 UTC, como se guarda en los turnos, o null si no existe
-function leerFecha(texto: string): Date | null {
+export function leerFecha(texto: string): Date | null {
   const fecha = new Date(`${texto}T00:00:00.000Z`)
   const esValida =
     FECHA_REGEX.test(texto) &&
@@ -51,12 +51,12 @@ function leerFecha(texto: string): Date | null {
   return esValida ? fecha : null
 }
 
-function hoyEnUtc(): Date {
+export function hoyEnUtc(): Date {
   return new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`)
 }
 
 // El termino viene del usuario: sin escapar, un "(" romperia la expresion regular
-function escaparRegex(texto: string): string {
+export function escaparRegex(texto: string): string {
   return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 

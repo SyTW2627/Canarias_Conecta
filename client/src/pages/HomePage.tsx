@@ -295,6 +295,7 @@ function Cabecera({ usuario, onCerrarSesion }: HomePageProps) {
         <a href="#inicio" aria-current="page">Inicio</a>
         {esVoluntario && <a href="/oportunidades">Oportunidades</a>}
         {esVoluntario && <a href="/mis_inscripciones">Mis inscripciones</a>}
+        <a href="/empleo">Empleo</a>
         <a href="/perfil">Mi perfil</a>
         {!esVoluntario && <a href="/gestionar-ofertas">Gestionar ofertas</a>}
       </nav>

@@ -19,7 +19,8 @@ const rutas = {
   imagenes: (await import('../../src/routes/imagenRoutes.js')).default,
   ofertas: (await import('../../src/routes/ofertaRoutes.js')).default,
   inscripciones: (await import('../../src/routes/inscripcionRoutes.js')).default,
-  notificaciones: (await import('../../src/routes/notificacionRoutes.js')).default
+  notificaciones: (await import('../../src/routes/notificacionRoutes.js')).default,
+  empleo: (await import('../../src/routes/empleoRoutes.js')).default
 }
 
 type Manejador = { name: string; roles?: string[] }
@@ -111,6 +112,23 @@ describe('Rutas de notificaciones (/api/notificaciones)', () => {
       'GET /: getNotificaciones',
       'PATCH /leidas: marcarTodasLeidas',
       'PATCH /:id/leida: marcarLeida'
+    ])
+  })
+})
+
+describe('Rutas de empleo (/api/empleo)', () => {
+  it('buscar y ver son publicos; las rutas fijas van antes que /:id', () => {
+    expect(tabla(rutas.empleo)).toEqual([
+      'GET /: buscarEmpleos',
+      'POST /: requireAuth > requireRol(ofertante) > crearEmpleo',
+      'GET /mias: requireAuth > requireRol(ofertante) > getMisEmpleos',
+      'GET /candidaturas/mias: requireAuth > requireRol(voluntario) > getMisCandidaturas',
+      'PATCH /candidaturas/:id/retirar: requireAuth > requireRol(voluntario) > retirarCandidatura',
+      'PATCH /candidaturas/:id: requireAuth > requireRol(ofertante) > resolverCandidatura',
+      'GET /:id: getEmpleo',
+      'PATCH /:id/cerrar: requireAuth > requireRol(ofertante) > cerrarEmpleo',
+      'POST /:id/candidaturas: requireAuth > requireRol(voluntario) > crearCandidatura',
+      'GET /:id/candidaturas: requireAuth > requireRol(ofertante) > getCandidaturasEmpleo'
     ])
   })
 })

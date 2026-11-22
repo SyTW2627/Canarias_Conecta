@@ -14,6 +14,7 @@ import { User } from '../models/User.js'
 import { Categoria } from '../models/Categoria.js'
 import { Imagen } from '../models/Imagen.js'
 import { Oferta, construirTextoBusqueda } from '../models/Oferta.js'
+import { OfertaEmpleo } from '../models/OfertaEmpleo.js'
 
 dotenv.config()
 
@@ -423,6 +424,68 @@ const OFERTAS = [
   }
 ] as const
 
+// Ofertas de empleo de las mismas entidades. "dias": fecha limite desde hoy; sin ella, no hay plazo
+const EMPLEOS = [
+  {
+    email: 'banco@ejemplo.com',
+    titulo: 'Técnico/a de logística en almacén solidario',
+    descripcion:
+      'Coordinación de la recepción, clasificación y reparto de alimentos donados. Trato con voluntariado y entidades receptoras.',
+    categorias: ['alimentacion'],
+    tipoContrato: 'indefinido',
+    jornada: 'completa',
+    modalidad: 'presencial',
+    isla: 'tenerife',
+    municipio: 'Santa Cruz de Tenerife',
+    salario: '19.000 € brutos/año',
+    requisitos: 'Carné de conducir B. Valorable experiencia en almacén.',
+    vacantes: 1,
+    dias: 30
+  },
+  {
+    email: 'horizonte@ejemplo.com',
+    titulo: 'Auxiliar de acompañamiento a personas mayores',
+    descripcion:
+      'Acompañamiento a domicilio y en actividades de centro de día. Trabajo en equipo con trabajo social.',
+    categorias: ['personas-mayores'],
+    tipoContrato: 'temporal',
+    jornada: 'parcial',
+    modalidad: 'presencial',
+    isla: 'gran_canaria',
+    municipio: 'Las Palmas de Gran Canaria',
+    salario: '9,50 €/hora',
+    requisitos: 'Certificado de profesionalidad de atención sociosanitaria o similar.',
+    vacantes: 3,
+    dias: 15
+  },
+  {
+    email: 'marycomunidad@ejemplo.com',
+    titulo: 'Prácticas en educación ambiental',
+    descripcion:
+      'Apoyo en talleres de sensibilización sobre el litoral para centros escolares y preparación de materiales.',
+    categorias: ['medio-ambiente', 'educacion'],
+    tipoContrato: 'practicas',
+    jornada: 'parcial',
+    modalidad: 'mixta',
+    isla: 'gran_canaria',
+    municipio: 'Telde',
+    vacantes: 2
+  },
+  {
+    email: 'redparticipa@ejemplo.com',
+    titulo: 'Community manager para proyectos sociales',
+    descripcion:
+      'Gestión de redes sociales y comunicación de las campañas de la red. Trabajo en remoto con reuniones semanales.',
+    categorias: ['comunidad'],
+    tipoContrato: 'autonomo',
+    jornada: 'parcial',
+    modalidad: 'online',
+    salario: 'A convenir',
+    vacantes: 1,
+    dias: 45
+  }
+] as const
+
 // Perfiles distintos para comparar las recomendaciones de cada voluntario
 const PERFILES_VOLUNTARIOS = [
   { email: 'laura@ejemplo.com', isla: 'tenerife', intereses: ['medio-ambiente', 'animales'] },
@@ -489,6 +552,48 @@ async function seedOfertas(): Promise<void> {
   }
 }
 
+// No duplica: si la entidad ya tiene una oferta de empleo con ese titulo, solo renueva su plazo
+async function seedEmpleos(): Promise<void> {
+  const categorias = await Categoria.find()
+
+  for (const ejemplo of EMPLEOS) {
+    const slugs: readonly string[] = ejemplo.categorias
+    const ofertante = await User.findOne({ email: ejemplo.email }).orFail()
+    const fechaLimite = 'dias' in ejemplo ? fechaDesdeHoy(ejemplo.dias) : undefined
+
+    const existente = { ofertanteId: ofertante._id, titulo: ejemplo.titulo }
+    if (await OfertaEmpleo.exists(existente)) {
+      if (fechaLimite) await OfertaEmpleo.updateOne(existente, { fechaLimite })
+      continue
+    }
+
+    await OfertaEmpleo.create({
+      ofertanteId: ofertante._id,
+      titulo: ejemplo.titulo,
+      descripcion: ejemplo.descripcion,
+      categoriaIds: categorias
+        .filter((categoria) => slugs.includes(categoria.slug))
+        .map((categoria) => categoria._id),
+      tipoContrato: ejemplo.tipoContrato,
+      jornada: ejemplo.jornada,
+      modalidad: ejemplo.modalidad,
+      ...('isla' in ejemplo && { ubicacion: { isla: ejemplo.isla, municipio: ejemplo.municipio } }),
+      salario: 'salario' in ejemplo ? ejemplo.salario : undefined,
+      requisitos: 'requisitos' in ejemplo ? ejemplo.requisitos : undefined,
+      vacantes: ejemplo.vacantes,
+      fechaLimite,
+      textoBusqueda: construirTextoBusqueda([
+        ejemplo.titulo,
+        ejemplo.descripcion,
+        ofertante.nombre,
+        'municipio' in ejemplo ? ejemplo.municipio : undefined
+      ]),
+      estado: 'publicada',
+      fechaPublicacion: new Date()
+    })
+  }
+}
+
 async function seed(): Promise<void> {
   await connectDB()
   await prepararBaseDeDatos()
@@ -521,11 +626,13 @@ async function seed(): Promise<void> {
   }
 
   await seedOfertas()
+  await seedEmpleos()
 
   console.log(`Usuarios en la coleccion: ${await User.countDocuments()}`)
   console.log(`Categorias en la coleccion: ${await Categoria.countDocuments()}`)
   console.log(`Ofertas en la coleccion: ${await Oferta.countDocuments()}`)
   console.log(`Imagenes en la coleccion: ${await Imagen.countDocuments()}`)
+  console.log(`Ofertas de empleo en la coleccion: ${await OfertaEmpleo.countDocuments()}`)
 }
 
 seed()

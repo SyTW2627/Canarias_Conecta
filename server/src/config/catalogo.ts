@@ -5,11 +5,13 @@
  */
 
 import { cargarImagen } from './imagenes.js'
+import { Candidatura } from '../models/Candidatura.js'
 import { Categoria } from '../models/Categoria.js'
 import { Imagen } from '../models/Imagen.js'
 import { Inscripcion } from '../models/Inscripcion.js'
 import { Notificacion } from '../models/Notificacion.js'
 import { Oferta } from '../models/Oferta.js'
+import { OfertaEmpleo } from '../models/OfertaEmpleo.js'
 import { SolicitudAyuda } from '../models/SolicitudAyuda.js'
 import { Token } from '../models/Token.js'
 import { User } from '../models/User.js'
@@ -35,7 +37,9 @@ export async function prepararBaseDeDatos(): Promise<void> {
     Inscripcion.syncIndexes(),
     SolicitudAyuda.init(),
     Notificacion.init(),
-    Token.init()
+    Token.init(),
+    OfertaEmpleo.init(),
+    Candidatura.init()
   ])
 
   // upsert por slug: arrancar varias veces no duplica categorias

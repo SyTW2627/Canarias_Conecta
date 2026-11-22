@@ -103,6 +103,7 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
             <a href="/oportunidades" aria-current="page">Oportunidades</a>
           )}
           {usuario.rol === 'voluntario' && <a href="/mis_inscripciones">Mis inscripciones</a>}
+          <a href="/empleo">Empleo</a>
           <a href="/#perfil">Mi perfil</a>
           {usuario.rol === 'ofertante' && <a href="/gestionar-ofertas">Gestionar ofertas</a>}
         </nav>

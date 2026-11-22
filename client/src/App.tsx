@@ -19,6 +19,8 @@ import MisInscripciones from './pages/MisInscripciones.tsx'
 import EditarOferta from './pages/EditarOferta.tsx'
 import PublicarOferta from './pages/PublicarOferta.tsx'
 import Candidatos from './pages/Candidatos.tsx'
+import Empleo from './pages/Empleo.tsx'
+import OfertaEmpleoDetalle from './pages/OfertaEmpleoDetalle.tsx'
 
 const PASOS = [
   {
@@ -75,6 +77,8 @@ type Ruta =
   | { pagina: 'editarOferta'; id: string }
   | { pagina: 'candidatos'; id: string }
   | { pagina: 'inscripciones' }
+  | { pagina: 'empleo' }
+  | { pagina: 'ofertaEmpleo'; id: string }
   | { pagina: 'perfil' }
   | { pagina: 'restablecer' }
 
@@ -88,6 +92,9 @@ function rutaDe(pathname: string): Ruta {
   if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
   if (/^\/gestionar-ofertas\/nueva\/?$/.test(pathname)) return { pagina: 'nuevaOferta' }
   if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
+  if (/^\/empleo\/?$/.test(pathname)) return { pagina: 'empleo' }
+  const idEmpleo = pathname.match(/^\/empleo\/([^/]+)\/?$/)?.[1]
+  if (idEmpleo) return { pagina: 'ofertaEmpleo', id: idEmpleo }
   if (/^\/mis_inscripciones\/?$/.test(pathname)) return { pagina: 'inscripciones' }
   if (/^\/perfil\/?$/.test(pathname)) return { pagina: 'perfil' }
   if (/^\/restablecer-password\/?$/.test(pathname)) return { pagina: 'restablecer' }
@@ -251,6 +258,22 @@ function App() {
 
     if (ruta.pagina === 'oportunidades') {
       return <Oportunidades usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    // Los dos roles: el voluntario busca empleo y la entidad publica sus ofertas
+    if (ruta.pagina === 'empleo') {
+      return <Empleo usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    if (ruta.pagina === 'ofertaEmpleo') {
+      return (
+        <OfertaEmpleoDetalle
+          key={ruta.id}
+          ofertaId={ruta.id}
+          usuario={usuario}
+          onCerrarSesion={cerrarSesion}
+        />
+      )
     }
 
     if (ruta.pagina === 'inscripciones' && usuario.rol === 'voluntario') {

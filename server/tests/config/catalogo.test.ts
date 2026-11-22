@@ -14,7 +14,9 @@ vi.mock('../../src/config/imagenes.js', () => imagenes)
 const { prepararBaseDeDatos } = await import('../../src/config/catalogo.js')
 const { Categoria } = await import('../../src/models/Categoria.js')
 
-const MODELOS = ['User', 'Categoria', 'Imagen', 'Oferta', 'SolicitudAyuda', 'Notificacion', 'Token']
+const MODELOS = [
+  'User', 'Categoria', 'Imagen', 'Oferta', 'SolicitudAyuda', 'Notificacion', 'Token', 'OfertaEmpleo', 'Candidatura'
+]
 
 function simularTodo() {
   const inits = MODELOS.map((nombre) => vi.spyOn(mongoose.model(nombre), 'init').mockResolvedValue(undefined as never))

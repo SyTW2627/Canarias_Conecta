@@ -264,6 +264,7 @@ function VolunteerProfile({ usuario, onCerrarSesion, onUsuarioActualizado }: Vol
           <a href="/">Inicio</a>
           <a href="/oportunidades">Oportunidades</a>
           <a href="/mis_inscripciones">Mis inscripciones</a>
+          <a href="/empleo">Empleo</a>
           <a href="/perfil" aria-current="page">Mi perfil</a>
         </nav>
 

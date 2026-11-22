@@ -40,6 +40,7 @@ class Voluntario {
   /horasTotales
   /numColaboraciones
   /valoracionMedia
+  logrosConseguidos [0..*]
 }
 
 class Ofertante {
@@ -184,6 +185,12 @@ note right of Candidatura
   del candidato (horas, valoraciones,
   acreditaciones) como currículum.
   Contacto solo si está PRESELECCIONADA.
+end note
+
+note bottom of Voluntario
+  Retos (gamificación): su progreso se deriva
+  de las estadísticas y de las colaboraciones
+  completadas; solo se guardan los conseguidos.
 end note
 
 ' ---------- "Necesito ayuda" ----------

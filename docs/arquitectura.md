@@ -50,9 +50,10 @@ captura los clics en los enlaces para cambiar la URL sin recargar, así que para
 | `/gestionar-ofertas/<id>/editar`, `/gestionar-ofertas/<id>/candidatos` | `EditarOferta`, `Candidatos` | Ofertante |
 | `/empleo` | `Empleo`: catálogo y candidaturas (voluntario) o sus ofertas de empleo (ofertante) | Los dos |
 | `/empleo/<id>` | `OfertaEmpleoDetalle`: postularse (voluntario) o revisar candidaturas (ofertante) | Los dos |
+| `/retos` | `Retos`: retos con su progreso y ranking mensual | Voluntario |
 | `/perfil` | `VolunteerProfile` u `OrganizationProfile` | Los dos |
 
-Las pantallas de empleo usan `components/MarcoAutenticado.tsx`, que pinta la cabecera con la
+Las pantallas de empleo y de retos usan `components/MarcoAutenticado.tsx`, que pinta la cabecera con la
 navegación (según el rol y con la sección actual marcada) y el pie. Las pantallas anteriores aún
 repiten ese código; al tocarlas conviene pasarlas al marco. Los tipos y textos compartidos de las
 ofertas están en `ofertas.ts`, y los de empleo en `empleo.ts`.

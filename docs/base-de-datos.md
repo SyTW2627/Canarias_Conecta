@@ -117,6 +117,16 @@ también puede acabar `descartada`. El voluntario la `retira` desde `pendiente` 
   "9,50 €/hora", "A convenir"); un rango numérico obligaría a elegir unidad y periodo.
 - **Fecha límite calculada, no estado.** Como con las ofertas finalizadas, ningún proceso cerraría
   la oferta al llegar la fecha: se compara con hoy al buscar y al postularse.
+- **Retos calculados, solo se guardan los conseguidos.** El progreso de cada reto sale de las
+  `estadisticas` del voluntario y de sus inscripciones `completada` (islas y categorías distintas),
+  así que funciona también con los datos anteriores a la gamificación. En `voluntario.logros` solo se
+  guarda `{ id, fecha }` de los conseguidos: hace falta para avisar una sola vez y para que un reto no
+  se pierda si después baja la métrica (por ejemplo, la media de valoraciones). Las definiciones
+  están en código (`server/src/services/logros.ts`), no en la base de datos.
+- **Ranking sin colección propia.** Se agrega al pedirlo a partir de las inscripciones completadas.
+  Cuenta el mes de la actividad (el último turno de la inscripción) y no el de la confirmación, que
+  puede llegar días después. Con el volumen de una plataforma regional la agregación es inmediata; si
+  creciera, se podría guardar un resumen mensual.
 
 ## Reglas
 
@@ -147,6 +157,11 @@ también puede acabar `descartada`. El voluntario la `retira` desde `pendiente` 
   se le muestran.
 - Una oferta de empleo cerrada no se puede volver a abrir. Al cerrarla se avisa a los candidatos que
   seguían en el proceso (`oferta_cerrada`).
+- Los retos se comprueban al confirmar una participación y al valorar al voluntario. Cada reto nuevo
+  se guarda una sola vez (el `updateOne` filtra por `voluntario.logros.id` con `$nin`) y genera una
+  notificación `logro_conseguido`.
+- El ranking solo lo ven voluntarios con sesión y muestra el nombre con la inicial del apellido,
+  nunca el email ni el apellido completo.
 
 ## Notas de implementación
 

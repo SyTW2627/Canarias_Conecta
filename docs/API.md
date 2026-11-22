@@ -54,6 +54,8 @@ Servidor Express en `server/`. Todas las rutas cuelgan de `/api`.
 | `PATCH` | `/api/empleo/candidaturas/:id` | Ofertante | Preselecciona o descarta una candidatura |
 | `PATCH` | `/api/empleo/candidaturas/:id/retirar` | Voluntario | Retira una candidatura propia |
 | `GET` | `/api/empleo/candidaturas/mias` | Voluntario | Candidaturas del voluntario |
+| `GET` | `/api/gamificacion/logros` | Voluntario | Retos del voluntario con su progreso |
+| `GET` | `/api/gamificacion/ranking` | Voluntario | Ranking mensual de horas de voluntariado |
 
 ### `GET /api/health`
 
@@ -562,6 +564,96 @@ Candidaturas del voluntario, las más recientes primero, en cualquier estado:
 | Error | Mensaje |
 |---|---|
 | `500` | `No se pudieron cargar tus candidaturas` |
+
+## Gamificación
+
+Retos y ranking de los voluntarios (`server/src/routes/gamificacionRoutes.ts`). Todas las rutas
+exigen sesión con rol `voluntario` (`401`/`403` como en el resto de la API).
+
+### `GET /api/gamificacion/logros`
+
+Retos del voluntario con su progreso. Se calculan con sus estadísticas y sus colaboraciones
+completadas; los ya conseguidos llevan la fecha en que se lograron.
+
+```json
+200 OK
+{
+  "metricas": { "horas": 12, "colaboraciones": 3, "islas": 2, "categorias": 2, "valoracionMedia": 4.8, "numValoraciones": 5 },
+  "conseguidos": 3,
+  "logros": [
+    {
+      "id": "horas-50",
+      "nombre": "Medio centenar",
+      "descripcion": "Suma 50 horas de voluntariado",
+      "icono": "⭐",
+      "objetivo": 50,
+      "progreso": 12,
+      "conseguido": false,
+      "fecha": null,
+      "detalle": null
+    }
+  ]
+}
+```
+
+| Reto (`id`) | Se consigue con |
+|---|---|
+| `primera-colaboracion`, `colaboraciones-5`, `colaboraciones-20` | 1, 5 y 20 colaboraciones completadas |
+| `horas-10`, `horas-50`, `horas-100` | 10, 50 y 100 horas de voluntariado |
+| `islas-3` | Colaboraciones completadas en 3 islas distintas |
+| `categorias-4` | Colaboraciones completadas en 4 categorías distintas |
+| `valoracion-excelente` | 5 valoraciones con una media de 4,5 palmeras o más (`detalle` indica la media actual) |
+
+- `progreso` no pasa de `objetivo` (las horas se redondean hacia abajo).
+- Un reto conseguido no se pierde aunque después baje la métrica (por ejemplo, la media).
+
+| Error | Mensaje |
+|---|---|
+| `404` | `Usuario no encontrado` |
+| `500` | `No se pudieron cargar tus retos` |
+
+### `GET /api/gamificacion/ranking`
+
+Voluntarios con más horas completadas en un mes, como mucho 10, y la posición de quien pregunta.
+Cuenta cada inscripción `completada` en el mes de su actividad (el último de sus turnos), no en el
+de la confirmación.
+
+| Parámetro | Reglas |
+|---|---|
+| `mes` | `AAAA-MM`. Por defecto, el mes actual (UTC) |
+| `isla` | Opcional. Solo cuenta las actividades de esa isla (las `online` no tienen isla) |
+
+```json
+GET /api/gamificacion/ranking?mes=2026-11&isla=tenerife
+
+200 OK
+{
+  "mes": "2026-11",
+  "isla": "tenerife",
+  "participantes": 2,
+  "ranking": [
+    { "posicion": 1, "nombre": "Carlos D.", "avatarUrl": null, "horas": 7, "colaboraciones": 1, "eresTu": false },
+    { "posicion": 2, "nombre": "Laura P.", "avatarUrl": null, "horas": 3, "colaboraciones": 1, "eresTu": true }
+  ],
+  "tuPosicion": { "posicion": 2, "horas": 3, "colaboraciones": 1 }
+}
+```
+
+- Empate en horas = misma posición (1, 1, 3…). Dentro del empate se ordena por colaboraciones.
+- `nombre` es el nombre y la inicial del primer apellido: el ranking lo ven otros voluntarios.
+- `tuPosicion` es `null` si quien pregunta no ha completado nada ese mes.
+
+| Error | Mensaje |
+|---|---|
+| `400` | `El mes debe tener el formato AAAA-MM` · `La isla no es válida` |
+| `500` | `No se pudo cargar el ranking` |
+
+### Avisos
+
+Al confirmar una participación (`PATCH /api/inscripciones/:id/completar` con `asistio: true`) y al
+valorar al voluntario (`PATCH /api/inscripciones/:id/valorar`), el servidor comprueba sus retos y le
+envía una notificación `logro_conseguido` por cada reto nuevo, con enlace a `/retos`. Si esta
+comprobación falla, la acción responde igualmente.
 
 ## Pendiente
 

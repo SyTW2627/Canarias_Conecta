@@ -192,6 +192,7 @@ class PerfilVoluntario <<embebido>> {
   islasPreferidas : Isla[]
   disponibilidad : FranjaDisponibilidad[]
   favoritas : ObjectId[] -> ofertas
+  logros : {id, fecha}[] <i>(retos conseguidos)</i>
   estadisticas : {horasTotales, colaboraciones, valoracionMedia, numValoraciones}
 }
 

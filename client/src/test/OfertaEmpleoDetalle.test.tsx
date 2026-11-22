@@ -123,7 +123,7 @@ describe('OfertaEmpleoDetalle (entidad)', () => {
         id: 'v1',
         nombre: 'Laura',
         avatarUrl: null,
-        isla: 'Tenerife',
+        isla: 'tenerife',
         municipio: 'La Laguna',
         biografia: null,
         intereses: [],
@@ -155,7 +155,7 @@ describe('OfertaEmpleoDetalle (entidad)', () => {
     const trayectoria = within(tarjeta).getByRole('list', { name: 'Trayectoria de voluntariado' })
     expect(trayectoria).toHaveTextContent('42 h de voluntariado')
     expect(trayectoria).toHaveTextContent('9 colaboraciones')
-    expect(trayectoria).toHaveTextContent('4.8 / 5 en 4 valoraciones')
+    expect(trayectoria).toHaveTextContent('4,8 / 5 en 4 valoraciones')
     expect(within(tarjeta).getByText('Llevo dos años de voluntaria')).toBeInTheDocument()
     expect(within(tarjeta).getByText('Monitor de ocio')).toBeInTheDocument()
     // Sin preseleccionar no se ve el contacto

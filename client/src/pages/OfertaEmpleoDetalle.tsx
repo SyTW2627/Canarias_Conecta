@@ -11,7 +11,7 @@ import './GestionarOfertas.css'
 import './Empleo.css'
 import type { Usuario } from './Login.tsx'
 import MarcoAutenticado from '../components/MarcoAutenticado.tsx'
-import { cabecerasConSesion } from '../ofertas.ts'
+import { ISLAS, cabecerasConSesion } from '../ofertas.ts'
 import {
   ESTADOS_CANDIDATURA,
   JORNADAS,
@@ -216,7 +216,7 @@ function TarjetaCandidatura({
         <div>
           <h3>{candidato.nombre}</h3>
           <p className="empleo-detalle-linea">
-            {[candidato.municipio, candidato.isla].filter(Boolean).join(', ') || 'Sin ubicación'}
+            {[candidato.municipio, candidato.isla && (ISLAS[candidato.isla] ?? candidato.isla)].filter(Boolean).join(', ') || 'Sin ubicación'}
             {' · '}Se postuló el {formatearDia(candidatura.fechaCandidatura)}
           </p>
         </div>
@@ -230,7 +230,7 @@ function TarjetaCandidatura({
         <li><strong>{estadisticas.colaboraciones}</strong> colaboraciones</li>
         <li>
           {estadisticas.numValoraciones > 0 ? (
-            <><strong>{estadisticas.valoracionMedia.toFixed(1)}</strong> / 5 en {estadisticas.numValoraciones} valoraciones</>
+            <><strong>{estadisticas.valoracionMedia.toFixed(1).replace('.', ',')}</strong> / 5 en {estadisticas.numValoraciones} valoraciones</>
           ) : (
             'Sin valoraciones'
           )}

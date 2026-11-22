@@ -104,7 +104,7 @@ export const LOGROS: readonly DefinicionLogro[] = [
   {
     id: 'valoracion-excelente',
     nombre: 'Cinco palmeras',
-    descripcion: `Recibe 5 valoraciones con una media de ${MEDIA_EXCELENTE} palmeras o más`,
+    descripcion: `Recibe 5 valoraciones con una media de ${String(MEDIA_EXCELENTE).replace('.', ',')} palmeras o más`,
     icono: '🌴',
     objetivo: 5,
     valor: (m) => m.numValoraciones,

@@ -162,6 +162,22 @@ npx playwright show-report            # informe en el navegador
 Los tests end-to-end **no escriben en la base de datos**: bloquean las peticiones que crean o
 modifican datos y simulan su respuesta (ver `client/e2e/fixtures.ts`).
 
+### Accesibilidad y usabilidad
+
+Se comprueban las pautas WCAG 2.2 (niveles A y AA) con [axe-core](https://github.com/dequelabs/axe-core):
+
+| Fichero | Qué prueba |
+|---|---|
+| `client/src/test/Accesibilidad.test.tsx` | axe sobre los componentes en jsdom, etiquetas de formularios, avisos con `role="alert"` y uso solo con teclado |
+| `client/e2e/accesibilidad.spec.ts` | axe (`@axe-core/playwright`) sobre todas las pantallas y estados (errores, modales, panel de notificaciones, móvil), incluido el contraste de color |
+| `client/e2e/usabilidad.spec.ts` | Navegación con teclado y foco visible, un único `h1` por pantalla, menú consistente, sin scroll horizontal a 320/375/768 px, uso táctil, mensajes de error claros y tiempo de carga |
+
+```bash
+cd client
+npx vitest run src/test/Accesibilidad.test.tsx
+npx playwright test accesibilidad usabilidad --project=chromium
+```
+
 GitHub Actions ejecuta en cada push el build y los tests del servidor y del cliente, el lint del
 cliente y `test:types` del servidor. Antes de subir, ejecuta lo mismo en local.
 

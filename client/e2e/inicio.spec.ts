@@ -12,7 +12,7 @@ test.describe('Inicio del voluntario', () => {
   test('Saluda por el nombre y muestra el buscador y el mapa', async ({ page }) => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Hola, Laura.');
     await expect(page.getByRole('searchbox', { name: 'Buscar oportunidades' })).toBeVisible();
-    await expect(page.getByRole('img', { name: 'Mapa de las ocho islas Canarias' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Mapa de las ocho islas Canarias' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tu semana' })).toBeVisible();
   });
 

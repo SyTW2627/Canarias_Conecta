@@ -6,7 +6,7 @@
   --verde-claro: #ddefea;
   --fondo: #a8cdc2;
   --texto: #1b2a2a;
-  --texto-suave: #4a5a58;
+  --texto-suave: #3b4a48;
   --borde: #dde3dc;
 }
 
@@ -37,8 +37,10 @@ p {
 /* Barra de navegación */
 .nav {
   display: flex;
+  /* En pantallas estrechas los elementos bajan de linea en vez de salirse (WCAG 1.4.10) */
+  flex-wrap: wrap;
   align-items: center;
-  gap: 28px;
+  gap: 12px 28px;
   padding: 0 32px;
   min-height: 64px;
   background: #fff;
@@ -314,6 +316,13 @@ p {
   }
 }
 
+@media (max-width: 480px) {
+  .nav {
+    gap: 12px 16px;
+    padding: 12px 16px;
+  }
+}
+
 /* Estilos de la sección del logo en el banner superior */
 .brand {
   display: flex;
@@ -483,17 +492,20 @@ p {
 .experiencias-puntos {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 0;
   margin-top: 12px;
 }
 
 .punto {
+  /* Punto de 10px con un borde transparente: el area pulsable llega a 24px (WCAG 2.5.8) */
+  box-sizing: content-box;
   width: 10px;
   height: 10px;
   padding: 0;
-  border: none;
+  border: 7px solid transparent;
   border-radius: 50%;
   background: var(--borde);
+  background-clip: padding-box;
   cursor: pointer;
 }
 

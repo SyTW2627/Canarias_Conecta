@@ -123,7 +123,7 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
           <div className="section-heading">
             <div>
               <p className="eyebrow">Encuentra tu próxima experiencia</p>
-              <h2 className="section-title">Busca oportunidades</h2>
+              <h1 className="section-title">Busca oportunidades</h1>
             </div>
             <a className="text-link" href="#oportunidades-destacadas">
               Ver todas

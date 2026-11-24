@@ -378,17 +378,19 @@ function TiraDias({
           .filter(Boolean)
           .join(' ')
 
+        const nombreVisible = indice === 0 ? 'Hoy' : diaCorto(dia)
         return (
           <button
             key={dia}
             type="button"
             className={clases}
             aria-pressed={elegido}
-            aria-label={`${diaLargo(dia)} ${numeroDia(dia)}, ${aria}`}
+            // El nombre accesible empieza por el texto visible (WCAG 2.5.3) para que el control por voz funcione
+            aria-label={`${nombreVisible} ${numeroDia(dia)} ${texto} (${diaLargo(dia)} ${numeroDia(dia)}, ${aria})`}
             onClick={() => onElegir(dia)}
           >
-            <span className="inicio-dia-nombre">{indice === 0 ? 'Hoy' : diaCorto(dia)}</span>
-            <span className="inicio-dia-numero">{numeroDia(dia)}</span>
+            <span className="inicio-dia-nombre">{nombreVisible}</span>{' '}
+            <span className="inicio-dia-numero">{numeroDia(dia)}</span>{' '}
             <span className="inicio-dia-resumen">{texto}</span>
           </button>
         )
@@ -559,7 +561,7 @@ function InicioVoluntario({ usuario }: { usuario: Usuario }) {
           </div>
 
           <div className="inicio-hero-mapa">
-            <svg viewBox={VIEWBOX_MAPA} role="img" aria-label="Mapa de las ocho islas Canarias">
+            <svg viewBox={VIEWBOX_MAPA} role="group" aria-label="Mapa de las ocho islas Canarias">
               {ISLAS_MAPA.map((isla) => {
                 const total = ofertasPorIsla.get(isla.slug) ?? 0
                 const descripcion = `${isla.nombre}: ${plural(total, 'oportunidad', 'oportunidades')}`

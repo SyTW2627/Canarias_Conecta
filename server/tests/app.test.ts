@@ -18,6 +18,8 @@ const { default: ofertaRoutes } = await import('../src/routes/ofertaRoutes.js')
 const { default: inscripcionRoutes } = await import('../src/routes/inscripcionRoutes.js')
 const { default: imagenRoutes } = await import('../src/routes/imagenRoutes.js')
 const { default: notificacionRoutes } = await import('../src/routes/notificacionRoutes.js')
+const { default: empleoRoutes } = await import('../src/routes/empleoRoutes.js')
+const { default: gamificacionRoutes } = await import('../src/routes/gamificacionRoutes.js')
 
 type Capa = { name: string; handle: unknown; route?: { path: string }; match(ruta: string): boolean }
 const capas = (app as unknown as { router: { stack: Capa[] } }).router.stack
@@ -78,7 +80,9 @@ describe('app', () => {
     ['/api/ofertas', ofertaRoutes],
     ['/api/inscripciones', inscripcionRoutes],
     ['/api/imagenes', imagenRoutes],
-    ['/api/notificaciones', notificacionRoutes]
+    ['/api/notificaciones', notificacionRoutes],
+    ['/api/empleo', empleoRoutes],
+    ['/api/gamificacion', gamificacionRoutes]
   ])('monta las rutas de %s', (prefijo, router) => {
     const capa = capas.find((c) => c.handle === router)
 

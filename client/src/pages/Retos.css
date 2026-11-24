@@ -1,0 +1,231 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la pantalla de retos y ranking.
+ */
+.retos {
+  text-align: left;
+}
+
+.retos .gestion-listado + .gestion-listado {
+  margin-top: 24px;
+}
+
+/* Resumen de la actividad */
+.retos-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.retos-resumen li {
+  padding: 8px 14px;
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+.retos-resumen strong {
+  color: var(--verde-oscuro);
+}
+
+/* Insignias */
+.retos-lista {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reto {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.reto-icono {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #eceff0;
+  font-size: 26px;
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.reto-conseguido {
+  border-color: var(--verde);
+  background: #f6faf9;
+}
+
+.reto-conseguido .reto-icono {
+  background: var(--verde-claro);
+  filter: none;
+  opacity: 1;
+}
+
+.reto-cuerpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.reto h3 {
+  margin: 0 0 2px;
+  color: var(--texto);
+  font-size: 17px;
+}
+
+.reto p {
+  margin: 0;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+.reto-barra {
+  overflow: hidden;
+  height: 8px;
+  margin: 10px 0 4px;
+  border-radius: 999px;
+  background: #eceff0;
+}
+
+.reto-barra span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--verde);
+}
+
+.reto .reto-estado {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.reto-conseguido .reto-estado {
+  color: var(--verde-oscuro);
+  font-weight: 600;
+}
+
+/* Ranking */
+.ranking-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+.ranking-mes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--texto);
+  font-weight: 600;
+}
+
+.ranking-controles label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.ranking-lista {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.ranking-lista li {
+  display: grid;
+  grid-template-columns: 40px 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.ranking-lista li.ranking-tu {
+  border-color: var(--verde);
+  background: #f6faf9;
+}
+
+.ranking-posicion {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #eceff0;
+  color: var(--texto);
+  font-weight: 700;
+}
+
+.ranking-posicion-1 {
+  background: #fbe7a1;
+}
+
+.ranking-posicion-2 {
+  background: #e3e6ea;
+}
+
+.ranking-posicion-3 {
+  background: #f1d2b6;
+}
+
+.ranking-nombre {
+  color: var(--texto);
+  font-weight: 600;
+}
+
+.ranking-etiqueta {
+  color: var(--verde-oscuro);
+  font-weight: 400;
+}
+
+.ranking-horas {
+  color: var(--verde-oscuro);
+  font-weight: 700;
+}
+
+.ranking-colaboraciones {
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .retos-lista {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .retos-lista {
+    grid-template-columns: 1fr;
+  }
+
+  .ranking-lista li {
+    grid-template-columns: 36px 1fr auto;
+  }
+
+  .ranking-colaboraciones {
+    display: none;
+  }
+}

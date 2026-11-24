@@ -17,7 +17,11 @@ import OrganizationProfile from './pages/OrganizationProfile.tsx'
 import Oportunidades from './pages/Oportunidades.tsx'
 import MisInscripciones from './pages/MisInscripciones.tsx'
 import EditarOferta from './pages/EditarOferta.tsx'
+import PublicarOferta from './pages/PublicarOferta.tsx'
 import Candidatos from './pages/Candidatos.tsx'
+import Empleo from './pages/Empleo.tsx'
+import OfertaEmpleoDetalle from './pages/OfertaEmpleoDetalle.tsx'
+import Retos from './pages/Retos.tsx'
 
 const PASOS = [
   {
@@ -70,9 +74,13 @@ type Ruta =
   | { pagina: 'oportunidades' }
   | { pagina: 'oferta'; id: string }
   | { pagina: 'gestion' }
+  | { pagina: 'nuevaOferta' }
   | { pagina: 'editarOferta'; id: string }
   | { pagina: 'candidatos'; id: string }
   | { pagina: 'inscripciones' }
+  | { pagina: 'empleo' }
+  | { pagina: 'retos' }
+  | { pagina: 'ofertaEmpleo'; id: string }
   | { pagina: 'perfil' }
   | { pagina: 'restablecer' }
 
@@ -84,7 +92,12 @@ function rutaDe(pathname: string): Ruta {
   const idCandidatos = pathname.match(/^\/gestionar-ofertas\/([^/]+)\/candidatos\/?$/)?.[1]
   if (idCandidatos) return { pagina: 'candidatos', id: idCandidatos }
   if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
+  if (/^\/gestionar-ofertas\/nueva\/?$/.test(pathname)) return { pagina: 'nuevaOferta' }
   if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
+  if (/^\/empleo\/?$/.test(pathname)) return { pagina: 'empleo' }
+  if (/^\/retos\/?$/.test(pathname)) return { pagina: 'retos' }
+  const idEmpleo = pathname.match(/^\/empleo\/([^/]+)\/?$/)?.[1]
+  if (idEmpleo) return { pagina: 'ofertaEmpleo', id: idEmpleo }
   if (/^\/mis_inscripciones\/?$/.test(pathname)) return { pagina: 'inscripciones' }
   if (/^\/perfil\/?$/.test(pathname)) return { pagina: 'perfil' }
   if (/^\/restablecer-password\/?$/.test(pathname)) return { pagina: 'restablecer' }
@@ -250,6 +263,27 @@ function App() {
       return <Oportunidades usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
 
+    // Los retos y el ranking son solo de los voluntarios
+    if (ruta.pagina === 'retos' && usuario.rol === 'voluntario') {
+      return <Retos usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    // Los dos roles: el voluntario busca empleo y la entidad publica sus ofertas
+    if (ruta.pagina === 'empleo') {
+      return <Empleo usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    if (ruta.pagina === 'ofertaEmpleo') {
+      return (
+        <OfertaEmpleoDetalle
+          key={ruta.id}
+          ofertaId={ruta.id}
+          usuario={usuario}
+          onCerrarSesion={cerrarSesion}
+        />
+      )
+    }
+
     if (ruta.pagina === 'inscripciones' && usuario.rol === 'voluntario') {
       return <MisInscripciones usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
@@ -257,6 +291,10 @@ function App() {
     // Un voluntario que llegue a /gestionar-ofertas ve el inicio
     if (ruta.pagina === 'gestion' && usuario.rol === 'ofertante') {
       return <GestionarOfertas usuario={usuario} onCerrarSesion={cerrarSesion} />
+    }
+
+    if (ruta.pagina === 'nuevaOferta' && usuario.rol === 'ofertante') {
+      return <PublicarOferta usuario={usuario} onCerrarSesion={cerrarSesion} />
     }
 
     if (ruta.pagina === 'editarOferta' && usuario.rol === 'ofertante') {

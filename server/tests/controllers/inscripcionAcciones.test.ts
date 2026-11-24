@@ -32,6 +32,10 @@ const plazas = vi.hoisted(() => ({
 }))
 vi.mock('../../src/services/plazas.js', () => plazas)
 
+// Los retos tienen sus propios tests: aqui solo importa cuando se comprueban
+const logros = vi.hoisted(() => ({ actualizarLogros: vi.fn() }))
+vi.mock('../../src/services/logros.js', () => logros)
+
 const {
   ANTELACION_CANCELAR_HORAS,
   cancelarInscripcion,
@@ -53,6 +57,7 @@ beforeEach(() => {
   plazas.reservarPlazas.mockResolvedValue(true)
   plazas.liberarPlazas.mockResolvedValue(undefined)
   plazas.promoverListaEspera.mockResolvedValue(undefined)
+  logros.actualizarLogros.mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -868,5 +873,71 @@ describe('valorarVoluntario', () => {
 
     expect(res.statusCode).toBe(500)
     expect(res.body).toEqual({ message: 'No se pudo guardar la valoración' })
+  })
+})
+
+describe('retos al completar y al valorar', () => {
+  const terminado = () => [turnoDesdeAhora(-24)]
+
+  function simularCompletar(inscripcion: ReturnType<typeof inscripcionGuardada>, turnos: TurnoDatos[]) {
+    vi.spyOn(Inscripcion, 'findOne').mockReturnValue(consulta(inscripcion) as never)
+    vi.spyOn(Oferta, 'findById').mockReturnValue(consulta(ofertaConTurnos(turnos)) as never)
+    vi.spyOn(Inscripcion, 'findOneAndUpdate').mockImplementation((async (
+      _filtro: unknown,
+      cambios: { estado: string }
+    ) => ({ id: inscripcion.id, estado: cambios.estado })) as never)
+    vi.spyOn(User, 'updateOne').mockResolvedValue({} as never)
+  }
+
+  it('comprueba los retos del voluntario cuando se confirma que participo', async () => {
+    const turnos = terminado()
+    const inscripcion = inscripcionGuardada(turnos)
+    simularCompletar(inscripcion, turnos)
+    const res = crearRes()
+
+    await completarInscripcion(crearReq({ params: { id: inscripcion.id }, body: { asistio: true }, usuario: ofertante }), res)
+
+    expect(logros.actualizarLogros).toHaveBeenCalledWith(inscripcion.voluntarioId)
+    expect(res.body).toMatchObject({ estado: 'completada' })
+  })
+
+  it('no los comprueba si no se presento', async () => {
+    const turnos = terminado()
+    const inscripcion = inscripcionGuardada(turnos)
+    simularCompletar(inscripcion, turnos)
+
+    await completarInscripcion(
+      crearReq({ params: { id: inscripcion.id }, body: { asistio: false }, usuario: ofertante }),
+      crearRes()
+    )
+
+    expect(logros.actualizarLogros).not.toHaveBeenCalled()
+  })
+
+  it('comprueba los retos tras una valoracion', async () => {
+    const inscripcion = inscripcionGuardada(terminado(), { estado: 'completada' })
+    vi.spyOn(Inscripcion, 'findOne').mockReturnValue(consulta(inscripcion) as never)
+    vi.spyOn(User, 'findById').mockReturnValue(consulta({ voluntario: { estadisticas: {} } }) as never)
+    vi.spyOn(User, 'updateOne').mockResolvedValue({} as never)
+
+    await valorarVoluntario(
+      crearReq({ params: { id: inscripcion.id }, body: { puntuacion: 5 }, usuario: ofertante }),
+      crearRes()
+    )
+
+    expect(logros.actualizarLogros).toHaveBeenCalledWith(inscripcion.voluntarioId)
+  })
+
+  it('si fallan los retos la accion responde igualmente', async () => {
+    logros.actualizarLogros.mockRejectedValue(errorBd())
+    const turnos = terminado()
+    const inscripcion = inscripcionGuardada(turnos)
+    simularCompletar(inscripcion, turnos)
+    const res = crearRes()
+
+    await completarInscripcion(crearReq({ params: { id: inscripcion.id }, body: { asistio: true }, usuario: ofertante }), res)
+
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toMatchObject({ estado: 'completada' })
   })
 })

@@ -19,7 +19,9 @@ const rutas = {
   imagenes: (await import('../../src/routes/imagenRoutes.js')).default,
   ofertas: (await import('../../src/routes/ofertaRoutes.js')).default,
   inscripciones: (await import('../../src/routes/inscripcionRoutes.js')).default,
-  notificaciones: (await import('../../src/routes/notificacionRoutes.js')).default
+  notificaciones: (await import('../../src/routes/notificacionRoutes.js')).default,
+  empleo: (await import('../../src/routes/empleoRoutes.js')).default,
+  gamificacion: (await import('../../src/routes/gamificacionRoutes.js')).default
 }
 
 type Manejador = { name: string; roles?: string[] }
@@ -71,6 +73,7 @@ describe('Rutas de ofertas (/api/ofertas)', () => {
       'GET /: buscarOfertas',
       // La imagen se lee despues de comprobar la sesion
       'POST /: requireAuth > requireRol(ofertante) > recibirImagen > crearOferta',
+      'GET /recomendadas: requireAuth > requireRol(voluntario) > getRecomendaciones',
       'GET /mias: requireAuth > requireRol(ofertante) > getMisOfertas',
       'GET /mias/:id: requireAuth > requireRol(ofertante) > getMiOferta',
       'GET /:id: getOferta',
@@ -110,6 +113,34 @@ describe('Rutas de notificaciones (/api/notificaciones)', () => {
       'GET /: getNotificaciones',
       'PATCH /leidas: marcarTodasLeidas',
       'PATCH /:id/leida: marcarLeida'
+    ])
+  })
+})
+
+describe('Rutas de empleo (/api/empleo)', () => {
+  it('buscar y ver son publicos; las rutas fijas van antes que /:id', () => {
+    expect(tabla(rutas.empleo)).toEqual([
+      'GET /: buscarEmpleos',
+      'POST /: requireAuth > requireRol(ofertante) > crearEmpleo',
+      'GET /mias: requireAuth > requireRol(ofertante) > getMisEmpleos',
+      'GET /candidaturas/mias: requireAuth > requireRol(voluntario) > getMisCandidaturas',
+      'PATCH /candidaturas/:id/retirar: requireAuth > requireRol(voluntario) > retirarCandidatura',
+      'PATCH /candidaturas/:id: requireAuth > requireRol(ofertante) > resolverCandidatura',
+      'GET /:id: getEmpleo',
+      'PATCH /:id/cerrar: requireAuth > requireRol(ofertante) > cerrarEmpleo',
+      'POST /:id/candidaturas: requireAuth > requireRol(voluntario) > crearCandidatura',
+      'GET /:id/candidaturas: requireAuth > requireRol(ofertante) > getCandidaturasEmpleo'
+    ])
+  })
+})
+
+describe('Rutas de gamificacion (/api/gamificacion)', () => {
+  it('todas exigen sesion de voluntario', () => {
+    expect(tabla(rutas.gamificacion)).toEqual([
+      'USE: requireAuth',
+      'USE: requireRol(voluntario)',
+      'GET /logros: getMisLogros',
+      'GET /ranking: getRanking'
     ])
   })
 })

@@ -13,6 +13,8 @@ import ofertaRoutes from './routes/ofertaRoutes.js'
 import inscripcionRoutes from './routes/inscripcionRoutes.js'
 import imagenRoutes from './routes/imagenRoutes.js'
 import notificacionRoutes from './routes/notificacionRoutes.js'
+import empleoRoutes from './routes/empleoRoutes.js'
+import gamificacionRoutes from './routes/gamificacionRoutes.js'
 
 const app = express()
 
@@ -36,6 +38,8 @@ app.use('/api/ofertas', ofertaRoutes)
 app.use('/api/inscripciones', inscripcionRoutes)
 app.use('/api/imagenes', imagenRoutes)
 app.use('/api/notificaciones', notificacionRoutes)
+app.use('/api/empleo', empleoRoutes)
+app.use('/api/gamificacion', gamificacionRoutes)
 
 // Errores que no gestiona ningun controlador, como un JSON mal formado.
 // Express necesita los cuatro parametros para reconocerlo como manejador de errores

@@ -7,7 +7,17 @@ import { Oferta } from '../models/Oferta.js'
 import { User } from '../models/User.js'
 import { notificar } from '../services/notificaciones.js'
 import { liberarPlazas, promoverListaEspera, reservarPlazas } from '../services/plazas.js'
+import { actualizarLogros } from '../services/logros.js'
 import { isObjectIdOrHexString, Types } from 'mongoose'
+
+// Los retos son secundarios: si fallan se registra, pero la accion ya se ha hecho
+async function comprobarLogros(voluntarioId: Types.ObjectId): Promise<void> {
+  try {
+    await actualizarLogros(voluntarioId)
+  } catch (error) {
+    console.error('Error al actualizar los retos del voluntario:', error)
+  }
+}
 
 const MOTIVO_MAX = 500
 
@@ -428,6 +438,7 @@ export async function valorarVoluntario(req: Request, res: Response): Promise<vo
       mensaje: `${req.usuario!.nombre} ha valorado tu colaboración con ${puntuacion} palmeras.`,
       enlace: '/perfil',
     })
+    await comprobarLogros(inscripcion.voluntarioId)
 
     res.json({
       id: inscripcion.id,
@@ -599,6 +610,7 @@ export async function completarInscripcion(req: Request, res: Response): Promise
         mensaje: `${req.usuario!.nombre} ha confirmado tu participación en "${oferta?.titulo ?? 'una oferta'}". Se han sumado ${horasRealizadas} h a tu perfil.`,
         enlace: '/mis_inscripciones',
       })
+      await comprobarLogros(inscripcion.voluntarioId)
     }
 
     res.json({ id: actualizada.id, estado: actualizada.estado, horasRealizadas })

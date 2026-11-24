@@ -11,6 +11,8 @@ import { Categoria } from '../models/Categoria.js'
 import { Imagen } from '../models/Imagen.js'
 import { Inscripcion } from '../models/Inscripcion.js'
 import { SolicitudAyuda } from '../models/SolicitudAyuda.js'
+import { User } from '../models/User.js'
+import { recomendar } from '../services/recomendaciones.js'
 import { HORA_REGEX, ISLAS } from '../models/constantes.js'
 import { detectarTipoImagen } from '../middleware/subidaImagen.js'
 import { notificar } from '../services/notificaciones.js'
@@ -30,16 +32,16 @@ const TURNOS_MAX = 50
 const ESTADOS_AL_CREAR = ['borrador', 'publicada']
 
 // Los parametros repetidos (?isla=a&isla=b) llegan como array y se ignoran
-function leerParametro(valor: unknown): string | undefined {
+export function leerParametro(valor: unknown): string | undefined {
   return typeof valor === 'string' && valor.trim() ? valor.trim() : undefined
 }
 
-function esIslaValida(isla: string): isla is (typeof ISLAS)[number] {
+export function esIslaValida(isla: string): isla is (typeof ISLAS)[number] {
   return (ISLAS as readonly string[]).includes(isla)
 }
 
 // Devuelve la fecha a las 00:00 UTC, como se guarda en los turnos, o null si no existe
-function leerFecha(texto: string): Date | null {
+export function leerFecha(texto: string): Date | null {
   const fecha = new Date(`${texto}T00:00:00.000Z`)
   const esValida =
     FECHA_REGEX.test(texto) &&
@@ -49,12 +51,12 @@ function leerFecha(texto: string): Date | null {
   return esValida ? fecha : null
 }
 
-function hoyEnUtc(): Date {
+export function hoyEnUtc(): Date {
   return new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`)
 }
 
 // El termino viene del usuario: sin escapar, un "(" romperia la expresion regular
-function escaparRegex(texto: string): string {
+export function escaparRegex(texto: string): string {
   return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
@@ -180,6 +182,82 @@ export async function buscarOfertas(req: Request, res: Response): Promise<void> 
   } catch (error) {
     console.error('Error al buscar ofertas:', error)
     res.status(500).json({ message: 'Error al buscar las ofertas' })
+  }
+}
+
+// Inscripciones que no cuentan como historial: no llego a participar
+const ESTADOS_SIN_HISTORIAL = ['rechazada', 'cancelada']
+// Con estos estados no puede volver a inscribirse: no tiene sentido recomendarla
+const ESTADOS_QUE_BLOQUEAN = ['pendiente', 'en_espera', 'aceptada', 'completada', 'no_presentado']
+
+// GET /api/ofertas/recomendadas -> ofertas recomendadas al voluntario que ha iniciado sesion,
+// con su afinidad (0-100) y los motivos por los que se recomiendan
+export async function getRecomendaciones(req: Request, res: Response): Promise<void> {
+  try {
+    const user = await User.findById(req.usuario!.id).populate('voluntario.interesIds', 'nombre')
+
+    if (!user) {
+      res.status(404).json({ message: 'Usuario no encontrado' })
+      return
+    }
+
+    const perfil = user.voluntario
+    // Tras populate, interesIds trae las categorias completas en lugar de sus ids
+    const poblados = (perfil?.interesIds ?? []) as unknown as Array<{ id: string; nombre: string }>
+    const intereses = poblados.map(({ id, nombre }) => ({ id, nombre }))
+    const islas = [...new Set([...(perfil?.islasPreferidas ?? []), ...(user.isla ? [user.isla] : [])])]
+
+    const inscripciones = await Inscripcion.find({ voluntarioId: user._id }).select('ofertaId estado')
+    const bloqueadas = inscripciones
+      .filter(({ estado }) => ESTADOS_QUE_BLOQUEAN.includes(estado))
+      .map(({ ofertaId }) => ofertaId)
+    const idsHistorial = [
+      ...inscripciones
+        .filter(({ estado }) => !ESTADOS_SIN_HISTORIAL.includes(estado))
+        .map(({ ofertaId }) => ofertaId),
+      ...(perfil?.favoritas ?? [])
+    ]
+
+    const historial = idsHistorial.length
+      ? await Oferta.find({ _id: { $in: idsHistorial } }).select('titulo categoriaIds')
+      : []
+
+    // Solo ofertas a las que todavia puede apuntarse: algun turno futuro con plazas libres
+    const candidatas = await consultarOfertas({
+      estado: 'publicada',
+      _id: { $nin: bloqueadas },
+      turnos: { $elemMatch: { fecha: { $gte: hoyEnUtc() }, plazasLibres: { $gt: 0 } } }
+    })
+
+    const recomendaciones = recomendar(
+      candidatas.map((oferta) => ({
+        id: oferta.id as string,
+        categorias: oferta.categoriaIds,
+        modalidad: oferta.modalidad,
+        isla: oferta.ubicacion?.isla,
+        documento: oferta
+      })),
+      {
+        interesIds: intereses.map(({ id }) => id),
+        islas,
+        historial: historial.map((oferta) => ({
+          titulo: oferta.titulo,
+          categoriaIds: oferta.categoriaIds.map((id) => id.toString())
+        }))
+      }
+    )
+
+    res.json({
+      intereses,
+      recomendaciones: recomendaciones.map(({ oferta, afinidad, motivos }) => ({
+        oferta: serializarOferta(oferta.documento),
+        afinidad,
+        motivos
+      }))
+    })
+  } catch (error) {
+    console.error('Error al calcular las recomendaciones:', error)
+    res.status(500).json({ message: 'Error al calcular las recomendaciones' })
   }
 }
 

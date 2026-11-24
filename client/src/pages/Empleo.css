@@ -1,0 +1,278 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de las pantallas de empleo (catalogo, candidaturas y detalle).
+ */
+.empleo {
+  text-align: left;
+}
+
+/* Pestañas del voluntario: ofertas y mis candidaturas */
+.empleo-pestanas {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.empleo-pestanas button {
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--texto-suave);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.empleo-pestanas button[aria-selected='true'] {
+  border-bottom-color: var(--verde);
+  color: var(--verde-oscuro);
+}
+
+/* Tarjeta del catalogo: sin foto, el puesto es lo importante */
+.empleo-tarjeta {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+}
+
+.empleo-tarjeta h3 {
+  margin: 0 0 10px;
+  color: var(--texto);
+  font-size: 19px;
+  line-height: 1.25;
+}
+
+.empleo-tarjeta dl {
+  flex: 1;
+  margin: 12px 0;
+}
+
+.empleo-tarjeta dl div {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.empleo-tarjeta dt {
+  min-width: 56px;
+  color: var(--texto-suave);
+}
+
+.empleo-tarjeta dd {
+  margin: 0;
+  color: var(--texto);
+}
+
+.empleo-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.empleo-etiquetas li {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Listas de filas: mis candidaturas y mis ofertas de empleo */
+.empleo-lista {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.empleo-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 20px;
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+}
+
+.empleo-fila.gestion-tarjeta-inactiva {
+  opacity: 0.7;
+}
+
+.empleo-fila h3 {
+  margin: 0 0 4px;
+  color: var(--texto);
+  font-size: 18px;
+}
+
+.empleo-fila h3 a {
+  color: inherit;
+}
+
+.empleo-fila-acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.empleo-detalle-linea {
+  margin: 2px 0;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+.empleo-estado {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eceff0;
+  color: var(--texto-suave);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.empleo-estado-pendiente {
+  background: #fff4d6;
+  color: #8a5a00;
+}
+
+.empleo-estado-preseleccionada {
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+}
+
+.empleo-estado-descartada {
+  background: #fdecea;
+  color: #a12a1f;
+}
+
+/* Detalle */
+.empleo .oferta-bloque + .oferta-bloque {
+  margin-top: 20px;
+}
+
+.empleo-texto {
+  white-space: pre-line;
+}
+
+.empleo-campo {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  color: var(--texto);
+  font-size: 15px;
+}
+
+.empleo-campo textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  font: inherit;
+  resize: vertical;
+}
+
+/* Candidaturas recibidas por la entidad */
+.empleo-candidaturas {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.empleo-candidatura {
+  padding: 18px 20px;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+}
+
+.empleo-candidatura-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.empleo-candidatura h3 {
+  margin: 0;
+  color: var(--texto);
+  font-size: 18px;
+}
+
+.empleo-estadisticas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+  color: var(--texto-suave);
+  font-size: 14px;
+}
+
+.empleo-estadisticas strong {
+  color: var(--verde-oscuro);
+}
+
+.empleo-mensaje {
+  margin: 10px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--verde);
+  background: #f6faf9;
+  color: var(--texto);
+  font-size: 15px;
+  white-space: pre-line;
+}
+
+.empleo-perfil {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.empleo-perfil div {
+  display: flex;
+  gap: 8px;
+}
+
+.empleo-perfil dt {
+  min-width: 110px;
+  color: var(--texto-suave);
+}
+
+.empleo-perfil dd {
+  margin: 0;
+  color: var(--texto);
+}
+
+@media (max-width: 700px) {
+  .empleo-fila,
+  .empleo-candidatura-cabecera {
+    flex-direction: column;
+  }
+
+  .empleo-fila-acciones {
+    align-items: flex-start;
+  }
+
+  .empleo-perfil div {
+    flex-direction: column;
+    gap: 0;
+  }
+}

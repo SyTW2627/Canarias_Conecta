@@ -14,6 +14,7 @@ import { useEffect, useState, type FormEvent, type MouseEvent } from 'react'
 import './HomePage.css'
 import type { Usuario } from './Login.tsx'
 import Notificaciones from '../components/Notificaciones.tsx'
+import Recomendaciones from '../components/Recomendaciones.tsx'
 import { useOfertasPublicadas } from '../useOfertasPublicadas.ts'
 import {
   ISLAS,
@@ -294,6 +295,8 @@ function Cabecera({ usuario, onCerrarSesion }: HomePageProps) {
         <a href="#inicio" aria-current="page">Inicio</a>
         {esVoluntario && <a href="/oportunidades">Oportunidades</a>}
         {esVoluntario && <a href="/mis_inscripciones">Mis inscripciones</a>}
+        <a href="/empleo">Empleo</a>
+        {esVoluntario && <a href="/retos">Retos</a>}
         <a href="/perfil">Mi perfil</a>
         {!esVoluntario && <a href="/gestionar-ofertas">Gestionar ofertas</a>}
       </nav>
@@ -375,17 +378,19 @@ function TiraDias({
           .filter(Boolean)
           .join(' ')
 
+        const nombreVisible = indice === 0 ? 'Hoy' : diaCorto(dia)
         return (
           <button
             key={dia}
             type="button"
             className={clases}
             aria-pressed={elegido}
-            aria-label={`${diaLargo(dia)} ${numeroDia(dia)}, ${aria}`}
+            // El nombre accesible empieza por el texto visible (WCAG 2.5.3) para que el control por voz funcione
+            aria-label={`${nombreVisible} ${numeroDia(dia)} ${texto} (${diaLargo(dia)} ${numeroDia(dia)}, ${aria})`}
             onClick={() => onElegir(dia)}
           >
-            <span className="inicio-dia-nombre">{indice === 0 ? 'Hoy' : diaCorto(dia)}</span>
-            <span className="inicio-dia-numero">{numeroDia(dia)}</span>
+            <span className="inicio-dia-nombre">{nombreVisible}</span>{' '}
+            <span className="inicio-dia-numero">{numeroDia(dia)}</span>{' '}
             <span className="inicio-dia-resumen">{texto}</span>
           </button>
         )
@@ -556,7 +561,7 @@ function InicioVoluntario({ usuario }: { usuario: Usuario }) {
           </div>
 
           <div className="inicio-hero-mapa">
-            <svg viewBox={VIEWBOX_MAPA} role="img" aria-label="Mapa de las ocho islas Canarias">
+            <svg viewBox={VIEWBOX_MAPA} role="group" aria-label="Mapa de las ocho islas Canarias">
               {ISLAS_MAPA.map((isla) => {
                 const total = ofertasPorIsla.get(isla.slug) ?? 0
                 const descripcion = `${isla.nombre}: ${plural(total, 'oportunidad', 'oportunidades')}`
@@ -717,6 +722,9 @@ function InicioVoluntario({ usuario }: { usuario: Usuario }) {
             </p>
           </div>
         )}
+
+        {/* Sistema de recomendacion: ofertas segun los intereses de su perfil, su isla e historial */}
+        <Recomendaciones usuario={usuario} />
 
         {/* Les faltan manos */}
         {faltanManos.length > 0 && (

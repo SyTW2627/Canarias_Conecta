@@ -1,0 +1,70 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la navegacion entre paginas de los catalogos.
+ */
+.paginacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 28px;
+}
+
+.paginacion ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.paginacion button {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--texto);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.paginacion button:hover:not(:disabled, [aria-current]) {
+  border-color: var(--verde);
+  color: var(--verde-oscuro);
+}
+
+.paginacion button[aria-current='page'] {
+  border-color: var(--verde);
+  background: var(--verde);
+  color: #fff;
+  cursor: default;
+}
+
+.paginacion button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.paginacion-hueco {
+  align-self: center;
+  padding: 0 4px;
+  color: var(--texto);
+}
+
+@media (max-width: 700px) {
+  .paginacion-paso {
+    flex: 1;
+  }
+
+  .paginacion ol {
+    order: -1;
+    justify-content: center;
+    width: 100%;
+  }
+}

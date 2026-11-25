@@ -1,10 +1,11 @@
 /**
  * Proyecto: Canarias Conecta
  * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
- * Funcion: Carga las ofertas que pueden ver los voluntarios.
+ * Funcion: Carga las ofertas que pueden ver los voluntarios, completas o por paginas.
  */
 import { useEffect, useState } from 'react'
 import type { Oferta } from './ofertas.ts'
+import type { Pagina } from './paginacion.ts'
 
 // Mismos parametros que acepta GET /api/ofertas. Los vacios no se envian
 export type FiltrosOfertas = {
@@ -16,7 +17,8 @@ export type FiltrosOfertas = {
   fechaHasta?: string
 }
 
-function construirConsulta(filtros: FiltrosOfertas): string {
+// "q=playa&isla=tenerife", sin "?": identifica los filtros aplicados
+export function construirFiltros(filtros: FiltrosOfertas): string {
   const parametros = new URLSearchParams()
 
   for (const [clave, valor] of Object.entries(filtros)) {
@@ -24,29 +26,26 @@ function construirConsulta(filtros: FiltrosOfertas): string {
     if (limpio) parametros.set(clave, limpio)
   }
 
-  const texto = parametros.toString()
-  return texto ? `?${texto}` : ''
+  return parametros.toString()
 }
 
-// Sin filtros, la API solo devuelve ofertas publicadas con algun turno desde hoy.
-// ofertas es null hasta la primera carga; en las siguientes se conservan las anteriores
+// datos es null hasta la primera carga; en las siguientes se conservan los anteriores
 // mientras cargando es true, para que la lista no parpadee al escribir
-export function useOfertasPublicadas(filtros: FiltrosOfertas = {}) {
-  const [ofertas, setOfertas] = useState<Oferta[] | null>(null)
+function useCargarOfertas<T>(url: string) {
+  const [datos, setDatos] = useState<T | null>(null)
   const [error, setError] = useState<string | null>(null)
-  // Consulta de la ultima respuesta recibida: si no coincide con la actual, se esta cargando
-  const [consultaResuelta, setConsultaResuelta] = useState<string | null>(null)
-  const consulta = construirConsulta(filtros)
-  const cargando = consultaResuelta !== consulta
+  // URL de la ultima respuesta recibida: si no coincide con la actual, se esta cargando
+  const [urlResuelta, setUrlResuelta] = useState<string | null>(null)
+  const cargando = urlResuelta !== url
 
   useEffect(() => {
     const controlador = new AbortController()
 
-    fetch(`/api/ofertas${consulta}`, { signal: controlador.signal })
+    fetch(url, { signal: controlador.signal })
       .then(async (res) => {
         const data = await res.json()
         if (!res.ok) throw new Error(data.message ?? 'No se pudieron cargar las ofertas')
-        setOfertas(data)
+        setDatos(data)
         setError(null)
       })
       .catch((error: Error) => {
@@ -59,11 +58,29 @@ export function useOfertasPublicadas(filtros: FiltrosOfertas = {}) {
         }
       })
       .finally(() => {
-        if (!controlador.signal.aborted) setConsultaResuelta(consulta)
+        if (!controlador.signal.aborted) setUrlResuelta(url)
       })
 
     return () => controlador.abort()
-  }, [consulta])
+  }, [url])
 
-  return { ofertas, error, cargando }
+  return { datos, error, cargando }
+}
+
+// Sin filtros, la API solo devuelve ofertas publicadas con algun turno desde hoy
+export function useOfertasPublicadas(filtros: FiltrosOfertas = {}) {
+  const consulta = construirFiltros(filtros)
+  const { datos, error, cargando } = useCargarOfertas<Oferta[]>(
+    `/api/ofertas${consulta ? `?${consulta}` : ''}`,
+  )
+  return { ofertas: datos, error, cargando }
+}
+
+// Una pagina del catalogo: { ofertas, total, pagina, porPagina, totalPaginas }
+export function useOfertasPaginadas(filtros: FiltrosOfertas, pagina: number) {
+  const consulta = construirFiltros(filtros)
+  const { datos, error, cargando } = useCargarOfertas<Pagina<Oferta>>(
+    `/api/ofertas?${consulta ? `${consulta}&` : ''}pagina=${pagina}`,
+  )
+  return { resultado: datos, error, cargando }
 }

@@ -9,7 +9,7 @@ import type { Usuario } from '../pages/Login.tsx'
 
 type Respuesta = { status?: number; body: unknown }
 // Clave "METODO /ruta" (sin query); el valor puede depender del cuerpo enviado
-type Rutas = Record<string, Respuesta | ((cuerpo: unknown) => Respuesta)>
+type Rutas = Record<string, Respuesta | ((cuerpo: unknown, url: string) => Respuesta)>
 
 export type Llamada = { metodo: string; ruta: string; cuerpo: unknown }
 
@@ -27,7 +27,7 @@ export function simularApi(rutas: Rutas): Llamada[] {
       // Las notificaciones de la barra superior no son lo que se prueba
       const definida = rutas[`${metodo} ${ruta}`] ?? (ruta.startsWith('/api/notificaciones') ? { body: [] } : undefined)
       if (!definida) throw new Error(`Ruta no simulada: ${metodo} ${ruta}`)
-      const { status = 200, body } = typeof definida === 'function' ? definida(cuerpo) : definida
+      const { status = 200, body } = typeof definida === 'function' ? definida(cuerpo, url) : definida
       return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
     }),
   )

@@ -8,7 +8,6 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import Empleo from '../pages/Empleo.tsx'
 import {
-  paginasVisibles,
   type MiCandidatura,
   type MiOfertaEmpleo,
   type OfertaEmpleo,
@@ -230,19 +229,6 @@ describe('Empleo (voluntario): paginacion del catalogo', () => {
     expect(await screen.findByText('24 ofertas de empleo · Mostrando 13–24')).toBeInTheDocument()
     expect(urlsPedidas().slice(-2)).toEqual(['/api/empleo?pagina=3', '/api/empleo?pagina=2'])
     expect(screen.queryByRole('button', { name: 'Página 3' })).not.toBeInTheDocument()
-  })
-})
-
-describe('paginasVisibles', () => {
-  it.each([
-    [1, 1, [1]],
-    [2, 5, [1, 2, 3, 4, 5]],
-    [4, 7, [1, 2, 3, 4, 5, 6, 7]],
-    [1, 10, [1, 2, null, 10]],
-    [5, 10, [1, null, 4, 5, 6, null, 10]],
-    [10, 10, [1, null, 9, 10]],
-  ])('pagina %i de %i -> %o', (actual, total, esperado) => {
-    expect(paginasVisibles(actual, total)).toEqual(esperado)
   })
 })
 

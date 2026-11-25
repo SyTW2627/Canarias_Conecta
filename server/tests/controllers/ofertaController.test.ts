@@ -38,7 +38,9 @@ const {
   eliminarOferta,
   getMiOferta,
   getMisOfertas,
-  getOferta
+  getOferta,
+  leerPagina,
+  POR_PAGINA
 } = await import('../../src/controllers/ofertaController.js')
 
 beforeEach(() => {
@@ -269,6 +271,101 @@ describe('buscarOfertas', () => {
 
     expect(res.statusCode).toBe(500)
     expect(res.body).toEqual({ message: 'Error al buscar las ofertas' })
+  })
+  describe('paginada (?pagina=N)', () => {
+    function simularPaginada(ofertas: unknown[], total: number) {
+      const simulada = simularConsulta(ofertas)
+      const contar = vi.spyOn(Oferta, 'countDocuments').mockReturnValue(consulta(total) as never)
+      return { ...simulada, contar }
+    }
+
+    it('devuelve la pagina pedida con el total, ordenada de forma estable', async () => {
+      const { buscar: find, q, contar } = simularPaginada([ofertaPoblada()], 2 * POR_PAGINA + 1)
+
+      const res = await buscar({ pagina: '3', isla: 'tenerife' })
+
+      const filtro = find.mock.calls[0][0]
+      expect(contar).toHaveBeenCalledWith(filtro)
+      expect(q.sort).toHaveBeenCalledWith({ 'turnos.fecha': 1, _id: 1 })
+      expect(q.skip).toHaveBeenCalledWith(2 * POR_PAGINA)
+      expect(q.limit).toHaveBeenCalledWith(POR_PAGINA)
+      expect(res.body).toMatchObject({
+        total: 2 * POR_PAGINA + 1,
+        pagina: 3,
+        porPagina: POR_PAGINA,
+        totalPaginas: 3
+      })
+      expect((res.body as { ofertas: unknown[] }).ofertas).toHaveLength(1)
+    })
+
+    it('con ?pagina= vacio devuelve la primera pagina', async () => {
+      const { q } = simularPaginada([], 0)
+
+      const res = await buscar({ pagina: '' })
+
+      expect(q.skip).toHaveBeenCalledWith(0)
+      expect(res.body).toEqual({ ofertas: [], total: 0, pagina: 1, porPagina: POR_PAGINA, totalPaginas: 0 })
+    })
+
+    it('sin ?pagina devuelve la lista completa, como antes', async () => {
+      const { q } = simularConsulta([ofertaPoblada()])
+      const contar = vi.spyOn(Oferta, 'countDocuments')
+
+      const res = await buscar()
+
+      expect(Array.isArray(res.body)).toBe(true)
+      expect(q.skip).not.toHaveBeenCalled()
+      expect(q.limit).not.toHaveBeenCalled()
+      expect(contar).not.toHaveBeenCalled()
+    })
+
+    it('si la categoria no existe responde una pagina vacia', async () => {
+      vi.spyOn(Categoria, 'findOne').mockReturnValue(consulta(null) as never)
+
+      const res = await buscar({ categoria: 'inventada', pagina: '2' })
+
+      expect(res.body).toEqual({ ofertas: [], total: 0, pagina: 2, porPagina: POR_PAGINA, totalPaginas: 0 })
+    })
+
+    it.each(['0', '-1', '2.5', 'dos', '1001'])('responde 400 sin consultar con pagina=%s', async (pagina) => {
+      const find = vi.spyOn(Oferta, 'find')
+
+      const res = await buscar({ pagina })
+
+      expect(res.statusCode).toBe(400)
+      expect(res.body).toEqual({ message: 'La página no es válida' })
+      expect(find).not.toHaveBeenCalled()
+    })
+
+    it('responde 500 si falla el recuento', async () => {
+      simularConsulta([ofertaPoblada()])
+      vi.spyOn(Oferta, 'countDocuments').mockReturnValue(consulta(errorBd()) as never)
+
+      const res = await buscar({ pagina: '1' })
+
+      expect(res.statusCode).toBe(500)
+      expect(res.body).toEqual({ message: 'Error al buscar las ofertas' })
+    })
+  })
+})
+
+describe('leerPagina', () => {
+  it.each([
+    [undefined, 1],
+    ['', 1],
+    ['1', 1],
+    [' 4 ', 4],
+    ['1000', 1000],
+    ['0', null],
+    ['1001', null],
+    ['-1', null],
+    ['2.5', null],
+    ['1e2', null],
+    ['abc', null],
+    // Repetido (?pagina=1&pagina=2) se ignora, como el resto de parametros
+    [['1', '2'], 1]
+  ])('%o -> %o', (valor, esperado) => {
+    expect(leerPagina(valor)).toBe(esperado)
   })
 })
 

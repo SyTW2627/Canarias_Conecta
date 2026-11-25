@@ -5,7 +5,12 @@
  */
 import { renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi, type Mock } from 'vitest'
-import { useOfertasPublicadas, type FiltrosOfertas } from '../useOfertasPublicadas.ts'
+import {
+  construirFiltros,
+  useOfertasPaginadas,
+  useOfertasPublicadas,
+  type FiltrosOfertas,
+} from '../useOfertasPublicadas.ts'
 import { oferta, simularApi, turno } from './api.ts'
 
 const OFERTAS = [oferta([turno('t1', 2, 1)])]
@@ -92,5 +97,48 @@ describe('useOfertasPublicadas', () => {
 
     await waitFor(() => expect(result.current.error).toBe('No se pudo conectar con el servidor'))
     expect(result.current.cargando).toBe(false)
+  })
+})
+
+describe('useOfertasPaginadas', () => {
+  const PAGINA = { ofertas: OFERTAS, total: 13, pagina: 2, porPagina: 12, totalPaginas: 2 }
+
+  it('pide la pagina con los filtros y devuelve la respuesta completa', async () => {
+    simularApi({ 'GET /api/ofertas': { body: PAGINA } })
+
+    const { result } = renderHook(() => useOfertasPaginadas({ isla: 'tenerife', q: ' ' }, 2))
+
+    await waitFor(() => expect(result.current.cargando).toBe(false))
+    expect(result.current).toEqual({ resultado: PAGINA, error: null, cargando: false })
+    expect((fetch as Mock).mock.calls[0][0]).toBe('/api/ofertas?isla=tenerife&pagina=2')
+  })
+
+  it('sin filtros envia solo la pagina', async () => {
+    simularApi({ 'GET /api/ofertas': { body: { ...PAGINA, pagina: 1 } } })
+
+    const { result } = renderHook(() => useOfertasPaginadas({}, 1))
+
+    await waitFor(() => expect(result.current.cargando).toBe(false))
+    expect((fetch as Mock).mock.calls[0][0]).toBe('/api/ofertas?pagina=1')
+  })
+
+  it('al cambiar de pagina conserva la anterior mientras carga', async () => {
+    simularApi({ 'GET /api/ofertas': { body: PAGINA } })
+    const { result, rerender } = renderHook((n: number) => useOfertasPaginadas({}, n), { initialProps: 2 })
+    await waitFor(() => expect(result.current.resultado).toEqual(PAGINA))
+
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+    rerender(1)
+
+    expect(result.current).toEqual({ resultado: PAGINA, error: null, cargando: true })
+  })
+})
+
+describe('construirFiltros', () => {
+  it('omite los vacios y quita espacios', () => {
+    expect(construirFiltros({ q: ' playa ', isla: '', municipio: '  ', categoria: 'educacion' })).toBe(
+      'q=playa&categoria=educacion',
+    )
+    expect(construirFiltros({})).toBe('')
   })
 })

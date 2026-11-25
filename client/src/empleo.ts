@@ -24,6 +24,29 @@ export type OfertaEmpleo = {
   abierta: boolean
 }
 
+// Respuesta de GET /api/empleo: una pagina del catalogo
+export type PaginaEmpleos = {
+  ofertas: OfertaEmpleo[]
+  total: number
+  pagina: number
+  porPagina: number
+  totalPaginas: number
+}
+
+// Numeros de pagina a mostrar: siempre la primera, la ultima y las vecinas de la actual;
+// null marca un hueco ("…")
+export function paginasVisibles(actual: number, total: number): (number | null)[] {
+  const paginas: (number | null)[] = []
+  for (let n = 1; n <= total; n++) {
+    if (n === 1 || n === total || Math.abs(n - actual) <= 1 || total <= 7) {
+      paginas.push(n)
+    } else if (paginas.at(-1) !== null) {
+      paginas.push(null)
+    }
+  }
+  return paginas
+}
+
 // Como la ve su propia entidad
 export type MiOfertaEmpleo = OfertaEmpleo & {
   estado: 'publicada' | 'cerrada'

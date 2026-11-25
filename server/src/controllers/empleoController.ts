@@ -27,15 +27,15 @@ import {
   esIslaValida,
   hoyEnUtc,
   leerFecha,
-  leerParametro
+  leerPagina,
+  leerParametro,
+  paginar,
+  POR_PAGINA
 } from './ofertaController.js'
 
 const BUSQUEDA_MAX = 100
 const CONSULTA_MAX_MS = 5000
 const SALARIO_MAX = 100
-// Catalogo paginado: 12 llena filas completas con 4, 3, 2 o 1 columnas
-export const EMPLEOS_POR_PAGINA = 12
-const PAGINA_MAX = 1000
 
 const MENSAJE_NO_EXISTE = 'La oferta de empleo no existe o ya no está disponible'
 const MENSAJE_NO_ES_TUYA = 'La oferta de empleo no existe o no es tuya'
@@ -99,15 +99,6 @@ function serializarEmpleo(oferta: EmpleoPoblado) {
   }
 }
 
-// Numero de pagina (desde 1); sin parametro, la primera. null si no es valido
-export function leerPagina(valor: unknown): number | null {
-  const texto = leerParametro(valor)
-  if (texto === undefined) return 1
-  if (!/^\d+$/.test(texto)) return null
-  const pagina = Number(texto)
-  return pagina >= 1 && pagina <= PAGINA_MAX ? pagina : null
-}
-
 // GET /api/empleo -> ofertas de empleo que admiten candidaturas, con filtros opcionales,
 // paginadas: { ofertas, total, pagina, porPagina, totalPaginas }
 export async function buscarEmpleos(req: Request, res: Response): Promise<void> {
@@ -166,17 +157,11 @@ export async function buscarEmpleos(req: Request, res: Response): Promise<void> 
     // El _id desempata las publicadas a la vez, para que no se repitan entre paginas
     const [ofertas, total] = await Promise.all([
       consultarEmpleos(filtro, { fechaPublicacion: -1, _id: -1 })
-        .skip((pagina - 1) * EMPLEOS_POR_PAGINA)
-        .limit(EMPLEOS_POR_PAGINA),
+        .skip((pagina - 1) * POR_PAGINA)
+        .limit(POR_PAGINA),
       OfertaEmpleo.countDocuments(filtro).maxTimeMS(CONSULTA_MAX_MS)
     ])
-    res.json({
-      ofertas: ofertas.map(serializarEmpleo),
-      total,
-      pagina,
-      porPagina: EMPLEOS_POR_PAGINA,
-      totalPaginas: Math.ceil(total / EMPLEOS_POR_PAGINA)
-    })
+    res.json(paginar(ofertas.map(serializarEmpleo), total, pagina))
   } catch (error) {
     console.error('Error al buscar ofertas de empleo:', error)
     res.status(500).json({ message: 'Error al buscar las ofertas de empleo' })

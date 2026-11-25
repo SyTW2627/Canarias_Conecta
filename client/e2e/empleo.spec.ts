@@ -13,6 +13,12 @@ function tarjeta(page: Page, titulo: string) {
   return page.locator('article.empleo-tarjeta').filter({ has: page.getByRole('heading', { name: titulo, exact: true }) });
 }
 
+// El catálogo va por páginas: se busca la oferta para no depender de en qué página cae
+async function buscarOferta(page: Page, titulo: string) {
+  await page.getByRole('searchbox', { name: 'Buscar' }).fill(titulo);
+  await expect(tarjeta(page, titulo)).toBeVisible();
+}
+
 test.describe('Empleo como voluntario', () => {
   test.beforeEach(async ({ page }) => {
     await iniciarSesion(page, VOLUNTARIO);
@@ -24,22 +30,25 @@ test.describe('Empleo como voluntario', () => {
 
     await expect(page).toHaveURL(/\/empleo$/);
     await expect(page.getByRole('heading', { name: 'Empleo', level: 1 })).toBeVisible();
-    await expect(tarjeta(page, OFERTA_HORIZONTE)).toBeVisible();
+    await expect(page.locator('article.empleo-tarjeta').first()).toBeVisible();
+    await buscarOferta(page, OFERTA_HORIZONTE);
     await expect(tarjeta(page, OFERTA_HORIZONTE).getByText('Temporal')).toBeVisible();
   });
 
   test('Los filtros reducen el listado', async ({ page }) => {
     await page.goto('/empleo');
+    // En Gran Canaria caben todas en una página
+    await page.getByLabel('Isla').selectOption('gran_canaria');
     await expect(tarjeta(page, OFERTA_HORIZONTE)).toBeVisible();
 
-    await page.getByLabel('Contrato').selectOption('indefinido');
+    await page.getByLabel('Contrato').selectOption('practicas');
 
     await expect(tarjeta(page, OFERTA_HORIZONTE)).toHaveCount(0);
-    // La del Banco de Alimentos (indefinida) sigue; todas las que quedan son indefinidas
+    // La de Mar y Comunidad (prácticas, Telde) sigue; todas las que quedan son de prácticas
     const tarjetas = page.locator('article.empleo-tarjeta');
-    await expect(tarjetas.first()).toBeVisible();
+    await expect(tarjeta(page, 'Prácticas en educación ambiental')).toBeVisible();
     for (const otra of await tarjetas.all()) {
-      await expect(otra.getByText('Indefinido', { exact: true })).toBeVisible();
+      await expect(otra.getByText('Prácticas', { exact: true })).toBeVisible();
     }
   });
 
@@ -108,6 +117,7 @@ test.describe('Empleo como voluntario', () => {
     );
 
     await page.goto('/empleo');
+    await buscarOferta(page, OFERTA_HORIZONTE);
     await tarjeta(page, OFERTA_HORIZONTE).getByRole('link', { name: 'Ver oferta' }).click();
 
     await expect(page.getByRole('heading', { name: OFERTA_HORIZONTE, level: 1 })).toBeVisible();

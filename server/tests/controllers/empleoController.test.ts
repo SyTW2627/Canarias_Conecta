@@ -29,8 +29,6 @@ const {
   admiteCandidaturas,
   buscarEmpleos,
   cerrarEmpleo,
-  EMPLEOS_POR_PAGINA,
-  leerPagina,
   crearCandidatura,
   crearEmpleo,
   getCandidaturasEmpleo,
@@ -40,6 +38,7 @@ const {
   resolverCandidatura,
   retirarCandidatura
 } = await import('../../src/controllers/empleoController.js')
+const { POR_PAGINA: EMPLEOS_POR_PAGINA } = await import('../../src/controllers/ofertaController.js')
 
 const ofertante = usuarioOfertante()
 const voluntario = usuarioVoluntario()
@@ -231,26 +230,6 @@ describe('buscarEmpleos', () => {
     await buscarEmpleos(crearReq(), res)
 
     expect(res.statusCode).toBe(500)
-  })
-})
-
-describe('leerPagina', () => {
-  it.each([
-    [undefined, 1],
-    ['', 1],
-    ['1', 1],
-    [' 4 ', 4],
-    ['1000', 1000],
-    ['0', null],
-    ['1001', null],
-    ['-1', null],
-    ['2.5', null],
-    ['1e2', null],
-    ['abc', null],
-    // Repetido (?pagina=1&pagina=2) se ignora, como el resto de parametros
-    [['1', '2'], 1]
-  ])('%o -> %o', (valor, esperado) => {
-    expect(leerPagina(valor)).toBe(esperado)
   })
 })
 

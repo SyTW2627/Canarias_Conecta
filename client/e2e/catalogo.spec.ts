@@ -9,13 +9,16 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('El catálogo lista oportunidades y muestra el total', async ({ page }) => {
+  // El catálogo va por páginas de 12: el total es el de la API, no el de tarjetas en pantalla
+  const respuesta = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/ofertas');
   await page.goto('/oportunidades');
+  const { total }: { total: number } = await (await respuesta).json();
 
   await expect(page.getByRole('heading', { name: 'Todas las oportunidades' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Ver detalles' }).first()).toBeVisible();
 
-  const tarjetas = await page.getByRole('link', { name: 'Ver detalles' }).count();
-  await expect(page.getByText(tarjetas === 1 ? '1 oportunidad' : `${tarjetas} oportunidades`)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ver detalles' })).toHaveCount(Math.min(total, 12));
+  await expect(page.getByText(total === 1 ? '1 oportunidad' : `${total} oportunidades`, { exact: false })).toBeVisible();
 });
 
 test('Filtrar por isla solo muestra ofertas de esa isla y se pueden limpiar los filtros', async ({ page }) => {
@@ -27,7 +30,7 @@ test('Filtrar por isla solo muestra ofertas de esa isla y se pueden limpiar los 
   const peticion = page.waitForRequest((r) => r.url().includes('/api/ofertas?') && r.url().includes('isla=tenerife'));
   await page.getByLabel('Isla').selectOption('tenerife');
   const respuesta = await (await peticion).response();
-  const ofertas: { ubicacion?: { isla: string } }[] = await respuesta!.json();
+  const { ofertas }: { ofertas: { ubicacion?: { isla: string } }[] } = await respuesta!.json();
   expect(ofertas.every((o) => o.ubicacion?.isla === 'tenerife')).toBe(true);
 
   await expect(page.getByRole('link', { name: 'Ver detalles' })).toHaveCount(ofertas.length);

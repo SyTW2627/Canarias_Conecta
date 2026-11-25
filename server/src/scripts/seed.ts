@@ -483,6 +483,254 @@ const EMPLEOS = [
     salario: 'A convenir',
     vacantes: 1,
     dias: 45
+  },
+  {
+    email: 'islasverdes@ejemplo.com',
+    titulo: 'Técnico/a de restauración ambiental',
+    descripcion:
+      'Planificación y seguimiento de plantaciones de especies autóctonas en espacios naturales. Coordinación de las jornadas con voluntariado.',
+    categorias: ['medio-ambiente'],
+    tipoContrato: 'temporal',
+    jornada: 'completa',
+    modalidad: 'presencial',
+    isla: 'tenerife',
+    municipio: 'La Laguna',
+    salario: '1.650 € brutos/mes',
+    requisitos: 'Grado en Ciencias Ambientales, Biología o similar. Carné de conducir B.',
+    vacantes: 2,
+    dias: 20
+  },
+  {
+    email: 'crecerjuntos@ejemplo.com',
+    titulo: 'Educador/a de refuerzo escolar',
+    descripcion:
+      'Clases de apoyo en grupos reducidos para alumnado de primaria y secundaria por las tardes. Seguimiento con las familias.',
+    categorias: ['educacion'],
+    tipoContrato: 'indefinido',
+    jornada: 'parcial',
+    modalidad: 'presencial',
+    isla: 'tenerife',
+    municipio: 'Santa Cruz de Tenerife',
+    salario: '1.000 € brutos/mes (20 h semanales)',
+    requisitos: 'Grado en Magisterio, Pedagogía o Educación Social.',
+    vacantes: 2,
+    dias: 25
+  },
+  {
+    email: 'bancocanario@ejemplo.com',
+    titulo: 'Conductor/a de reparto de alimentos',
+    descripcion:
+      'Recogida de donaciones en supermercados y reparto a las entidades receptoras de la isla con la furgoneta de la organización.',
+    categorias: ['alimentacion'],
+    tipoContrato: 'temporal',
+    jornada: 'completa',
+    modalidad: 'presencial',
+    isla: 'gran_canaria',
+    municipio: 'Las Palmas de Gran Canaria',
+    salario: '1.400 € brutos/mes',
+    requisitos: 'Carné de conducir B con al menos dos años de antigüedad.',
+    vacantes: 1,
+    dias: 10
+  },
+  {
+    email: 'horizonte@ejemplo.com',
+    titulo: 'Trabajador/a social',
+    descripcion:
+      'Valoración de casos, planes de atención y coordinación con los servicios sociales municipales para personas mayores en situación de soledad.',
+    categorias: ['personas-mayores', 'comunidad'],
+    tipoContrato: 'indefinido',
+    jornada: 'completa',
+    modalidad: 'presencial',
+    isla: 'tenerife',
+    municipio: 'Santa Cruz de Tenerife',
+    salario: '24.000 € brutos/año',
+    requisitos: 'Grado en Trabajo Social y colegiación.',
+    vacantes: 1,
+    dias: 30
+  },
+  {
+    email: 'redparticipa@ejemplo.com',
+    titulo: 'Dinamizador/a comunitario/a',
+    descripcion:
+      'Organización de actividades vecinales y apoyo a las asociaciones de barrio para impulsar la participación en el municipio.',
+    categorias: ['comunidad'],
+    tipoContrato: 'temporal',
+    jornada: 'parcial',
+    modalidad: 'presencial',
+    isla: 'la_palma',
+    municipio: 'Santa Cruz de La Palma',
+    salario: '10 €/hora',
+    requisitos: 'Experiencia en dinamización sociocultural. Valorable título de animación sociocultural.',
+    vacantes: 1,
+    dias: 21
+  },
+  {
+    email: 'marycomunidad@ejemplo.com',
+    titulo: 'Monitor/a de actividades en el litoral',
+    descripcion:
+      'Salidas de interpretación del litoral y limpiezas de playa con grupos escolares y familias durante los fines de semana.',
+    categorias: ['medio-ambiente', 'educacion'],
+    tipoContrato: 'temporal',
+    jornada: 'parcial',
+    modalidad: 'presencial',
+    isla: 'fuerteventura',
+    municipio: 'Pájara',
+    salario: '9 €/hora',
+    requisitos: 'Título de monitor/a de ocio y tiempo libre. Valorable socorrismo acuático.',
+    vacantes: 3,
+    dias: 18
+  },
+  {
+    email: 'crecerjuntos@ejemplo.com',
+    titulo: 'Auxiliar en protectora de animales',
+    descripcion:
+      'Cuidado diario de los animales del refugio, limpieza de las instalaciones y apoyo en las adopciones y en la organización del voluntariado.',
+    categorias: ['animales'],
+    tipoContrato: 'temporal',
+    jornada: 'completa',
+    modalidad: 'presencial',
+    isla: 'la_palma',
+    municipio: 'Los Llanos de Aridane',
+    salario: '1.250 € brutos/mes',
+    vacantes: 1,
+    dias: 14
+  },
+  {
+    email: 'islasverdes@ejemplo.com',
+    titulo: 'Prácticas en gestión de espacios naturales',
+    descripcion:
+      'Apoyo al equipo técnico en el seguimiento de especies invasoras y en la elaboración de informes de campo.',
+    categorias: ['medio-ambiente'],
+    tipoContrato: 'practicas',
+    jornada: 'parcial',
+    modalidad: 'mixta',
+    isla: 'lanzarote',
+    municipio: 'Yaiza',
+    salario: 'Beca de 500 €/mes',
+    requisitos: 'Último curso o recién titulado/a en Ciencias Ambientales o Biología.',
+    vacantes: 2
+  },
+  {
+    email: 'horizonte@ejemplo.com',
+    titulo: 'Animador/a sociocultural en centro de día',
+    descripcion:
+      'Talleres de memoria, música y actividad física adaptada para las personas usuarias del centro de día.',
+    categorias: ['personas-mayores'],
+    tipoContrato: 'indefinido',
+    jornada: 'parcial',
+    modalidad: 'presencial',
+    isla: 'lanzarote',
+    municipio: 'Teguise',
+    salario: '950 € brutos/mes',
+    requisitos: 'Técnico/a superior en Animación Sociocultural y Turística.',
+    vacantes: 1,
+    dias: 28
+  },
+  {
+    email: 'redparticipa@ejemplo.com',
+    titulo: 'Técnico/a de proyectos y subvenciones',
+    descripcion:
+      'Redacción y justificación de proyectos para convocatorias públicas y privadas de las entidades de la red. Teletrabajo con reuniones en línea.',
+    categorias: ['comunidad'],
+    tipoContrato: 'indefinido',
+    jornada: 'completa',
+    modalidad: 'online',
+    salario: '22.000 € brutos/año',
+    requisitos: 'Experiencia mínima de un año en gestión de subvenciones.',
+    vacantes: 1,
+    dias: 35
+  },
+  {
+    email: 'banco@ejemplo.com',
+    titulo: 'Coordinador/a de voluntariado',
+    descripcion:
+      'Captación, formación y organización de los turnos de voluntariado en el almacén y en las campañas de recogida.',
+    categorias: ['alimentacion', 'comunidad'],
+    tipoContrato: 'temporal',
+    jornada: 'completa',
+    modalidad: 'presencial',
+    isla: 'tenerife',
+    municipio: 'Santa Cruz de Tenerife',
+    salario: '1.500 € brutos/mes',
+    requisitos: 'Experiencia en gestión de equipos de voluntariado.',
+    vacantes: 1,
+    dias: 12
+  },
+  {
+    email: 'crecerjuntos@ejemplo.com',
+    titulo: 'Contrato de formación en educación infantil',
+    descripcion:
+      'Formación en alternancia con el trabajo en el aula matinal y en las actividades extraescolares de la asociación.',
+    categorias: ['educacion'],
+    tipoContrato: 'formacion',
+    jornada: 'parcial',
+    modalidad: 'presencial',
+    isla: 'fuerteventura',
+    municipio: 'La Oliva',
+    salario: 'Según convenio',
+    requisitos: 'Estar cursando el ciclo de Técnico/a superior en Educación Infantil.',
+    vacantes: 2
+  },
+  {
+    email: 'marycomunidad@ejemplo.com',
+    titulo: 'Técnico/a de buceo científico',
+    descripcion:
+      'Muestreos submarinos para el seguimiento de la reserva marina y coordinación de las limpiezas de fondos con voluntariado.',
+    categorias: ['medio-ambiente'],
+    tipoContrato: 'temporal',
+    jornada: 'completa',
+    modalidad: 'presencial',
+    isla: 'el_hierro',
+    municipio: 'El Pinar',
+    salario: '1.800 € brutos/mes',
+    requisitos: 'Titulación de buceo profesional o científico. Grado en Ciencias del Mar o similar.',
+    vacantes: 1,
+    dias: 40
+  },
+  {
+    email: 'bancocanario@ejemplo.com',
+    titulo: 'Administrativo/a',
+    descripcion:
+      'Gestión de la documentación de donaciones y entidades receptoras, atención telefónica y apoyo a la contabilidad.',
+    categorias: ['alimentacion'],
+    tipoContrato: 'indefinido',
+    jornada: 'parcial',
+    modalidad: 'presencial',
+    isla: 'la_palma',
+    municipio: 'Santa Cruz de La Palma',
+    salario: '900 € brutos/mes',
+    requisitos: 'Técnico/a en Gestión Administrativa. Manejo de hojas de cálculo.',
+    vacantes: 1,
+    dias: 22
+  },
+  {
+    email: 'redparticipa@ejemplo.com',
+    titulo: 'Diseñador/a gráfico/a para campañas',
+    descripcion:
+      'Diseño de carteles, piezas para redes sociales y materiales de las campañas de sensibilización de la red, por proyecto.',
+    categorias: ['comunidad'],
+    tipoContrato: 'autonomo',
+    jornada: 'parcial',
+    modalidad: 'online',
+    salario: 'Por proyecto',
+    requisitos: 'Portafolio con trabajos anteriores.',
+    vacantes: 1
+  },
+  {
+    email: 'horizonte@ejemplo.com',
+    titulo: 'Gerocultor/a en atención a domicilio',
+    descripcion:
+      'Apoyo en las actividades básicas de la vida diaria a personas mayores en su domicilio y acompañamiento en sus salidas.',
+    categorias: ['personas-mayores'],
+    tipoContrato: 'temporal',
+    jornada: 'completa',
+    modalidad: 'presencial',
+    isla: 'la_gomera',
+    municipio: 'San Sebastián de La Gomera',
+    salario: '1.350 € brutos/mes',
+    requisitos: 'Certificado de profesionalidad de atención sociosanitaria.',
+    vacantes: 2,
+    dias: 16
   }
 ] as const
 

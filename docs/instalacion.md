@@ -87,7 +87,7 @@ npm run test:watch   # se repiten al guardar
 | `Notificaciones.test.tsx` | Contador de no leídas, panel, marcar como leídas y recarga al volver a la pestaña |
 | `Acceso.test.tsx` | Inicio de sesión y registro: validaciones, errores del servidor y sesión guardada |
 | `useOfertasPublicadas.test.ts` | Filtros enviados, estado de carga, cancelación de peticiones y errores |
-| `Empleo.test.tsx` | Catálogo de empleo y filtros enviados, mis candidaturas y retirar; ofertas de la entidad, publicar y cerrar |
+| `Empleo.test.tsx` | Catálogo de empleo, filtros enviados y paginación, mis candidaturas y retirar; ofertas de la entidad, publicar y cerrar |
 | `OfertaEmpleoDetalle.test.tsx` | Postularse con mensaje, estado si ya se postuló, fuera de plazo; candidaturas con trayectoria, contacto solo preseleccionado |
 | `Retos.test.tsx` | Progreso y fecha de cada reto, ranking con el voluntario marcado, su puesto si queda fuera, cambio de mes e isla y errores |
 

@@ -320,7 +320,7 @@ Todas las rutas cuelgan de `/api/empleo` (`server/src/routes/empleoRoutes.ts`).
 ### `GET /api/empleo`
 
 Ofertas en estado `publicada` sin fecha límite o con una de hoy en adelante, las más recientes
-primero. Todos los parámetros son opcionales y se combinan entre sí.
+primero, en páginas de 12. Todos los parámetros son opcionales y se combinan entre sí.
 
 | Parámetro | Reglas |
 |---|---|
@@ -329,39 +329,48 @@ primero. Todos los parámetros son opcionales y se combinan entre sí.
 | `tipoContrato` | `indefinido`, `temporal`, `practicas`, `formacion` o `autonomo` |
 | `jornada` | `completa` o `parcial` |
 | `modalidad` | `presencial`, `online` o `mixta` |
+| `pagina` | Entero de 1 a 1000; por defecto, `1` |
 
 ```json
-GET /api/empleo?isla=tenerife
+GET /api/empleo?isla=tenerife&pagina=2
 
 200 OK
-[
-  {
-    "id": "6b01...",
-    "titulo": "Técnico/a de logística en almacén solidario",
-    "descripcion": "Coordinación de la recepción, clasificación y reparto...",
-    "organizacion": "Banco de Alimentos Tenerife",
-    "categorias": [{ "id": "6aeb...", "nombre": "Alimentación", "slug": "alimentacion" }],
-    "tipoContrato": "indefinido",
-    "jornada": "completa",
-    "modalidad": "presencial",
-    "ubicacion": { "isla": "tenerife", "municipio": "Santa Cruz de Tenerife" },
-    "salario": "19.000 € brutos/año",
-    "requisitos": "Carné de conducir B.",
-    "vacantes": 1,
-    "fechaLimite": "2026-12-22T00:00:00.000Z",
-    "fechaPublicacion": "2026-11-22T10:00:00.000Z",
-    "abierta": true
-  }
-]
+{
+  "ofertas": [
+    {
+      "id": "6b01...",
+      "titulo": "Técnico/a de logística en almacén solidario",
+      "descripcion": "Coordinación de la recepción, clasificación y reparto...",
+      "organizacion": "Banco de Alimentos Tenerife",
+      "categorias": [{ "id": "6aeb...", "nombre": "Alimentación", "slug": "alimentacion" }],
+      "tipoContrato": "indefinido",
+      "jornada": "completa",
+      "modalidad": "presencial",
+      "ubicacion": { "isla": "tenerife", "municipio": "Santa Cruz de Tenerife" },
+      "salario": "19.000 € brutos/año",
+      "requisitos": "Carné de conducir B.",
+      "vacantes": 1,
+      "fechaLimite": "2026-12-22T00:00:00.000Z",
+      "fechaPublicacion": "2026-11-22T10:00:00.000Z",
+      "abierta": true
+    }
+  ],
+  "total": 13,
+  "pagina": 2,
+  "porPagina": 12,
+  "totalPaginas": 2
+}
 ```
 
+- `total` y `totalPaginas` cuentan todas las ofertas que cumplen los filtros. Una `pagina` posterior a la última devuelve `ofertas: []` con el total real, para que el cliente salte a la última (pasa si se cierran ofertas mientras se navega). Sin resultados, `totalPaginas` es `0`.
+- Las ofertas publicadas a la vez se desempatan por `_id`, así que ninguna se repite ni se salta entre páginas.
 - `abierta` indica si todavía admite candidaturas (publicada y dentro de plazo).
 - `fechaLimite` es el último día incluido, a las 00:00 UTC (`null` si no tiene plazo): se muestra con `timeZone: 'UTC'`.
 - `salario` y `requisitos` son `null` si la entidad no los indicó. `ubicacion` falta en las ofertas `online`.
 
 | Error | Mensaje |
 |---|---|
-| `400` | `La búsqueda no puede superar los 100 caracteres` · `La isla no es válida` · `El tipo de contrato no es válido` · `La jornada no es válida` · `La modalidad no es válida` |
+| `400` | `La búsqueda no puede superar los 100 caracteres` · `La isla no es válida` · `El tipo de contrato no es válido` · `La jornada no es válida` · `La modalidad no es válida` · `La página no es válida` |
 | `500` | `Error al buscar las ofertas de empleo` |
 
 ### `GET /api/empleo/:id`

@@ -4,6 +4,7 @@
  * Funcion: Tipos y textos de las ofertas de empleo y las candidaturas, compartidos por sus pantallas.
  */
 import { ISLAS, MODALIDADES } from './ofertas.ts'
+import type { Pagina } from './paginacion.ts'
 
 export type OfertaEmpleo = {
   id: string
@@ -23,6 +24,9 @@ export type OfertaEmpleo = {
   // Sigue publicada y no ha pasado su fecha limite
   abierta: boolean
 }
+
+// Respuesta de GET /api/empleo: una pagina del catalogo
+export type PaginaEmpleos = Pagina<OfertaEmpleo>
 
 // Como la ve su propia entidad
 export type MiOfertaEmpleo = OfertaEmpleo & {

@@ -95,7 +95,7 @@ export const usuarioVoluntario = (datos: Partial<NonNullable<Request['usuario']>
 // Si "resultado" es un Error, la consulta falla al esperarla
 export function consulta<T>(resultado: T | Error) {
   const q: Record<string, unknown> = {}
-  for (const metodo of ['sort', 'select', 'populate', 'limit', 'maxTimeMS', 'lean']) {
+  for (const metodo of ['sort', 'select', 'populate', 'skip', 'limit', 'maxTimeMS', 'lean']) {
     q[metodo] = vi.fn(() => q)
   }
   q.then = (ok: (v: T) => unknown, fallo: (e: unknown) => unknown) =>

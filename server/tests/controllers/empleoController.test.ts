@@ -38,6 +38,7 @@ const {
   resolverCandidatura,
   retirarCandidatura
 } = await import('../../src/controllers/empleoController.js')
+const { POR_PAGINA: EMPLEOS_POR_PAGINA } = await import('../../src/controllers/ofertaController.js')
 
 const ofertante = usuarioOfertante()
 const voluntario = usuarioVoluntario()
@@ -79,20 +80,30 @@ describe('admiteCandidaturas', () => {
 })
 
 describe('buscarEmpleos', () => {
-  it('sin filtros busca las publicadas dentro de plazo, las mas recientes primero', async () => {
+  it('sin filtros devuelve la primera pagina de las publicadas dentro de plazo, las mas recientes primero', async () => {
     const oferta = empleo({ salario: '1.200 €/mes' })
     const q = consulta([oferta])
     const buscar = vi.spyOn(OfertaEmpleo, 'find').mockReturnValue(q as never)
+    const contar = vi.spyOn(OfertaEmpleo, 'countDocuments').mockReturnValue(consulta(1) as never)
     const res = crearRes()
 
     await buscarEmpleos(crearReq(), res)
 
-    expect(buscar).toHaveBeenCalledWith({
+    const filtro = {
       estado: 'publicada',
       $or: [{ fechaLimite: { $exists: false } }, { fechaLimite: { $gte: fechaUtc(0) } }]
-    })
-    expect(q.sort).toHaveBeenCalledWith({ fechaPublicacion: -1 })
-    expect(res.body).toEqual([
+    }
+    expect(buscar).toHaveBeenCalledWith(filtro)
+    expect(contar).toHaveBeenCalledWith(filtro)
+    expect(q.sort).toHaveBeenCalledWith({ fechaPublicacion: -1, _id: -1 })
+    expect(q.skip).toHaveBeenCalledWith(0)
+    expect(q.limit).toHaveBeenCalledWith(EMPLEOS_POR_PAGINA)
+    expect(res.body).toEqual({
+      total: 1,
+      pagina: 1,
+      porPagina: EMPLEOS_POR_PAGINA,
+      totalPaginas: 1,
+      ofertas: [
       {
         id: oferta.id,
         titulo: 'Educador/a social',
@@ -110,11 +121,13 @@ describe('buscarEmpleos', () => {
         fechaPublicacion: oferta.fechaPublicacion,
         abierta: true
       }
-    ])
+      ]
+    })
   })
 
   it('combina los filtros y busca cada palabra sin tildes', async () => {
     const buscar = vi.spyOn(OfertaEmpleo, 'find').mockReturnValue(consulta([]) as never)
+    const contar = vi.spyOn(OfertaEmpleo, 'countDocuments').mockReturnValue(consulta(0) as never)
 
     await buscarEmpleos(
       crearReq({
@@ -137,6 +150,43 @@ describe('buscarEmpleos', () => {
       modalidad: 'online',
       $and: [{ textoBusqueda: /educacion/ }, { textoBusqueda: /social/ }]
     })
+    // El total se cuenta con los mismos filtros
+    expect(contar).toHaveBeenCalledWith(filtro)
+  })
+
+  it('salta las ofertas de las paginas anteriores y calcula el total de paginas', async () => {
+    const q = consulta([empleo()])
+    vi.spyOn(OfertaEmpleo, 'find').mockReturnValue(q as never)
+    vi.spyOn(OfertaEmpleo, 'countDocuments').mockReturnValue(consulta(2 * EMPLEOS_POR_PAGINA + 1) as never)
+    const res = crearRes()
+
+    await buscarEmpleos(crearReq({ query: { pagina: '3', isla: 'tenerife' } }), res)
+
+    expect(q.skip).toHaveBeenCalledWith(2 * EMPLEOS_POR_PAGINA)
+    expect(q.limit).toHaveBeenCalledWith(EMPLEOS_POR_PAGINA)
+    expect(res.body).toMatchObject({ total: 2 * EMPLEOS_POR_PAGINA + 1, pagina: 3, totalPaginas: 3 })
+    expect((res.body as { ofertas: unknown[] }).ofertas).toHaveLength(1)
+  })
+
+  it('una pagina posterior a la ultima llega vacia, con el total real', async () => {
+    vi.spyOn(OfertaEmpleo, 'find').mockReturnValue(consulta([]) as never)
+    vi.spyOn(OfertaEmpleo, 'countDocuments').mockReturnValue(consulta(EMPLEOS_POR_PAGINA) as never)
+    const res = crearRes()
+
+    await buscarEmpleos(crearReq({ query: { pagina: '5' } }), res)
+
+    expect(res.statusCode).toBe(200)
+    expect(res.body).toEqual({ ofertas: [], total: EMPLEOS_POR_PAGINA, pagina: 5, porPagina: EMPLEOS_POR_PAGINA, totalPaginas: 1 })
+  })
+
+  it('sin resultados hay cero paginas', async () => {
+    vi.spyOn(OfertaEmpleo, 'find').mockReturnValue(consulta([]) as never)
+    vi.spyOn(OfertaEmpleo, 'countDocuments').mockReturnValue(consulta(0) as never)
+    const res = crearRes()
+
+    await buscarEmpleos(crearReq(), res)
+
+    expect(res.body).toMatchObject({ ofertas: [], total: 0, pagina: 1, totalPaginas: 0 })
   })
 
   it.each([
@@ -144,7 +194,12 @@ describe('buscarEmpleos', () => {
     [{ isla: 'mallorca' }, 'La isla no es válida'],
     [{ tipoContrato: 'becario' }, 'El tipo de contrato no es válido'],
     [{ jornada: 'nocturna' }, 'La jornada no es válida'],
-    [{ modalidad: 'hibrida' }, 'La modalidad no es válida']
+    [{ modalidad: 'hibrida' }, 'La modalidad no es válida'],
+    [{ pagina: '0' }, 'La página no es válida'],
+    [{ pagina: '-2' }, 'La página no es válida'],
+    [{ pagina: '1.5' }, 'La página no es válida'],
+    [{ pagina: 'dos' }, 'La página no es válida'],
+    [{ pagina: '1001' }, 'La página no es válida']
   ])('responde 400 con %o', async (query, mensaje) => {
     const buscar = vi.spyOn(OfertaEmpleo, 'find')
     const res = crearRes()
@@ -158,12 +213,23 @@ describe('buscarEmpleos', () => {
 
   it('responde 500 si falla la base de datos', async () => {
     vi.spyOn(OfertaEmpleo, 'find').mockReturnValue(consulta(errorBd()) as never)
+    vi.spyOn(OfertaEmpleo, 'countDocuments').mockReturnValue(consulta(0) as never)
     const res = crearRes()
 
     await buscarEmpleos(crearReq(), res)
 
     expect(res.statusCode).toBe(500)
     expect(res.body).toEqual({ message: 'Error al buscar las ofertas de empleo' })
+  })
+
+  it('responde 500 si falla el recuento', async () => {
+    vi.spyOn(OfertaEmpleo, 'find').mockReturnValue(consulta([empleo()]) as never)
+    vi.spyOn(OfertaEmpleo, 'countDocuments').mockReturnValue(consulta(errorBd()) as never)
+    const res = crearRes()
+
+    await buscarEmpleos(crearReq(), res)
+
+    expect(res.statusCode).toBe(500)
   })
 })
 

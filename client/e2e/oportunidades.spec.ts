@@ -28,7 +28,11 @@ test('Un voluntario puede filtrar oportunidades, ver detalles e inscribirse', as
       consultas.push(filtros);
       // Con el filtro de Tenerife + Educación no hay resultados; sin filtros sale nuestra oferta
       const conFiltros = filtros.has('isla') || filtros.has('categoria');
-      return route.fulfill({ json: conFiltros ? [] : [oferta] });
+      const ofertas = conFiltros ? [] : [oferta];
+      // Respuesta paginada (?pagina=N): todo cabe en una página
+      return route.fulfill({
+        json: { ofertas, total: ofertas.length, pagina: 1, porPagina: 12, totalPaginas: ofertas.length ? 1 : 0 },
+      });
     },
   );
 
@@ -93,4 +97,54 @@ test('Un voluntario puede filtrar oportunidades, ver detalles e inscribirse', as
   await expect(page.getByRole('heading', { level: 1, name: 'Mis inscripciones' })).toBeVisible();
   await expect(page.getByRole('heading', { name: oferta.titulo })).toBeVisible();
   await expect(page.locator('.inscription-status')).toHaveText('Pendiente');
+});
+
+test('El catálogo de oportunidades se recorre por páginas (catálogo simulado de 30)', async ({ page }) => {
+  // Páginas de 12, 12 y 6; con un filtro, una sola página de 3
+  const paginasPedidas: string[] = [];
+  await page.route('**/api/categorias', (route) => route.fulfill({ json: [] }));
+  await page.route(
+    (url) => url.pathname === '/api/ofertas',
+    (route) => {
+      const parametros = new URL(route.request().url()).searchParams;
+      paginasPedidas.push(parametros.toString());
+      const pagina = Number(parametros.get('pagina'));
+      const filtrada = parametros.has('isla');
+      const total = filtrada ? 3 : 30;
+      const enPagina = filtrada ? 3 : pagina === 3 ? 6 : 12;
+      const ofertas = Array.from({ length: enPagina }, (_, i) => {
+        const n = (pagina - 1) * 12 + i + 1;
+        return ofertaFalsa({ id: `oferta-falsa-${n}`, titulo: `Oportunidad simulada ${n}` });
+      });
+      return route.fulfill({
+        json: { ofertas, total, pagina, porPagina: 12, totalPaginas: Math.ceil(total / 12) },
+      });
+    },
+  );
+
+  await iniciarSesion(page, VOLUNTARIO);
+  await page.goto('/oportunidades');
+
+  const paginacion = page.getByRole('navigation', { name: 'Páginas de oportunidades' });
+  const titulo = (n: number) => page.getByRole('heading', { name: `Oportunidad simulada ${n}`, exact: true });
+  await expect(page.getByText('30 oportunidades · Mostrando 1–12')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ver detalles' })).toHaveCount(12);
+  await expect(paginacion.getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page');
+  await expect(paginacion.getByRole('button', { name: /Anterior/ })).toBeDisabled();
+
+  await paginacion.getByRole('button', { name: /Siguiente/ }).click();
+  await expect(titulo(13)).toBeVisible();
+  await expect(titulo(1)).toHaveCount(0);
+  await expect(page.getByText('30 oportunidades · Mostrando 13–24')).toBeVisible();
+
+  await paginacion.getByRole('button', { name: 'Página 3' }).click();
+  await expect(page.getByRole('link', { name: 'Ver detalles' })).toHaveCount(6);
+  await expect(paginacion.getByRole('button', { name: /Siguiente/ })).toBeDisabled();
+
+  // Un filtro vuelve a la primera página; con una sola página no hay navegación
+  await page.getByLabel('Isla').selectOption('tenerife');
+  await expect(page.getByText('3 oportunidades', { exact: true })).toBeVisible();
+  await expect(paginacion).toHaveCount(0);
+  // StrictMode repite la primera petición en desarrollo: se comparan sin duplicados
+  expect([...new Set(paginasPedidas)]).toEqual(['pagina=1', 'pagina=2', 'pagina=3', 'isla=tenerife&pagina=1']);
 });

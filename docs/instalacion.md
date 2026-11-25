@@ -86,7 +86,9 @@ npm run test:watch   # se repiten al guardar
 | `GestionarOfertas.test.tsx` | Estado visible (*Completa*, *Finalizada*…), plazas ocupadas, cerrar, eliminar y publicar |
 | `Notificaciones.test.tsx` | Contador de no leídas, panel, marcar como leídas y recarga al volver a la pestaña |
 | `Acceso.test.tsx` | Inicio de sesión y registro: validaciones, errores del servidor y sesión guardada |
-| `useOfertasPublicadas.test.ts` | Filtros enviados, estado de carga, cancelación de peticiones y errores |
+| `useOfertasPublicadas.test.ts` | Filtros enviados, estado de carga, cancelación de peticiones, errores y carga por páginas |
+| `Paginacion.test.tsx` | Números visibles con huecos, tramo «Mostrando…», página actual y botones desactivados |
+| `Oportunidades.test.tsx` | Catálogo por páginas, vuelta a la primera al filtrar y salto a la última si la pedida llega vacía |
 | `Empleo.test.tsx` | Catálogo de empleo, filtros enviados y paginación, mis candidaturas y retirar; ofertas de la entidad, publicar y cerrar |
 | `OfertaEmpleoDetalle.test.tsx` | Postularse con mensaje, estado si ya se postuló, fuera de plazo; candidaturas con trayectoria, contacto solo preseleccionado |
 | `Retos.test.tsx` | Progreso y fecha de cada reto, ranking con el voluntario marcado, su puesto si queda fuera, cambio de mes e isla y errores |

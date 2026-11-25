@@ -126,6 +126,7 @@ los parámetros son opcionales y se combinan entre sí.
 | `municipio` | Texto exacto (`La Laguna`) |
 | `fechaDesde` | Formato `AAAA-MM-DD`. Por defecto, hoy |
 | `fechaHasta` | Formato `AAAA-MM-DD`, incluida. Por defecto, sin límite |
+| `pagina` | Entero de 1 a 1000. Si se envía, la respuesta va paginada (ver abajo) |
 
 ```json
 GET /api/ofertas?isla=gran_canaria&q=costa
@@ -160,7 +161,26 @@ GET /api/ofertas?isla=gran_canaria&q=costa
 - `fecha` hay que mostrarla con `timeZone: 'UTC'`.
 - `ubicacion` puede faltar en las ofertas `online`, y nunca incluye `direccion`, que puede ser un domicilio.
 - `requisitos` y `edadMinima` solo aparecen si la oferta los tiene.
-- La lista no está paginada todavía (SCRUM-34).
+
+**Paginación.** Sin `pagina` llega la lista completa, como arriba (la usa la página de inicio para
+elegir las destacadas). Con `pagina`, en páginas de 12, con el mismo formato que `GET /api/empleo`:
+
+```json
+GET /api/ofertas?pagina=2
+
+200 OK
+{
+  "ofertas": [ ... ],
+  "total": 30,
+  "pagina": 2,
+  "porPagina": 12,
+  "totalPaginas": 3
+}
+```
+
+- Las que empiezan el mismo día se desempatan por `_id`, así que ninguna se repite entre páginas.
+- Una página posterior a la última llega con `ofertas: []` y el total real. Si `categoria` no existe, `total` es `0`.
+- `400` `La página no es válida` si no es un entero de 1 a 1000.
 
 | Error | Mensaje |
 |---|---|

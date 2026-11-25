@@ -4,7 +4,7 @@
  * Funcion: Pantalla de empleo. El voluntario busca ofertas y sigue sus candidaturas;
  *          la entidad publica sus ofertas de empleo y accede a sus candidaturas.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './HomePage.css'
 import './Oportunidades.css'
 import './GestionarOfertas.css'
@@ -20,6 +20,8 @@ import {
   formatearDia,
   formatearFechaCorta,
   lugarDeEmpleo,
+  paginasVisibles,
+  type PaginaEmpleos,
   type MiCandidatura,
   type MiOfertaEmpleo,
   type OfertaEmpleo,
@@ -81,19 +83,73 @@ function TarjetaEmpleo({ oferta }: { oferta: OfertaEmpleo }) {
   )
 }
 
+type PaginacionProps = {
+  actual: number
+  total: number
+  onCambiar: (pagina: number) => void
+}
+
+function Paginacion({ actual, total, onCambiar }: PaginacionProps) {
+  return (
+    <nav className="paginacion" aria-label="Páginas de ofertas de empleo">
+      <button
+        type="button"
+        className="paginacion-paso"
+        onClick={() => onCambiar(actual - 1)}
+        disabled={actual === 1}
+      >
+        <span aria-hidden="true">‹</span> Anterior
+      </button>
+      <ol>
+        {paginasVisibles(actual, total).map((n, i) =>
+          n === null ? (
+            <li key={`hueco-${i}`} className="paginacion-hueco" aria-hidden="true">…</li>
+          ) : (
+            <li key={n}>
+              <button
+                type="button"
+                aria-label={`Página ${n}`}
+                aria-current={n === actual ? 'page' : undefined}
+                onClick={() => n !== actual && onCambiar(n)}
+              >
+                {n}
+              </button>
+            </li>
+          ),
+        )}
+      </ol>
+      <button
+        type="button"
+        className="paginacion-paso"
+        onClick={() => onCambiar(actual + 1)}
+        disabled={actual === total}
+      >
+        Siguiente <span aria-hidden="true">›</span>
+      </button>
+    </nav>
+  )
+}
+
 function BuscadorEmpleo() {
   const [busqueda, setBusqueda] = useState('')
   const [isla, setIsla] = useState('')
   const [tipoContrato, setTipoContrato] = useState('')
   const [jornada, setJornada] = useState('')
-  const [ofertas, setOfertas] = useState<OfertaEmpleo[] | null>(null)
+  const [resultado, setResultado] = useState<PaginaEmpleos | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const resultados = useRef<HTMLElement>(null)
   const q = useValorRetrasado(busqueda)
 
   const parametros = new URLSearchParams()
   for (const [clave, valor] of Object.entries({ q: q.trim(), isla, tipoContrato, jornada })) {
     if (valor) parametros.set(clave, valor)
   }
+  const filtros = parametros.toString()
+
+  // La pagina va ligada a los filtros: al cambiarlos se vuelve a la primera
+  const [paginaElegida, setPaginaElegida] = useState({ filtros, pagina: 1 })
+  const pagina = paginaElegida.filtros === filtros ? paginaElegida.pagina : 1
+  if (pagina > 1) parametros.set('pagina', String(pagina))
   const consulta = parametros.toString()
 
   useEffect(() => {
@@ -102,14 +158,27 @@ function BuscadorEmpleo() {
       .then(async (res) => {
         const data = await res.json()
         if (!res.ok) throw new Error(data.message ?? 'No se pudieron cargar las ofertas de empleo')
-        setOfertas(data)
+        const datos = data as PaginaEmpleos
+        // Si la pagina se ha quedado vacia (se cerraron ofertas), salta a la ultima que tenga
+        if (datos.ofertas.length === 0 && datos.pagina > 1 && datos.totalPaginas > 0) {
+          setPaginaElegida({ filtros, pagina: datos.totalPaginas })
+          return
+        }
+        setResultado(datos)
         setError(null)
       })
       .catch((errorCarga) => {
         if (!controlador.signal.aborted) setError(mensajeDeError(errorCarga))
       })
     return () => controlador.abort()
-  }, [consulta])
+  }, [consulta, filtros])
+
+  function irAPagina(nueva: number) {
+    setPaginaElegida({ filtros, pagina: nueva })
+    resultados.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
+
+  const ofertas = resultado?.ofertas ?? null
 
   const hayFiltros = Boolean(busqueda || isla || tipoContrato || jornada)
 
@@ -169,15 +238,26 @@ function BuscadorEmpleo() {
         </div>
       </section>
 
-      <section className="opportunities-section">
-        {ofertas && ofertas.length > 0 ? (
+      <section className="opportunities-section" ref={resultados}>
+        {resultado && ofertas && ofertas.length > 0 ? (
           <>
             <p className="catalogo-total">
-              {ofertas.length === 1 ? '1 oferta de empleo' : `${ofertas.length} ofertas de empleo`}
+              {resultado.total === 1 ? '1 oferta de empleo' : `${resultado.total} ofertas de empleo`}
+              {resultado.totalPaginas > 1 &&
+                ` · Mostrando ${(resultado.pagina - 1) * resultado.porPagina + 1}–${
+                  (resultado.pagina - 1) * resultado.porPagina + ofertas.length
+                }`}
             </p>
             <div className="catalogo-grid">
               {ofertas.map((oferta) => <TarjetaEmpleo key={oferta.id} oferta={oferta} />)}
             </div>
+            {resultado.totalPaginas > 1 && (
+              <Paginacion
+                actual={resultado.pagina}
+                total={resultado.totalPaginas}
+                onCambiar={irAPagina}
+              />
+            )}
           </>
         ) : (
           <p className="empty-state">

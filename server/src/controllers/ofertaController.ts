@@ -36,6 +36,30 @@ export function leerParametro(valor: unknown): string | undefined {
   return typeof valor === 'string' && valor.trim() ? valor.trim() : undefined
 }
 
+// Catalogos paginados: 12 llena filas completas con 4, 3, 2 o 1 columnas
+export const POR_PAGINA = 12
+const PAGINA_MAX = 1000
+
+// Numero de pagina (desde 1); sin parametro, la primera. null si no es valido
+export function leerPagina(valor: unknown): number | null {
+  const texto = leerParametro(valor)
+  if (texto === undefined) return 1
+  if (!/^\d+$/.test(texto)) return null
+  const pagina = Number(texto)
+  return pagina >= 1 && pagina <= PAGINA_MAX ? pagina : null
+}
+
+// Cuerpo de una respuesta paginada
+export function paginar<T>(elementos: T[], total: number, pagina: number) {
+  return {
+    ofertas: elementos,
+    total,
+    pagina,
+    porPagina: POR_PAGINA,
+    totalPaginas: Math.ceil(total / POR_PAGINA)
+  }
+}
+
 export function esIslaValida(isla: string): isla is (typeof ISLAS)[number] {
   return (ISLAS as readonly string[]).includes(isla)
 }
@@ -116,14 +140,23 @@ function serializarOferta(oferta: Awaited<ReturnType<typeof consultarOfertas>>[n
   }
 }
 
-// GET /api/ofertas -> ofertas publicadas con algun turno en las fechas pedidas
+// GET /api/ofertas -> ofertas publicadas con algun turno en las fechas pedidas.
+// Con ?pagina=N responde paginado ({ ofertas, total, pagina, porPagina, totalPaginas });
+// sin el, la lista completa, que usa la pagina de inicio para elegir las destacadas
 export async function buscarOfertas(req: Request, res: Response): Promise<void> {
+  const paginada = req.query.pagina !== undefined
+  const pagina = leerPagina(req.query.pagina)
   const q = leerParametro(req.query.q)
   const categoria = leerParametro(req.query.categoria)
   const isla = leerParametro(req.query.isla)
   const municipio = leerParametro(req.query.municipio)
   const textoDesde = leerParametro(req.query.fechaDesde)
   const textoHasta = leerParametro(req.query.fechaHasta)
+
+  if (pagina === null) {
+    res.status(400).json({ message: 'La página no es válida' })
+    return
+  }
 
   if (q && q.length > BUSQUEDA_MAX) {
     res.status(400).json({ message: `La búsqueda no puede superar los ${BUSQUEDA_MAX} caracteres` })
@@ -163,7 +196,7 @@ export async function buscarOfertas(req: Request, res: Response): Promise<void> 
     if (categoria) {
       const encontrada = await Categoria.findOne({ slug: categoria.toLowerCase(), activa: true })
       if (!encontrada) {
-        res.json([])
+        res.json(paginada ? paginar([], 0, pagina) : [])
         return
       }
       filtro.categoriaIds = encontrada._id
@@ -176,9 +209,20 @@ export async function buscarOfertas(req: Request, res: Response): Promise<void> 
         .map((palabra) => ({ textoBusqueda: new RegExp(escaparRegex(palabra)) }))
     }
 
-    const ofertas = await consultarOfertas(filtro)
+    if (!paginada) {
+      const ofertas = await consultarOfertas(filtro)
+      res.json(ofertas.map(serializarOferta))
+      return
+    }
 
-    res.json(ofertas.map(serializarOferta))
+    // El _id desempata las que empiezan el mismo dia, para que no se repitan entre paginas
+    const [ofertas, total] = await Promise.all([
+      consultarOfertas(filtro, { 'turnos.fecha': 1, _id: 1 })
+        .skip((pagina - 1) * POR_PAGINA)
+        .limit(POR_PAGINA),
+      Oferta.countDocuments(filtro).maxTimeMS(CONSULTA_MAX_MS)
+    ])
+    res.json(paginar(ofertas.map(serializarOferta), total, pagina))
   } catch (error) {
     console.error('Error al buscar ofertas:', error)
     res.status(500).json({ message: 'Error al buscar las ofertas' })

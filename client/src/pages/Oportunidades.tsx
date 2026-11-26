@@ -3,14 +3,16 @@
  * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
  * Funcion: Catalogo con todas las ofertas disponibles y el buscador.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './HomePage.css'
 import './Oportunidades.css'
 import type { Usuario } from './Login.tsx'
 import Notificaciones from '../components/Notificaciones.tsx'
+import Paginacion from '../components/Paginacion.tsx'
 import TarjetaOferta from '../components/TarjetaOferta.tsx'
 import { ISLAS, hoyIso } from '../ofertas.ts'
-import { useOfertasPublicadas } from '../useOfertasPublicadas.ts'
+import { rangoVisible, usePaginaDeFiltros } from '../paginacion.ts'
+import { construirFiltros, useOfertasPaginadas } from '../useOfertasPublicadas.ts'
 
 type OportunidadesProps = {
   usuario: Usuario
@@ -50,14 +52,36 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
   const [fechaHasta, setFechaHasta] = useState('')
   const [categorias, setCategorias] = useState<Categoria[]>([])
 
-  const { ofertas, error: errorOfertas, cargando } = useOfertasPublicadas({
+  const filtros = {
     q: useValorRetrasado(busqueda),
     categoria,
     isla,
     municipio: useValorRetrasado(municipio),
     fechaDesde,
     fechaHasta,
-  })
+  }
+  // Al cambiar cualquier filtro se vuelve a la primera pagina
+  const [pagina, setPagina] = usePaginaDeFiltros(construirFiltros(filtros))
+  const { resultado, error: errorOfertas, cargando } = useOfertasPaginadas(filtros, pagina)
+  const ofertas = resultado?.ofertas ?? null
+  const listado = useRef<HTMLElement>(null)
+
+  // Si la pagina pedida llega vacia (se cerraron ofertas mientras tanto), salta a la ultima.
+  // Solo con la respuesta de la pagina actual: tras saltar, la anterior ya no coincide
+  if (
+    resultado &&
+    resultado.pagina === pagina &&
+    pagina > 1 &&
+    resultado.ofertas.length === 0 &&
+    resultado.totalPaginas > 0
+  ) {
+    setPagina(resultado.totalPaginas)
+  }
+
+  function irAPagina(nueva: number) {
+    setPagina(nueva)
+    listado.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
 
   useEffect(() => {
     const controlador = new AbortController()
@@ -201,18 +225,18 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
         </section>
 
         {/* El id es el destino del enlace "Ver todas" del buscador */}
-        <section className="opportunities-section" id="oportunidades-destacadas">
+        <section className="opportunities-section" id="oportunidades-destacadas" ref={listado}>
           <div className="section-heading">
             <div>
               <h2 className="section-title">Todas las oportunidades</h2>
             </div>
-            {ofertas && (
+            {resultado && (
               <p className="catalogo-total">
                 {cargando
                   ? 'Buscando...'
-                  : oportunidades.length === 1
-                    ? '1 oportunidad'
-                    : `${oportunidades.length} oportunidades`}
+                  : `${resultado.total === 1 ? '1 oportunidad' : `${resultado.total} oportunidades`}${
+                      resultado.totalPaginas > 1 ? ` · ${rangoVisible(resultado, oportunidades.length)}` : ''
+                    }`}
               </p>
             )}
           </div>
@@ -221,12 +245,20 @@ function Oportunidades({ usuario, onCerrarSesion }: OportunidadesProps) {
             <p className="empty-state">{errorOfertas}</p>
           )}
 
-          {oportunidades.length > 0 ? (
-            <div className={`catalogo-grid${cargando ? ' catalogo-cargando' : ''}`}>
-              {oportunidades.map((oferta) => (
-                <TarjetaOferta key={oferta.id} oferta={oferta} />
-              ))}
-            </div>
+          {resultado && oportunidades.length > 0 ? (
+            <>
+              <div className={`catalogo-grid${cargando ? ' catalogo-cargando' : ''}`}>
+                {oportunidades.map((oferta) => (
+                  <TarjetaOferta key={oferta.id} oferta={oferta} />
+                ))}
+              </div>
+              <Paginacion
+                actual={resultado.pagina}
+                total={resultado.totalPaginas}
+                etiqueta="Páginas de oportunidades"
+                onCambiar={irAPagina}
+              />
+            </>
           ) : (
             <p className="empty-state">
               {errorOfertas ??

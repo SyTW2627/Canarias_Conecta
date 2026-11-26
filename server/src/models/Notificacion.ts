@@ -31,7 +31,9 @@ export const TIPOS_NOTIFICACION = [
   'candidatura_nueva',
   // Para el candidato: la entidad ha resuelto su candidatura
   'candidatura_preseleccionada',
-  'candidatura_descartada'
+  'candidatura_descartada',
+  // Para el voluntario: una entidad le invita a inscribirse en una oferta compatible con su perfil
+  'invitacion_oferta'
 ] as const
 
 const notificacionSchema = new Schema(

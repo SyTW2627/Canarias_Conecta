@@ -253,6 +253,12 @@ function GestionarOfertas({ usuario, onCerrarSesion }: GestionarOfertasProps) {
                           <>
                             <a
                               className="gestion-accion"
+                              href={`/gestionar-ofertas/${oferta.id}/recomendados`}
+                            >
+                              Voluntarios recomendados
+                            </a>
+                            <a
+                              className="gestion-accion"
                               href={`/gestionar-ofertas/${oferta.id}/editar`}
                             >
                               Editar

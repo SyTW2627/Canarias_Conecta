@@ -1,0 +1,37 @@
+/**
+ * Proyecto: Canarias Conecta
+ * Integrantes: Estela Fernandez Trujillo, Airam Prieto Gonzalez, Sergio Gonzalez Sanchez
+ * Funcion: Estilos de la pantalla de voluntarios recomendados para una oferta.
+ */
+.recomendado-afinidad {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--verde-claro);
+  color: var(--verde-oscuro);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.recomendado-afinidad-alta {
+  background: var(--verde);
+  color: #fff;
+}
+
+.recomendado-motivos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--texto);
+  font-size: 14px;
+}
+
+.recomendado-invitado {
+  align-self: center;
+  color: var(--verde-oscuro);
+  font-size: 14px;
+  font-weight: 700;
+}

@@ -7,7 +7,12 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import Empleo from '../pages/Empleo.tsx'
-import type { MiCandidatura, MiOfertaEmpleo, OfertaEmpleo } from '../empleo.ts'
+import {
+  type MiCandidatura,
+  type MiOfertaEmpleo,
+  type OfertaEmpleo,
+  type PaginaEmpleos,
+} from '../empleo.ts'
 import { OFERTANTE, VOLUNTARIO, dia, simularApi } from './api.ts'
 
 function empleo(datos: Partial<OfertaEmpleo> = {}): OfertaEmpleo {
@@ -48,11 +53,35 @@ function candidatura(datos: Partial<MiCandidatura> = {}): MiCandidatura {
   }
 }
 
+// Respuesta paginada de GET /api/empleo
+function pagina(ofertas: OfertaEmpleo[], datos: Partial<PaginaEmpleos> = {}) {
+  const total = datos.total ?? ofertas.length
+  return {
+    body: {
+      ofertas,
+      total,
+      pagina: 1,
+      porPagina: 12,
+      totalPaginas: Math.ceil(total / 12),
+      ...datos,
+    },
+  }
+}
+
+// n ofertas distintas, numeradas desde "desde"
+const variasOfertas = (n: number, desde = 1) =>
+  Array.from({ length: n }, (_, i) => empleo({ id: `e${desde + i}`, titulo: `Puesto ${desde + i}` }))
+
+// Pagina pedida en la URL (sin parametro, la primera)
+const paginaDeUrl = (url: string) => Number(new URL(url, 'http://x').searchParams.get('pagina') ?? 1)
+
+const urlsPedidas = () => vi.mocked(fetch).mock.calls.map(([url]) => String(url))
+
 const sinSesion = () => {}
 
 describe('Empleo (voluntario)', () => {
   it('muestra las ofertas de empleo con su contrato, lugar, salario y vacantes', async () => {
-    simularApi({ 'GET /api/empleo': { body: [empleo()] } })
+    simularApi({ 'GET /api/empleo': pagina([empleo()]) })
     render(<Empleo usuario={VOLUNTARIO} onCerrarSesion={sinSesion} />)
 
     const tarjeta = (await screen.findByText('Educador/a social')).closest('article')!
@@ -67,7 +96,7 @@ describe('Empleo (voluntario)', () => {
   })
 
   it('envia los filtros elegidos a la API', async () => {
-    simularApi({ 'GET /api/empleo': { body: [] } })
+    simularApi({ 'GET /api/empleo': pagina([]) })
     render(<Empleo usuario={VOLUNTARIO} onCerrarSesion={sinSesion} />)
 
     expect(await screen.findByText('Todavía no hay ofertas de empleo publicadas.')).toBeInTheDocument()
@@ -75,13 +104,12 @@ describe('Empleo (voluntario)', () => {
     await userEvent.selectOptions(screen.getByLabelText('Jornada'), 'completa')
 
     expect(await screen.findByText('No hay ofertas de empleo con esos filtros.')).toBeInTheDocument()
-    const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url))
-    expect(urls).toContain('/api/empleo?tipoContrato=practicas&jornada=completa')
+    expect(urlsPedidas()).toContain('/api/empleo?tipoContrato=practicas&jornada=completa')
   })
 
   it('lista sus candidaturas y permite retirar una tras confirmarlo', async () => {
     const llamadas = simularApi({
-      'GET /api/empleo': { body: [] },
+      'GET /api/empleo': pagina([]),
       'GET /api/empleo/candidaturas/mias': {
         body: [candidatura(), candidatura({ id: 'c2', titulo: 'Monitor/a', estado: 'descartada' })],
       },
@@ -110,7 +138,7 @@ describe('Empleo (voluntario)', () => {
   })
 
   it('sin candidaturas lo indica', async () => {
-    simularApi({ 'GET /api/empleo': { body: [] }, 'GET /api/empleo/candidaturas/mias': { body: [] } })
+    simularApi({ 'GET /api/empleo': pagina([]), 'GET /api/empleo/candidaturas/mias': { body: [] } })
     render(<Empleo usuario={VOLUNTARIO} onCerrarSesion={sinSesion} />)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Mis candidaturas' }))
@@ -118,6 +146,89 @@ describe('Empleo (voluntario)', () => {
     expect(
       await screen.findByText('Todavía no te has postulado a ninguna oferta de empleo.'),
     ).toBeInTheDocument()
+  })
+})
+
+describe('Empleo (voluntario): paginacion del catalogo', () => {
+  // 30 ofertas: paginas de 12, 12 y 6
+  const responderPorPagina = (_cuerpo: unknown, url: string) => {
+    const n = paginaDeUrl(url)
+    return pagina(variasOfertas(n === 3 ? 6 : 12, (n - 1) * 12 + 1), { total: 30, pagina: n })
+  }
+
+  it('con una sola pagina no muestra la paginacion', async () => {
+    simularApi({ 'GET /api/empleo': pagina(variasOfertas(5)) })
+    render(<Empleo usuario={VOLUNTARIO} onCerrarSesion={sinSesion} />)
+
+    expect(await screen.findByText('5 ofertas de empleo')).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Páginas de ofertas de empleo' })).not.toBeInTheDocument()
+  })
+
+  it('muestra el total, el rango visible y la pagina actual', async () => {
+    simularApi({ 'GET /api/empleo': responderPorPagina })
+    render(<Empleo usuario={VOLUNTARIO} onCerrarSesion={sinSesion} />)
+
+    expect(await screen.findByText('30 ofertas de empleo · Mostrando 1–12')).toBeInTheDocument()
+    expect(screen.getAllByRole('article')).toHaveLength(12)
+    const nav = screen.getByRole('navigation', { name: 'Páginas de ofertas de empleo' })
+    expect(within(nav).getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page')
+    expect(within(nav).getByRole('button', { name: 'Página 3' })).not.toHaveAttribute('aria-current')
+    expect(within(nav).getByRole('button', { name: /Anterior/ })).toBeDisabled()
+    expect(within(nav).getByRole('button', { name: /Siguiente/ })).toBeEnabled()
+  })
+
+  it('avanza y retrocede de pagina pidiendo cada una a la API', async () => {
+    simularApi({ 'GET /api/empleo': responderPorPagina })
+    render(<Empleo usuario={VOLUNTARIO} onCerrarSesion={sinSesion} />)
+    await screen.findByText('Puesto 1')
+
+    await userEvent.click(screen.getByRole('button', { name: /Siguiente/ }))
+    expect(await screen.findByText('Puesto 13')).toBeInTheDocument()
+    expect(screen.queryByText('Puesto 1')).not.toBeInTheDocument()
+    expect(urlsPedidas()).toContain('/api/empleo?pagina=2')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Página 3' }))
+    expect(await screen.findByText('30 ofertas de empleo · Mostrando 25–30')).toBeInTheDocument()
+    expect(screen.getAllByRole('article')).toHaveLength(6)
+    expect(screen.getByRole('button', { name: /Siguiente/ })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole('button', { name: /Anterior/ }))
+    expect(await screen.findByText('Puesto 13')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Página 2' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('al cambiar un filtro vuelve a la primera pagina', async () => {
+    simularApi({ 'GET /api/empleo': responderPorPagina })
+    render(<Empleo usuario={VOLUNTARIO} onCerrarSesion={sinSesion} />)
+    await screen.findByText('Puesto 1')
+    await userEvent.click(screen.getByRole('button', { name: 'Página 2' }))
+    await screen.findByText('Puesto 13')
+
+    await userEvent.selectOptions(screen.getByLabelText('Isla'), 'tenerife')
+
+    expect(await screen.findByText('Puesto 1')).toBeInTheDocument()
+    expect(urlsPedidas().at(-1)).toBe('/api/empleo?isla=tenerife')
+    expect(screen.getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('si la pagina pedida se ha quedado vacia, salta a la ultima', async () => {
+    // Al llegar a la 3 ya solo quedan 24 ofertas: la 3 viene vacia y se pide la 2
+    simularApi({
+      'GET /api/empleo': (_cuerpo, url) => {
+        const n = paginaDeUrl(url)
+        if (n === 1) return pagina(variasOfertas(12), { total: 30 })
+        if (n === 3) return pagina([], { total: 24, pagina: 3 })
+        return pagina(variasOfertas(12, 13), { total: 24, pagina: n })
+      },
+    })
+    render(<Empleo usuario={VOLUNTARIO} onCerrarSesion={sinSesion} />)
+    await screen.findByText('Puesto 1')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Página 3' }))
+
+    expect(await screen.findByText('24 ofertas de empleo · Mostrando 13–24')).toBeInTheDocument()
+    expect(urlsPedidas().slice(-2)).toEqual(['/api/empleo?pagina=3', '/api/empleo?pagina=2'])
+    expect(screen.queryByRole('button', { name: 'Página 3' })).not.toBeInTheDocument()
   })
 })
 

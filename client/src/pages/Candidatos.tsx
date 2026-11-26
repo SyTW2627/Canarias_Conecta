@@ -9,6 +9,10 @@ import './GestionarOfertas.css'
 import './Candidatos.css'
 import type { Usuario } from './Login.tsx'
 import Notificaciones from '../components/Notificaciones.tsx'
+import PerfilVoluntario, {
+  AvatarVoluntario,
+  type PerfilPublicoVoluntario,
+} from '../components/PerfilVoluntario.tsx'
 import { ISLAS, cabecerasConSesion, formatearFecha, type MiOferta } from '../ofertas.ts'
 
 type EstadoInscripcion =
@@ -33,23 +37,7 @@ type Candidato = {
   fechaResolucion: string | null
   turnoIds: string[]
   valoracion: { puntuacion: number; comentario: string | null } | null
-  voluntario: {
-    id: string
-    nombre: string
-    avatarUrl: string | null
-    isla: string | null
-    municipio: string | null
-    edad: number | null
-    biografia: string | null
-    intereses: { id: string; nombre: string }[]
-    habilidades: string[]
-    idiomas: string[]
-    estadisticas: {
-      horasTotales: number
-      colaboraciones: number
-      valoracionMedia: number
-      numValoraciones: number
-    }
+  voluntario: PerfilPublicoVoluntario & {
     email: string | null
     telefono: string | null
   }
@@ -92,14 +80,6 @@ const FORMATO_SOLICITUD = new Intl.DateTimeFormat('es-ES', {
 function filtroDeEstado(estado: EstadoInscripcion): Filtro | null {
   if (estado === 'no_presentado') return 'completada'
   return estado === 'cancelada' ? null : estado
-}
-
-function iniciales(nombre: string): string {
-  return nombre
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((parte) => parte.charAt(0).toUpperCase())
-    .join('')
 }
 
 function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
@@ -347,13 +327,7 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                   return (
                     <li key={candidato.id} className="gestion-bloque candidato">
                       <div className="candidato-cabecera">
-                        {voluntario.avatarUrl ? (
-                          <img className="candidato-avatar" src={voluntario.avatarUrl} alt="" />
-                        ) : (
-                          <span className="candidato-avatar" aria-hidden="true">
-                            {iniciales(voluntario.nombre)}
-                          </span>
-                        )}
+                        <AvatarVoluntario voluntario={voluntario} />
                         <div className="candidato-resumen">
                           <h3>{voluntario.nombre}</h3>
                           <p>
@@ -392,54 +366,7 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                       )}
 
                       {abierto && (
-                        <div className="candidato-perfil" id={`perfil-${candidato.id}`}>
-                          <dl className="candidato-estadisticas">
-                            <div>
-                              <dt>Horas de voluntariado</dt>
-                              <dd>{voluntario.estadisticas.horasTotales}</dd>
-                            </div>
-                            <div>
-                              <dt>Colaboraciones</dt>
-                              <dd>{voluntario.estadisticas.colaboraciones}</dd>
-                            </div>
-                            <div>
-                              <dt>Valoración media</dt>
-                              <dd>
-                                {voluntario.estadisticas.numValoraciones > 0
-                                  ? `${voluntario.estadisticas.valoracionMedia.toFixed(1)} / 5 (${voluntario.estadisticas.numValoraciones})`
-                                  : 'Sin valoraciones'}
-                              </dd>
-                            </div>
-                          </dl>
-
-                          <h4>Sobre mí</h4>
-                          <p>{voluntario.biografia || 'No ha escrito una presentación.'}</p>
-
-                          <h4>Intereses</h4>
-                          {voluntario.intereses.length > 0 ? (
-                            <div className="candidato-etiquetas">
-                              {voluntario.intereses.map((interes) => (
-                                <span key={interes.id} className="tag">{interes.nombre}</span>
-                              ))}
-                            </div>
-                          ) : (
-                            <p>Sin intereses indicados.</p>
-                          )}
-
-                          <h4>Habilidades</h4>
-                          <p>
-                            {voluntario.habilidades.length > 0
-                              ? voluntario.habilidades.join(', ')
-                              : 'Sin habilidades indicadas.'}
-                          </p>
-
-                          <h4>Idiomas</h4>
-                          <p>
-                            {voluntario.idiomas.length > 0
-                              ? voluntario.idiomas.join(', ')
-                              : 'Sin idiomas indicados.'}
-                          </p>
-
+                        <PerfilVoluntario id={`perfil-${candidato.id}`} voluntario={voluntario}>
                           <h4>Contacto</h4>
                           {voluntario.email ? (
                             <p>
@@ -451,7 +378,7 @@ function Candidatos({ ofertaId, usuario, onCerrarSesion }: CandidatosProps) {
                           ) : (
                             <p>Los datos de contacto se muestran al aceptar la solicitud.</p>
                           )}
-                        </div>
+                        </PerfilVoluntario>
                       )}
 
                       {candidato.estado === 'rechazada' && candidato.motivoRechazo && (

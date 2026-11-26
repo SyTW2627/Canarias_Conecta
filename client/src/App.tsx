@@ -19,6 +19,7 @@ import MisInscripciones from './pages/MisInscripciones.tsx'
 import EditarOferta from './pages/EditarOferta.tsx'
 import PublicarOferta from './pages/PublicarOferta.tsx'
 import Candidatos from './pages/Candidatos.tsx'
+import VoluntariosRecomendados from './pages/VoluntariosRecomendados.tsx'
 import Empleo from './pages/Empleo.tsx'
 import OfertaEmpleoDetalle from './pages/OfertaEmpleoDetalle.tsx'
 import Retos from './pages/Retos.tsx'
@@ -77,6 +78,7 @@ type Ruta =
   | { pagina: 'nuevaOferta' }
   | { pagina: 'editarOferta'; id: string }
   | { pagina: 'candidatos'; id: string }
+  | { pagina: 'recomendados'; id: string }
   | { pagina: 'inscripciones' }
   | { pagina: 'empleo' }
   | { pagina: 'retos' }
@@ -91,6 +93,8 @@ function rutaDe(pathname: string): Ruta {
   if (idEditar) return { pagina: 'editarOferta', id: idEditar }
   const idCandidatos = pathname.match(/^\/gestionar-ofertas\/([^/]+)\/candidatos\/?$/)?.[1]
   if (idCandidatos) return { pagina: 'candidatos', id: idCandidatos }
+  const idRecomendados = pathname.match(/^\/gestionar-ofertas\/([^/]+)\/recomendados\/?$/)?.[1]
+  if (idRecomendados) return { pagina: 'recomendados', id: idRecomendados }
   if (/^\/gestionar-ofertas\/?$/.test(pathname)) return { pagina: 'gestion' }
   if (/^\/gestionar-ofertas\/nueva\/?$/.test(pathname)) return { pagina: 'nuevaOferta' }
   if (/^\/oportunidades\/?$/.test(pathname)) return { pagina: 'oportunidades' }
@@ -311,6 +315,17 @@ function App() {
     if (ruta.pagina === 'candidatos' && usuario.rol === 'ofertante') {
       return (
         <Candidatos
+          key={ruta.id}
+          ofertaId={ruta.id}
+          usuario={usuario}
+          onCerrarSesion={cerrarSesion}
+        />
+      )
+    }
+
+    if (ruta.pagina === 'recomendados' && usuario.rol === 'ofertante') {
+      return (
+        <VoluntariosRecomendados
           key={ruta.id}
           ofertaId={ruta.id}
           usuario={usuario}

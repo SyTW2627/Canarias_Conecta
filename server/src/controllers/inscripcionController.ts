@@ -6,6 +6,7 @@ import { ESTADOS_INSCRIPCION, Inscripcion } from '../models/Inscripcion.js'
 import { Oferta } from '../models/Oferta.js'
 import { User } from '../models/User.js'
 import { notificar } from '../services/notificaciones.js'
+import { perfilPublicoVoluntario, type VoluntarioPoblado } from '../services/perfilVoluntario.js'
 import { liberarPlazas, promoverListaEspera, reservarPlazas } from '../services/plazas.js'
 import { actualizarLogros } from '../services/logros.js'
 import { isObjectIdOrHexString, Types } from 'mongoose'
@@ -237,41 +238,9 @@ export async function getMisInscripciones(req: Request, res: Response): Promise<
   }
 }
 
-type VoluntarioPoblado = {
-  id: string
-  nombre: string
-  email: string
-  telefono?: string
-  avatarUrl?: string
-  isla?: string
-  municipio?: string
-  voluntario?: {
-    fechaNacimiento?: Date
-    biografia?: string
-    interesIds: Array<{ id: string; nombre: string }>
-    habilidades: string[]
-    idiomas: string[]
-    estadisticas?: {
-      horasTotales?: number
-      colaboraciones?: number
-      valoracionMedia?: number
-      numValoraciones?: number
-    }
-  }
-}
-
 const PUNTUACION_MIN = 1
 const PUNTUACION_MAX = 5
 const COMENTARIO_VALORACION_MAX = 1000
-
-function edadDesde(fechaNacimiento?: Date): number | null {
-  if (!fechaNacimiento) return null
-  const hoy = new Date()
-  let edad = hoy.getUTCFullYear() - fechaNacimiento.getUTCFullYear()
-  const mes = hoy.getUTCMonth() - fechaNacimiento.getUTCMonth()
-  if (mes < 0 || (mes === 0 && hoy.getUTCDate() < fechaNacimiento.getUTCDate())) edad--
-  return edad
-}
 
 // GET /api/inscripciones/oferta/:ofertaId -> candidatos de una oferta propia con su perfil
 export async function getCandidatosOferta(req: Request, res: Response): Promise<void> {
@@ -302,7 +271,6 @@ export async function getCandidatosOferta(req: Request, res: Response): Promise<
       .filter((inscripcion) => inscripcion.voluntarioId)
       .map((inscripcion) => {
         const voluntario = inscripcion.voluntarioId!
-        const perfil = voluntario.voluntario
         // El contacto solo se comparte con la entidad una vez aceptado el voluntario
         const compartirContacto = ['aceptada', 'completada'].includes(inscripcion.estado)
         const turnos = oferta.turnos.filter((turno) =>
@@ -332,22 +300,7 @@ export async function getCandidatosOferta(req: Request, res: Response): Promise<
           fechaResolucion: inscripcion.fechaResolucion ?? null,
           turnoIds: inscripcion.turnoIds.map((turnoId) => turnoId.toString()),
           voluntario: {
-            id: voluntario.id,
-            nombre: voluntario.nombre,
-            avatarUrl: voluntario.avatarUrl ?? null,
-            isla: voluntario.isla ?? null,
-            municipio: voluntario.municipio ?? null,
-            edad: edadDesde(perfil?.fechaNacimiento),
-            biografia: perfil?.biografia ?? null,
-            intereses: (perfil?.interesIds ?? []).map(({ id, nombre }) => ({ id, nombre })),
-            habilidades: perfil?.habilidades ?? [],
-            idiomas: perfil?.idiomas ?? [],
-            estadisticas: {
-              horasTotales: perfil?.estadisticas?.horasTotales ?? 0,
-              colaboraciones: perfil?.estadisticas?.colaboraciones ?? 0,
-              valoracionMedia: perfil?.estadisticas?.valoracionMedia ?? 0,
-              numValoraciones: perfil?.estadisticas?.numValoraciones ?? 0,
-            },
+            ...perfilPublicoVoluntario(voluntario),
             email: compartirContacto ? voluntario.email : null,
             telefono: compartirContacto ? (voluntario.telefono ?? null) : null,
           },

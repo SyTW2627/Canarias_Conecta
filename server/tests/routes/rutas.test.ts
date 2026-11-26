@@ -76,6 +76,8 @@ describe('Rutas de ofertas (/api/ofertas)', () => {
       'GET /recomendadas: requireAuth > requireRol(voluntario) > getRecomendaciones',
       'GET /mias: requireAuth > requireRol(ofertante) > getMisOfertas',
       'GET /mias/:id: requireAuth > requireRol(ofertante) > getMiOferta',
+      'GET /mias/:id/voluntarios-recomendados: requireAuth > requireRol(ofertante) > getVoluntariosRecomendados',
+      'POST /mias/:id/invitaciones: requireAuth > requireRol(ofertante) > invitarVoluntario',
       'GET /:id: getOferta',
       'PATCH /:id/cerrar: requireAuth > requireRol(ofertante) > cerrarOferta',
       'PUT /:id: requireAuth > requireRol(ofertante) > recibirImagen > editarOferta',

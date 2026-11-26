@@ -16,6 +16,10 @@ import {
   getOferta,
   getRecomendaciones
 } from '../controllers/ofertaController.js'
+import {
+  getVoluntariosRecomendados,
+  invitarVoluntario
+} from '../controllers/voluntariosRecomendadosController.js'
 import { requireAuth, requireRol } from '../middleware/auth.js'
 import { recibirImagen } from '../middleware/subidaImagen.js'
 
@@ -28,6 +32,14 @@ router.post('/', requireAuth, requireRol('ofertante'), recibirImagen, crearOfert
 router.get('/recomendadas', requireAuth, requireRol('voluntario'), getRecomendaciones)
 router.get('/mias',requireAuth, requireRol('ofertante'), getMisOfertas)
 router.get('/mias/:id', requireAuth, requireRol('ofertante'), getMiOferta)
+// La entidad ve los voluntarios mas compatibles con su oferta y puede invitarles
+router.get(
+  '/mias/:id/voluntarios-recomendados',
+  requireAuth,
+  requireRol('ofertante'),
+  getVoluntariosRecomendados
+)
+router.post('/mias/:id/invitaciones', requireAuth, requireRol('ofertante'), invitarVoluntario)
 router.get('/:id', getOferta)
 router.patch('/:id/cerrar', requireAuth, requireRol('ofertante'), cerrarOferta)
 router.put('/:id', requireAuth, requireRol('ofertante'), recibirImagen, editarOferta)

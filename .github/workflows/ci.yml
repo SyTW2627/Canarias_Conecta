@@ -32,9 +32,18 @@ jobs:
 
       - run: npm ci
       - run: npm run build
-      - run: npm run test
       - run: npm run test:types
-      # - run: npm run test:coverage
+      - run: npm run test:coverage
+
+      - name: Upload server coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: server/coverage/lcov.info
+          format: lcov
+          flag-name: server
+          parallel: true
+          base-path: server
 
   client:
     name: Cliente
@@ -54,8 +63,29 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
-      - run: npm run test
-      # - run: npm run test:coverage
+      - run: npm run test:coverage
+
+      - name: Upload client coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: client/coverage/lcov.info
+          format: lcov
+          flag-name: client
+          parallel: true
+          base-path: client
+
+  coveralls-finish:
+    name: Finalizar reporte de Coveralls
+    runs-on: ubuntu-latest
+    needs: [server, client]
+    if: ${{ always() }}
+    steps:
+      - name: Mark parallel build as finished
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
 
   sonarqube:
     name: SonarQube

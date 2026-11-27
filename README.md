@@ -16,6 +16,9 @@ colaborar en tareas solidarias de **una jornada o un periodo corto**. Proyecto d
 - Airam Prieto González
 - Sergio González Sánchez
 
+[![Quality gate status](https://sonarcloud.io/api/project_badges/measure?project=canarias-conecta_canarias-conecta-project&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=canarias-conecta_canarias-conecta-project)
+[![Coverage Status](https://coveralls.io/repos/github/SyTW2627/Canarias_Conecta/badge.svg?branch=main)](https://coveralls.io/github/SyTW2627/Canarias_Conecta?branch=main)
+
 ## Índice
 
 - [Qué ofrece](#qué-ofrece)

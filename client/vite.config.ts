@@ -26,5 +26,12 @@ export default defineConfig({
     // Cada test empieza con mocks y localStorage limpios
     restoreMocks: true,
     unstubGlobals: true,
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**'],
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: 'coverage',
+    },
   },
 })
